@@ -1,0 +1,47 @@
+name: Bug
+description: Something does not work. For security vulnerabilities, use private reporting instead.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not post secrets, tokens or real target names. For a security vulnerability, use **Security → Report a vulnerability**.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got.
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: "For example: python -m lab run training/vuln-lab --dry-run"
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      options: [claude, codex, none]
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `sbx version`, `python --version`, and the commit of this repo.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output and logs
+      render: shell
+      description: Remove secrets and personal paths.

@@ -1,0 +1,37 @@
+name: Improve rules or skills
+description: Suggest a change to a recipe's AGENTS.md, skills, scope example or eval.
+title: "rules: "
+labels: ["rules"]
+body:
+  - type: input
+    id: recipe
+    attributes:
+      label: Recipe
+      description: "For example pentest/webapp-blackbox."
+    validations:
+      required: true
+  - type: dropdown
+    id: file
+    attributes:
+      label: What to change
+      options: [AGENTS.md, a skill, scope.example.yaml, an eval, tools, other]
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What goes wrong today
+      description: Describe what the agent did and what you expected. Paste report output if you have it, with secrets removed.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: A run, a report or a test that shows the problem or the improvement.

@@ -1,0 +1,78 @@
+name: New recipe
+description: Propose a new lab recipe.
+title: "recipe: "
+labels: ["recipe"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Recipes are for defensive work and authorized testing. Read [SECURITY.md](https://github.com/BRYANN2K/agent-lab-sbx/blob/main/SECURITY.md) first.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: "Format: category/name, for example devsecops/secrets-scan."
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [foundation, devsecops, training, pentest, malware, detection, hardening, ir, ai-security, dev, ci, web, cu, apple]
+    validations:
+      required: true
+  - type: textarea
+    id: job
+    attributes:
+      label: The job, in one sentence
+    validations:
+      required: true
+  - type: textarea
+    id: defensive-purpose
+    attributes:
+      label: Defensive purpose
+      description: Who benefits, and how does this help defend or train?
+    validations:
+      required: true
+  - type: textarea
+    id: tools
+    attributes:
+      label: Tools and image
+      description: Tools, versions and base image. Give the licence of each.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Targets and scope
+      description: What does the agent touch? Which lab target or file do you use for the eval?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: What proof does a finding carry? How will the eval check it?
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources and licences
+      description: Existing projects you would vendor, adapt or link, with licences.
+  - type: dropdown
+    id: build
+    attributes:
+      label: Will you build it?
+      options: ["Yes", "I need help", "No, just suggesting"]
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirm
+      options:
+        - label: This recipe has a defensive purpose and runs only on targets in a scope file.
+          required: true
+        - label: It includes no live malware.
+          required: true
