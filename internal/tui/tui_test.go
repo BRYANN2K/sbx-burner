@@ -60,6 +60,10 @@ type fakeEngine struct {
 	scopeCalls []string
 	scopeOut   func(o engine.RunOptions, ref string, dry bool) ScopeResult
 	checkOut   ScopeResult
+	saveOut    ScopeResult
+	saved      map[string]any
+	saveTo     string
+	saveForce  bool
 }
 
 func (f *fakeEngine) ScopeNew(_ context.Context, o engine.RunOptions, ref string, dry bool) (ScopeResult, error) {
@@ -71,6 +75,10 @@ func (f *fakeEngine) ScopeNew(_ context.Context, o engine.RunOptions, ref string
 }
 
 func (f *fakeEngine) ScopeCheck(context.Context, string) (ScopeResult, error) { return f.checkOut, nil }
+func (f *fakeEngine) ScopeSave(_ context.Context, doc map[string]any, out string, force bool) (ScopeResult, error) {
+	f.saved, f.saveTo, f.saveForce = doc, out, force
+	return f.saveOut, nil
+}
 
 func (f *fakeEngine) Caps() Caps                                  { return f.caps }
 func (f *fakeEngine) ACPAgents(context.Context) ([]string, error) { return f.acp, nil }
@@ -768,13 +776,19 @@ func drain(t *testing.T, m model, cmd tea.Cmd) model {
 	return m
 }
 
-func TestScopeStepCreatesFromTheTarget(t *testing.T) {
-	t.Setenv("BURNER_HOME", t.TempDir())
-	eng := &fakeEngine{scopeOut: func(o engine.RunOptions, ref string, dry bool) ScopeResult {
-		return ScopeResult{Path: "/home/tester/.burner/scopes/web-recon-localhost-8080.yaml", Written: !dry, Valid: true,
-			Summary: ScopeSummary{Hosts: []string{"localhost:8080"}, Auth: "own-lab", Days: 30},
-			Scope:   scopeDoc(map[string]any{"type": "own-lab"}, "localhost:8080")}
+func formEngine() *fakeEngine {
+	return &fakeEngine{scopeOut: func(o engine.RunOptions, ref string, dry bool) ScopeResult {
+		doc := scopeDoc(map[string]any{"type": "own-lab"}, "localhost:8080")
+		doc["id"] = "web-recon-localhost-8080"
+		doc["targets"] = []any{map[string]any{"name": "localhost", "hosts": []any{"localhost:8080"}, "notes": "test accounts: alice, bob"}}
+		doc["techniques"] = map[string]any{"allowed": []any{"recon", "scan"}, "forbidden": []any{"exploit", "brute-force", "dos"}}
+		return ScopeResult{Summary: ScopeSummary{Hosts: []string{"localhost:8080"}, Auth: "own-lab", Days: 30}, Scope: doc}
 	}}
+}
+
+func TestScopeFormBuildsAndSavesTheScope(t *testing.T) {
+	t.Setenv("BURNER_HOME", t.TempDir())
+	eng := formEngine()
 	m := testModel(t, eng)
 	m = press(t, m, "down", "right", "enter") // pentest › web-recon
 	m = press(t, m, "down", "enter", "enter") // image › name
@@ -783,63 +797,91 @@ func TestScopeStepCreatesFromTheTarget(t *testing.T) {
 	m = typeText(m, "8080")
 	nm, cmd := m.Update(keyMsg("enter"))
 	m = drain(t, nm.(model), cmd)
-	if m.flow.q == nil || m.flow.q.title != "Scope file" || m.flow.q.options[0].value != "create" {
+	if m.flow.q == nil || m.flow.q.title != "Scope file" || m.flow.q.options[0].value != "build" {
 		t.Fatalf("question %+v", m.flow.q)
 	}
-	golden(t, "scope-options", m)
-	nm, cmd = m.Update(keyMsg("enter")) // create
-	m = drain(t, nm.(model), cmd)
-	if m.flow.q == nil || m.flow.q.kind != qPreview {
-		t.Fatalf("no preview: %+v", m.flow.q)
+	m = press(t, m, "enter") // Build the scope
+	if m.scr != scrScopeForm || m.form == nil {
+		t.Fatal("the scope form did not open")
 	}
-	golden(t, "scope-preview", m)
-	m = press(t, m, "enter") // use
-	if got := m.flow.answers[len(m.flow.answers)-1].value; got != "/home/tester/.burner/scopes/web-recon-localhost-8080.yaml" {
-		t.Fatalf("scope answer %q", got)
+	f := m.form
+	if strings.Join(f.targets, ",") != "localhost:8080" || len(f.techs) != 3 || f.techs[2].name != "exploit" || f.techs[2].on {
+		t.Fatalf("form from the template: %+v %+v", f.targets, f.techs)
 	}
-	if strings.Join(eng.scopeCalls, " | ") != "dry=true ref= port=8080 url= | dry=false ref= port=8080 url=" {
-		t.Fatalf("engine calls: %v", eng.scopeCalls)
+	golden(t, "scope-form", m)
+	// Written authorization needs a reference before it can be saved.
+	m = press(t, m, "tab", "tab", "right") // auth → written
+	if f.auth != "written" || len(f.problems()) == 0 {
+		t.Fatal("written without a reference is not refused")
 	}
-}
-
-func TestScopeStepAsksTheWrittenReferenceAndBlocksTODO(t *testing.T) {
-	t.Setenv("BURNER_HOME", t.TempDir())
-	eng := &fakeEngine{scopeOut: func(o engine.RunOptions, ref string, dry bool) ScopeResult {
-		r := ScopeResult{Path: "/s.yaml", Summary: ScopeSummary{Hosts: []string{"staging.acme.dev:443"}, Auth: "written", Days: 30},
-			Scope: scopeDoc(map[string]any{"type": "written", "reference": ref}, "staging.acme.dev:443"), Valid: ref != "" && !dry}
-		if !r.Valid {
-			r.Errors = []string{"authorization.reference: still a TODO(burner) value; edit it before using this scope"}
-		}
-		return r
-	}, checkOut: ScopeResult{Path: "/s.yaml", Valid: true, Scope: scopeDoc(map[string]any{"type": "written", "reference": "x"}, "staging.acme.dev:443")}}
-	m := testModel(t, eng)
-	m = press(t, m, "down", "right", "enter") // pentest › web-recon
-	m = press(t, m, "down", "down", "enter")  // url
-	m = typeText(m, "https://staging.acme.dev")
-	nm, cmd := m.Update(keyMsg("enter"))
-	m = drain(t, nm.(model), cmd)
-	m = press(t, m, "enter") // create
-	if m.flow.q.title != "Written authorization" {
-		t.Fatalf("question %q", m.flow.q.title)
+	if _, cmd := m.Update(keyMsg("enter")); cmd != nil {
+		t.Fatal("an invalid scope was saved")
 	}
-	m = typeText(m, "contract-42")
+	m = typeText(m, "SOW-42")
+	// Turn on the risky dos row.
+	m = press(t, m, "tab", "tab") // days, techs
+	for i := 0; i < len(f.techs)+3; i++ {
+		m = press(t, m, "down")
+	}
+	if f.risky[f.tcur-len(f.techs)].name != "dos" {
+		t.Fatalf("cursor on %+v", f.risky[f.tcur-len(f.techs)])
+	}
+	m = press(t, m, "space")
+	golden(t, "scope-form-risky", m)
+	doc := f.toDoc()
+	tech := doc["techniques"].(map[string]any)
+	if fmt.Sprint(tech["risky"]) != "[dos]" || doc["authorization"].(map[string]any)["reference"] != "SOW-42" {
+		t.Fatalf("doc: %v", doc)
+	}
+	if doc["targets"].([]any)[0].(map[string]any)["notes"] != "test accounts: alice, bob" {
+		t.Fatal("the template's notes were lost")
+	}
+	eng.saveOut = ScopeResult{Path: "/home/tester/.burner/scopes/web-recon-localhost-8080.yaml", Written: true, Valid: true}
 	nm, cmd = m.Update(keyMsg("enter"))
-	m = drain(t, nm.(model), cmd)
-	if m.flow.q.kind != qPreview || !strings.Contains(eng.scopeCalls[len(eng.scopeCalls)-1], "ref=contract-42") {
-		t.Fatalf("preview or reference missing: %v", eng.scopeCalls)
-	}
-	// An invalid scope cannot be used; editing then re-checks it.
-	m.flow.scopeRes.Valid = false
-	m = press(t, m, "enter")
-	if m.flow.q.kind != qPreview || m.flow.err == "" {
-		t.Fatal("an invalid scope was accepted")
-	}
-	nm, cmd = m.Update(editedMsg{path: "/s.yaml"})
 	m = nm.(model)
 	nm, _ = m.Update(cmd())
 	m = nm.(model)
-	if !m.flow.scopeRes.Valid {
-		t.Fatal("the edited scope was not re-checked")
+	if m.scr != scrFlow || m.flow.answers[len(m.flow.answers)-1].value != eng.saveOut.Path {
+		t.Fatalf("the saved scope is not the answer: scr=%v", m.scr)
+	}
+	if eng.saveForce || eng.saveTo != "" {
+		t.Fatal("a new scope must not overwrite anything")
+	}
+}
+
+func TestScopeEditReplacesTheFile(t *testing.T) {
+	eng := formEngine()
+	m := testModel(t, eng)
+	m.flow = nil
+	doc := eng.scopeOut(engine.RunOptions{}, "", true).Scope
+	m.form = newScopeForm(doc, "s.yaml", "/scopes/s.yaml", m.cfg.Now())
+	m.scr = scrScopeForm
+	eng.saveOut = ScopeResult{Path: "/scopes/s.yaml", Written: true, Valid: true}
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = nm.(model)
+	nm, cmd = m.Update(cmd())
+	m = nm.(model)
+	if eng.saveTo != "/scopes/s.yaml" || !eng.saveForce || m.out.Action != "scope-saved" || cmd == nil {
+		t.Fatalf("edit: to=%q force=%v action=%q", eng.saveTo, eng.saveForce, m.out.Action)
+	}
+}
+
+func TestScopeFormExport(t *testing.T) {
+	eng := formEngine()
+	m := testModel(t, eng)
+	m.form = newScopeForm(eng.scopeOut(engine.RunOptions{}, "", true).Scope, "web-recon", "", m.cfg.Now())
+	m.scr = scrScopeForm
+	m = press(t, m, "tab", "x")
+	if m.form.adding != "export" {
+		t.Fatal("x did not ask where to export")
+	}
+	eng.saveOut = ScopeResult{Path: "/home/tester/Documents/web-recon-localhost-8080.yaml", Written: true, Valid: true}
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = nm.(model)
+	nm, _ = m.Update(cmd())
+	m = nm.(model)
+	if !strings.HasSuffix(eng.saveTo, "/Documents/web-recon-localhost-8080.yaml") || eng.saveForce || !strings.Contains(m.form.note, "exported to") {
+		t.Fatalf("export: to=%q note=%q", eng.saveTo, m.form.note)
 	}
 }
 
@@ -1079,5 +1121,33 @@ func TestApprovalCardStartsTheRunOnceApproved(t *testing.T) {
 	m = nm.(model)
 	if m.live.approval != nil || cmd == nil {
 		t.Fatal("the run did not start after the approval")
+	}
+}
+
+func TestScopeFormAsksWrittenAuthorizationForRiskyTechniques(t *testing.T) {
+	f := newScopeForm(formEngine().scopeOut(engine.RunOptions{}, "", true).Scope, "x", "", time.Now())
+	f.targets = []string{"localhost:3000"}
+	for i := range f.risky {
+		f.risky[i].on = f.risky[i].name == "dos"
+	}
+	if len(f.problems()) != 0 {
+		t.Fatalf("dos on a sandbox-local target: %v", f.problems())
+	}
+	for i := range f.risky {
+		f.risky[i].on = f.risky[i].name == "phishing"
+	}
+	if len(f.problems()) == 0 {
+		t.Fatal("phishing without written authorization accepted")
+	}
+	f.targets = []string{"10.0.5.7:80"}
+	for i := range f.risky {
+		f.risky[i].on = f.risky[i].name == "dos"
+	}
+	if len(f.problems()) == 0 {
+		t.Fatal("dos on a network target without written authorization accepted")
+	}
+	f.auth, f.ref = "written", "SOW-42"
+	if len(f.problems()) != 0 {
+		t.Fatalf("written authorization refused: %v", f.problems())
 	}
 }

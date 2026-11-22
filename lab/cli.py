@@ -282,6 +282,20 @@ def scope_new_parser() -> argparse.ArgumentParser:
     p.add_argument("--auth", choices=("own-lab", "written"), help="default: own-lab for lab hosts, written for anything else")
     p.add_argument("--reference", metavar="REF", help="the written authorization (link or id); required for --auth written")
     p.add_argument("--days", type=int, default=30, help="valid from today for N days (default 30)")
+    p.add_argument("--name", metavar="NAME", help="scope id and file name (default: <recipe>-<host>)")
+    p.add_argument("--host", action="append", default=[], metavar="HOST[:PORT]", help="extra target host (repeatable)")
+    p.add_argument("--out-of-scope", action="append", default=[], metavar="HOST", help="host never to touch (repeatable)")
+    p.add_argument(
+        "--technique", action="append", default=None, metavar="T", help="keep only these techniques on (repeatable; default: the recipe's)"
+    )
+    p.add_argument(
+        "--risky",
+        action="append",
+        default=[],
+        metavar="T",
+        help="allow a risky technique explicitly: " + ", ".join(scope_mod.RISKY) + " (you take responsibility)",
+    )
+    p.add_argument("--network", choices=("strict", "standard"), help="strict: scope hosts only; standard: the global policy too")
     p.add_argument("--out", metavar="PATH", type=Path, help="default: ~/.burner/scopes/<recipe>-<host>.yaml")
     p.add_argument("--dry-run", action="store_true", help="show the scope, write nothing")
     p.add_argument("--json", action="store_true", help="print {path, valid, errors, todo, notes, summary, scope}")
@@ -301,6 +315,12 @@ def _cmd_scope_new(argv: list[str]) -> int:
             auth=args.auth,
             reference=args.reference,
             days=args.days,
+            name=args.name,
+            extra_hosts=args.host,
+            out_of_scope=args.out_of_scope,
+            techniques=args.technique,
+            risky=args.risky,
+            network_mode=args.network,
         )
     except (RecipeError, scope_new.ScopeNewError) as exc:
         if args.json:
@@ -310,7 +330,7 @@ def _cmd_scope_new(argv: list[str]) -> int:
         return runner.EXIT_REFUSED
     errors = scope_new.check(data)
     text = scope_new.render(recipe, data)
-    path = args.out or scope_new.default_path(recipe, data)
+    path = args.out or (scope_new.named_path(data) if args.name else scope_new.default_path(recipe, data))
     written = False
     blocking = scope_new.blocking(errors)
     if blocking and not args.dry_run:
@@ -353,10 +373,57 @@ def _cmd_scope_new(argv: list[str]) -> int:
     return 0 if not errors else runner.EXIT_PREFLIGHT
 
 
+def _cmd_scope_save(argv: list[str]) -> int:
+    """Validate a scope document (JSON on stdin) and write it as YAML, 0600.
+
+    Used by burner's scope form. Only TODO(burner) values may remain; any
+    other error writes nothing.
+    """
+    p = argparse.ArgumentParser(prog="lab scope save", description="Write a scope document read as JSON from stdin.")
+    p.add_argument("--out", metavar="PATH", type=Path, help="default: ~/.burner/scopes/<id>.yaml")
+    p.add_argument("--force", action="store_true", help="replace an existing file (scope edit)")
+    p.add_argument("--json", action="store_true")
+    args = p.parse_args(argv)
+    try:
+        raw = sys.stdin.read(1 << 20)
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("a scope is a JSON object")
+    except ValueError as exc:
+        if args.json:
+            print(json.dumps({"error": f"invalid scope document: {exc}"}))
+        else:
+            print(f"refused: {exc}", file=sys.stderr)
+        return runner.EXIT_REFUSED
+    errors = scope_new.check(data)
+    blocking = scope_new.blocking(errors)
+    path = args.out or scope_new.named_path(data)
+    written = False
+    if not blocking:
+        try:
+            scope_new.save(path, scope_new.render(None, data), overwrite=args.force)
+            written = True
+        except FileExistsError:
+            blocking = [f"{path} exists"]
+    result = {"path": str(path), "written": written, "valid": not errors, "errors": blocking or errors, "todo": scope_new.todos(data)}
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False))
+    elif written:
+        print(f"wrote {path}")
+    else:
+        for err in blocking:
+            print(f"refused: {err}", file=sys.stderr)
+    if not written:
+        return runner.EXIT_REFUSED
+    return 0 if not errors else runner.EXIT_PREFLIGHT
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:2] == ["scope", "new"]:
         return _cmd_scope_new(argv[2:])
+    if argv[:2] == ["scope", "save"]:
+        return _cmd_scope_save(argv[2:])
     args = build_parser().parse_args(argv)
     return int(args.func(args))
 

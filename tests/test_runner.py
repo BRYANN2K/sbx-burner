@@ -1081,3 +1081,22 @@ def test_binding_gaps_absent_file_means_all_missing(tmp_path, monkeypatch):
 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "none"))
     assert sbx_mod.binding_gaps({"openai": {"oauth": {"chatgpt.com"}}}) == {"openai": {"oauth": {"chatgpt.com"}}}
+
+
+def test_acknowledged_risky_techniques_are_recorded(make_recipe, repo, tmp_path):
+    from tests.conftest import SCOPE_OK
+
+    text = (
+        SCOPE_OK.replace("hosts: [juice.lab.internal:3000, 10.0.5.0/24]", "hosts: [localhost:3000]")
+        .replace("deny: [10.0.5.9]", "deny: []")
+        .replace("allowed: [recon, scan]", "allowed: [recon, dos]\n  risky: [dos]")
+    )
+    path = tmp_path / "scope.yaml"
+    path.write_text(text)
+    recipe = make_recipe("pentest", "web-demo", **{"recipe.yaml": ("scope: none", "scope: required")})
+    plan = _plan(recipe, repo, tmp_path, scope_path=str(path))
+    runner.prepare_workspace(plan)
+    assert "Risky techniques the operator acknowledged in the scope: dos" in (plan.workspace / "TASK.md").read_text()
+    runner.execute_plan(plan, execute=FakeSbx(plan), log=lambda _: None)
+    run = json.loads((plan.run_dir / "report.json").read_text())["run"]
+    assert run["scope"] == {"id": "unit-lab", "risky_acknowledged": ["dos"]}

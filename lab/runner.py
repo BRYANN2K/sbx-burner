@@ -1300,6 +1300,11 @@ def task_markdown(plan: Plan) -> str:
             f"- In-scope hosts: {', '.join(scope.target_hosts) or 'none (local paths only)'}",
             f"- Allowed techniques: {', '.join(scope.techniques_allowed)}",
             f"- Forbidden techniques: {', '.join(scope.techniques_forbidden)}",
+            *(
+                [f"- Risky techniques the operator acknowledged in the scope: {', '.join(scope.techniques_risky)}"]
+                if scope.techniques_risky
+                else []
+            ),
             "",
             "The sandbox network policy only allows the hosts above plus the agent API and tool hosts. "
             "A blocked connection is the policy working: do not try to route around it. Record it as out of scope.",
@@ -2027,6 +2032,7 @@ def execute_plan(
         "agent": plan.agent.name,
         "sandbox": plan.sandbox,
         "scope_id": plan.scope.id if plan.scope else None,
+        "scope": {"id": plan.scope.id, "risky_acknowledged": plan.scope.techniques_risky} if plan.scope else None,
         "target": plan.target_info or (str(plan.target) if plan.target else None),
         "policy": plan.policy,
         "started": started,

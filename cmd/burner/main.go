@@ -58,6 +58,7 @@ Usage:
   burner agents [--json]      the agents the runner can launch
   burner eval [recipe]        check a recipe produces its evidence
   burner scope <file> [--host H] [--json]
+  burner scope edit <file>      open the scope form on a scope file
   burner scope new <recipe> --target-... [--owner N] [--auth own-lab|written --reference REF] [--days 30] [--out PATH] [--dry-run] [--json]
                               write a scope for that recipe from the target (~/.burner/scopes)
   burner doctor [--json]
@@ -149,6 +150,19 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		root, err := catalog.FindRoot(catalogFlag)
 		if err != nil {
 			return fail(stderr, exitNotReady, err)
+		}
+		if cmd == "scope" && len(rest) == 2 && rest[0] == "edit" {
+			if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
+				return fail(stderr, exitUsage, errors.New("burner scope edit opens the scope form: it needs a terminal"))
+			}
+			out, err := tui.RunScopeEdit(ctx, tui.Config{Root: root, Version: version}, rest[1])
+			if err != nil {
+				return fail(stderr, exitFailed, err)
+			}
+			if out.Action == "scope-saved" {
+				fmt.Fprintln(stderr, "saved "+out.Report)
+			}
+			return out.Code
 		}
 		if cmd == "scope" && len(rest) > 1 && rest[0] == "new" {
 			rest = scopeNewArgs(root, rest)

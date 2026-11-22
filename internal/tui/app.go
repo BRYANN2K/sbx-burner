@@ -70,6 +70,7 @@ const (
 	scrDoctor
 	scrNew
 	scrLog
+	scrScopeForm
 )
 
 type model struct {
@@ -98,6 +99,7 @@ type model struct {
 	doc    doctorModel
 	newr   *newModel
 	logv   *logModel
+	form   *scopeForm
 
 	out Outcome
 }
@@ -205,6 +207,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateNew(msg)
 	case scrLog:
 		return m.updateLog(msg)
+	case scrScopeForm:
+		return m.updateScopeForm(msg)
 	}
 	return m, nil
 }
@@ -231,6 +235,8 @@ func (m model) View() string {
 		v = m.viewNew()
 	case scrLog:
 		v = m.viewLog()
+	case scrScopeForm:
+		v = m.viewScopeForm()
 	}
 	return paintBG(fit(v, m.w, m.h), m.w)
 }

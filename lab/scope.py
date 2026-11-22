@@ -25,8 +25,18 @@ SCHEMA_PATH = Path(__file__).parent / "schema" / "scope.schema.json"
 LAB_SUFFIXES = (".localhost", ".test", ".internal", ".lab", ".local", ".example", ".home.arpa")
 LAB_NAMES = ("localhost",)
 
-# Techniques that no recipe in this repository may run, whatever the scope says.
-NEVER_ALLOWED = ("dos", "ddos", "social-engineering", "phishing", "physical", "data-destruction", "ransomware")
+# No technique is refused outright any more (Bryan's decision, 2026-11-22):
+# risky ones are off unless the scope allows them, and the most harmful
+# also need an explicit techniques.risky entry, the operator's
+# acknowledgement that the written authorization covers them.
+NEVER_ALLOWED: tuple[str, ...] = ()
+# Risky techniques aimed at hosts: written authorization, or every target
+# local to the sandbox (localhost, 127.0.0.0/8, ::1).
+RISKY_HOST = ("brute-force", "lockout-testing", "credential-reuse", "dos", "ddos", "data-destruction", "ransomware")
+# Risky techniques aimed at people: written authorization only.
+RISKY_PEOPLE = ("social-engineering", "phishing", "physical")
+RISKY = (*RISKY_HOST, *RISKY_PEOPLE)
+RISKY_NEEDS_ACK = RISKY  # every risky technique is listed under techniques.risky
 
 _HOST_RE = re.compile(r"^(?:\*\*?\.)?[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?$")
 
@@ -68,6 +78,7 @@ class Scope:
     deny: list[str] = field(default_factory=list)
     techniques_allowed: list[str] = field(default_factory=list)
     techniques_forbidden: list[str] = field(default_factory=list)
+    techniques_risky: list[str] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -114,6 +125,18 @@ def _matches(pattern: str, host: str) -> bool:
     return p_host == h_host
 
 
+def is_sandbox_local(entry: str) -> bool:
+    """True for localhost, 127.0.0.0/8 and ::1, with or without a port."""
+    host, _ = split_host(entry.lower())
+    host = host.strip("[]")
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 def is_lab_host(entry: str) -> bool:
     """True when the entry can only point at a private lab."""
     host, _ = split_host(entry.lower())
@@ -153,6 +176,11 @@ def _check_host(entry: str, where: str, errors: list[str]) -> None:
     bare = host.removeprefix("**.").removeprefix("*.")
     if host != bare and "." not in bare and bare not in ("test", "internal", "lab", "localhost"):
         errors.append(f"{where}: wildcard {entry!r} covers a whole top-level domain")
+
+
+def _all_targets_local(data: dict[str, Any]) -> bool:
+    hosts = [h for t in data.get("targets") or [] for h in t.get("hosts") or []]
+    return all(is_sandbox_local(h) for h in hosts)
 
 
 def load_raw(path: str | Path) -> dict[str, Any]:
@@ -220,9 +248,16 @@ def validate(data: dict[str, Any], today: _dt.date | None = None, check_dates: b
             _check_host(host, f"network.{key}", errors)
 
     techniques = data["techniques"]
+    acked = {t.lower() for t in techniques.get("risky") or []}
     for tech in techniques["allowed"]:
         if tech.lower() in NEVER_ALLOWED:
             errors.append(f"techniques.allowed: {tech!r} is never allowed by this project")
+        elif tech.lower() in RISKY_NEEDS_ACK and tech.lower() not in acked:
+            errors.append(f"techniques.allowed: {tech!r} is risky; list it under techniques.risky to take responsibility for it")
+        elif tech.lower() in RISKY_PEOPLE and auth["type"] != "written":
+            errors.append(f"techniques.allowed: {tech!r} needs written authorization (type 'written' with a reference)")
+        elif tech.lower() in RISKY_HOST and auth["type"] != "written" and not _all_targets_local(data):
+            errors.append(f"techniques.allowed: {tech!r} needs written authorization unless the target is local to the sandbox")
 
     if errors:
         raise ScopeError("scope refused:\n  - " + "\n  - ".join(errors))
@@ -238,7 +273,11 @@ def validate(data: dict[str, Any], today: _dt.date | None = None, check_dates: b
         allow=list(network.get("allow") or []),
         deny=list(network.get("deny") or []),
         techniques_allowed=list(techniques["allowed"]),
-        techniques_forbidden=sorted(set(list(techniques.get("forbidden") or []) + list(NEVER_ALLOWED))),
+        techniques_risky=[t for t in techniques["allowed"] if t.lower() in acked],
+        techniques_forbidden=sorted(
+            set(list(techniques.get("forbidden") or []) + list(NEVER_ALLOWED) + [t for t in RISKY_NEEDS_ACK if t not in acked])
+            - {t.lower() for t in techniques["allowed"] if t.lower() in acked}
+        ),
         raw=data,
     )
 

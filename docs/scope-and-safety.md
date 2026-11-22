@@ -58,7 +58,7 @@ The runner validates the file against `lab/schema/scope.schema.json` and refuses
 | `valid` | `not_before` and `not_after`, quoted `YYYY-MM-DD` dates. The runner refuses to start outside the window. The window is at most one year. |
 | `targets` | At least one. Each has a `name` and `hosts` (`host`, `host:port` or CIDR) or `paths`. |
 | `network` | `mode` is `strict` (default) or `additive`. `allow` adds hosts. `deny` hosts are never allowed and win over `allow` and `targets`. |
-| `techniques` | `allowed` (at least one) and `forbidden`. |
+| `techniques` | `allowed` (at least one), `forbidden`, and `risky`: the risky techniques you allow on purpose (see below). |
 | `notes` | Free text. |
 
 Rules the runner enforces:
@@ -68,7 +68,15 @@ Rules the runner enforces:
 - A bare `*` or `**` is refused.
 - A wildcard that covers a whole top-level domain is refused. `*.com` fails. `*.lab` is allowed.
 - A URL is not a host. Write `app.example.com`, not `https://app.example.com`.
-- Some techniques are never allowed, whatever the file says: `dos`, `ddos`, `social-engineering`, `phishing`, `physical`, `data-destruction` and `ransomware`.
+- No technique is refused outright by the scope file. Risky techniques are off unless you allow them, and each one you allow must also be listed under `techniques.risky`:
+  - aimed at hosts: `brute-force`, `lockout-testing`, `credential-reuse`, `dos`, `ddos`, `data-destruction`, `ransomware`. They need `authorization.type: written` with a `reference`, unless every target is local to the sandbox (`localhost`, `127.0.0.0/8`, `::1`);
+  - aimed at people: `social-engineering`, `phishing`, `physical`. They always need `authorization.type: written` with a `reference`.
+- You are responsible for the authorization behind every technique you allow. The acknowledged risky techniques are written in `TASK.md` and in `report.json` (`run.scope.risky_acknowledged`).
+
+Allowing a technique in a scope does not make a recipe use it:
+
+- the network policy still reaches only the scope hosts (plus the agent API and tool hosts), whatever the techniques say;
+- each recipe's `AGENTS.md` keeps its own list of things the agent never does, and that list still applies.
 
 ## How scope is enforced
 

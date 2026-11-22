@@ -59,7 +59,8 @@
       "additionalProperties": false,
       "properties": {
         "allowed": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-        "forbidden": {"type": "array", "items": {"type": "string"}}
+        "forbidden": {"type": "array", "items": {"type": "string"}},
+        "risky": {"type": "array", "items": {"type": "string"}, "description": "Risky techniques the operator explicitly allows (lab/scope.py RISKY)."}
       }
     },
     "notes": {"type": "string"}
