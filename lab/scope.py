@@ -179,8 +179,10 @@ def _check_host(entry: str, where: str, errors: list[str]) -> None:
 
 
 def _all_targets_local(data: dict[str, Any]) -> bool:
+    """At least one host, and every host local to the sandbox. A paths-only
+    scope does not count: name the local host the technique would hit."""
     hosts = [h for t in data.get("targets") or [] for h in t.get("hosts") or []]
-    return all(is_sandbox_local(h) for h in hosts)
+    return bool(hosts) and all(is_sandbox_local(h) for h in hosts)
 
 
 def load_raw(path: str | Path) -> dict[str, Any]:

@@ -69,7 +69,7 @@ Rules the runner enforces:
 - A wildcard that covers a whole top-level domain is refused. `*.com` fails. `*.lab` is allowed.
 - A URL is not a host. Write `app.example.com`, not `https://app.example.com`.
 - No technique is refused outright by the scope file. Risky techniques are off unless you allow them, and each one you allow must also be listed under `techniques.risky`:
-  - aimed at hosts: `brute-force`, `lockout-testing`, `credential-reuse`, `dos`, `ddos`, `data-destruction`, `ransomware`. They need `authorization.type: written` with a `reference`, unless every target is local to the sandbox (`localhost`, `127.0.0.0/8`, `::1`);
+  - aimed at hosts: `brute-force`, `lockout-testing`, `credential-reuse`, `dos`, `ddos`, `data-destruction`, `ransomware`. They need `authorization.type: written` with a `reference`, unless the scope names at least one host and every host is local to the sandbox (`localhost`, `127.0.0.0/8`, `::1`); a paths-only scope does not count;
   - aimed at people: `social-engineering`, `phishing`, `physical`. They always need `authorization.type: written` with a `reference`.
 - You are responsible for the authorization behind every technique you allow. The acknowledged risky techniques are written in `TASK.md` and in `report.json` (`run.scope.risky_acknowledged`).
 
