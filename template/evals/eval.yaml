@@ -1,0 +1,11 @@
+# Checks that a run of this recipe produced its evidence.
+#   python -m lab eval __CATEGORY__/__NAME__                 # golden fixture (CI)
+#   python -m lab eval __CATEGORY__/__NAME__ --run runs/<id> # a real run
+description: The agent ran the tool and recorded its raw output.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: example-tool
+  - type: artifact_exists
+    path: artifacts/example.json
+  - type: no_demotions

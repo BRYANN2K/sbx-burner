@@ -1,0 +1,47 @@
+# Install: pipx install pre-commit && pre-commit install --hook-type pre-commit --hook-type commit-msg
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: detect-private-key
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+      - id: ruff-format
+        args: [--check]
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-c, scripts/yamllint.yml]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: [-x]
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.18.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        additional_dependencies: ['@commitlint/config-conventional']
+  - repo: local
+    hooks:
+      - id: recipe-lint
+        name: recipe-lint
+        entry: python3 -m lab lint
+        language: system
+        pass_filenames: false
+        files: ^(recipes/|recipes\.yaml|skills/|kits/|template/|lab/)
+      - id: gen-index
+        name: gen-index
+        entry: python3 scripts/gen_index.py --check
+        language: system
+        pass_filenames: false
+        files: ^(recipes\.yaml|README\.md)$

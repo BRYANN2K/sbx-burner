@@ -1,0 +1,47 @@
+# syntax=docker/sandbox-kit:3
+# Codex CLI as a mixin, for the non built-in workloads in this directory.
+# Reduced from examples/codex-mixin in docker/sandbox-kit-spec (Apache-2.0):
+# same binary, credential and network grants, without the session hooks.
+# TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
+schemaVersion: "3"
+kind: mixin
+displayName: Codex CLI (agent-lab-sbx)
+description: OpenAI Codex CLI native binary with a proxy-managed OpenAI credential.
+sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+
+args:
+  version:
+    default: "0.166.0"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: CODEX_VERSION
+
+provides: ["codex@${{ kit.args.version }}"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          - api.openai.com:443
+          - auth.openai.com:443
+          - chatgpt.com:443
+  - type: com.docker.sandbox/credential@1
+    optional: true
+    description: OpenAI API access (API key or ChatGPT OAuth)
+    config:
+      service: openai
+      phase: runtime
+      apiKey:
+        name: OPENAI_API_KEY
+        proxyManaged: true
+        inject:
+          - {domain: api.openai.com, header: Authorization, format: "Bearer %s"}
+      oauth:
+        tokenEndpoint: {host: auth.openai.com, path: /oauth/token}
+        resourceHosts:
+          - chatgpt.com
+        sentinels:
+          accessToken: oai-oat01-proxy-managed
+          refreshToken: oai-ort01-proxy-managed
+
+dockerfile: agent-codex.dockerfile

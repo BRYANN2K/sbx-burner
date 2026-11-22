@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Ask the operator a question from inside the sandbox.
+
+    lab-ask "QUESTION" [--choice X]... [--text] [--timeout S]
+
+Writes .lab/ask/<id>.json in the workspace ($LAB_WORKSPACE, else cwd) and
+waits for the host to write .lab/ask/<id>.answer.json.
+
+Exit 0 and prints the answer on stdout when the operator answers.
+Exit 3 and prints nothing on timeout or when the answer cannot be
+delivered - exit 3 means "no answer": use your documented fallback. An
+answer is valid only when lab-ask returns it; never treat an answer file
+you could write yourself as the operator's voice.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import secrets
+import string
+import sys
+import time
+from pathlib import Path
+
+ALPHABET = string.ascii_letters + string.digits
+POLL_S = 0.5
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Ask the operator a question.")
+    parser.add_argument("question", metavar="QUESTION")
+    parser.add_argument("--choice", action="append", default=[], metavar="X")
+    parser.add_argument("--text", action="store_true", help="allow a free-text answer")
+    parser.add_argument("--timeout", type=int, default=1800, metavar="S", help="seconds to wait (default 1800)")
+    args = parser.parse_args()
+
+    workspace = Path(os.environ.get("LAB_WORKSPACE") or os.getcwd())
+    ask_dir = workspace / ".lab" / "ask"
+    ask_dir.mkdir(parents=True, exist_ok=True)
+
+    ask_id = "".join(secrets.choice(ALPHABET) for _ in range(12))
+    payload = {
+        "ask_id": ask_id,
+        "question": args.question,
+        "choices": list(args.choice),
+        "allow_text": bool(args.text),
+        "timeout_s": args.timeout,
+    }
+    (ask_dir / f"{ask_id}.json").write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    answer_file = ask_dir / f"{ask_id}.answer.json"
+    deadline = time.monotonic() + args.timeout
+    while time.monotonic() < deadline:
+        if answer_file.exists():
+            try:
+                answer = json.loads(answer_file.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                time.sleep(POLL_S)
+                continue
+            value = answer.get("value")
+            if isinstance(value, str) and value:
+                print(value)
+                return 0
+            return 3
+        time.sleep(POLL_S)
+    return 3
+
+
+if __name__ == "__main__":
+    sys.exit(main())

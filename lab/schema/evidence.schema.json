@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BRYANN2K/agent-lab-sbx/lab/schema/evidence.schema.json",
+  "title": "agent-lab-sbx evidence file",
+  "description": "Written by the agent to evidence/evidence.json. Findings need proof (PoC + artifacts); unproven leads go to hypotheses.",
+  "type": "object",
+  "required": ["schema_version", "recipe", "summary", "tools_run", "findings", "hypotheses", "artifacts"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1"},
+    "recipe": {"type": "string", "pattern": "^[a-z0-9-]+/[a-z0-9-]+$"},
+    "scope_id": {"type": ["string", "null"]},
+    "summary": {"type": "string", "minLength": 1},
+    "tools_run": {"type": "array", "items": {"$ref": "#/$defs/tool_run"}},
+    "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "hypotheses": {"type": "array", "items": {"$ref": "#/$defs/hypothesis"}},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "metrics": {"type": "object"}
+  },
+  "$defs": {
+    "tool_run": {
+      "type": "object",
+      "required": ["name", "command", "exit_code"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string"},
+        "command": {"type": "string", "minLength": 1},
+        "exit_code": {"type": "integer"},
+        "output": {"type": "string", "description": "Artifact path, relative to evidence/"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "title", "severity", "target", "description", "proof"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+        "title": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["info", "low", "medium", "high", "critical"]},
+        "cvss": {
+          "type": "object",
+          "required": ["vector", "score"],
+          "additionalProperties": false,
+          "properties": {
+            "vector": {"type": "string", "pattern": "^CVSS:3\\.[01]/"},
+            "score": {"type": "number", "minimum": 0, "maximum": 10}
+          }
+        },
+        "cwe": {"type": "string", "pattern": "^CWE-[0-9]+$"},
+        "target": {"type": "string", "minLength": 1},
+        "location": {"type": "string"},
+        "tool": {"type": "string"},
+        "rule": {"type": "string"},
+        "description": {"type": "string", "minLength": 1},
+        "proof": {
+          "type": "object",
+          "required": ["poc", "artifacts"],
+          "additionalProperties": false,
+          "properties": {
+            "poc": {"type": "string", "description": "Exact steps or command that reproduce the finding"},
+            "artifacts": {"type": "array", "items": {"type": "string"}, "description": "Paths relative to evidence/"}
+          }
+        },
+        "remediation": {"type": "string"},
+        "references": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "hypothesis": {
+      "type": "object",
+      "required": ["id", "title", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+        "title": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "next_step": {"type": "string"},
+        "demoted_from": {"type": "string"},
+        "demoted_reason": {"type": "string"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["path", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "description": "Relative to evidence/"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "description": {"type": "string"}
+      }
+    }
+  }
+}

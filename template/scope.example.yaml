@@ -1,0 +1,25 @@
+# Copy to scope.yaml, edit, then: python -m lab run <recipe> --scope scope.yaml
+# Delete this file when the recipe has `scope: none`.
+schema_version: "1"
+id: my-own-lab
+owner: Your Name
+authorization:
+  # own-lab: targets you start yourself (localhost, private IPs, .test, .internal, .lab).
+  # written: anything else, with a reference to the written authorization.
+  type: own-lab
+valid:
+  not_before: "2026-11-01"
+  not_after: "2026-12-31"
+targets:
+  - name: local-lab
+    hosts:
+      - localhost:3000
+network:
+  # strict: only the hosts in this file, the agent API and the recipe's tool
+  # hosts are reachable (needs the global sbx policy set to deny-all).
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  allowed: [recon, scan]
+  forbidden: [dos, social-engineering, data-destruction]

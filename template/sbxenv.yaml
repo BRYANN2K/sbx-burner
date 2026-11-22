@@ -1,0 +1,12 @@
+# Stock Docker Sandboxes environment file for the Linux variant.
+# Use it without the lab runner:  sbx env run recipes/__CATEGORY__/__NAME__
+# The runner (python -m lab run) adds scope enforcement, evidence and reports.
+# `sbx env` is experimental in sbx; the format may change.
+schemaVersion: "1"
+name: lab-__NAME__
+agent: claude
+workspace: .
+kits:
+  - ../../../kits/lab-tools
+sandboxOptions:
+  skills: "off"

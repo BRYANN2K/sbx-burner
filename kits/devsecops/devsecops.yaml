@@ -1,0 +1,22 @@
+# syntax=docker/sandbox-kit:3
+# DevSecOps toolbox for Docker's Debian-based built-in agents: pinned,
+# checksum-verified static binaries. All are Apache-2.0 or MIT. Copyleft
+# tools (trufflehog AGPL, semgrep LGPL) are installed at run time by the
+# recipes' tools/install.sh, never baked in or vendored.
+# TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
+schemaVersion: "3"
+kind: mixin
+displayName: agent-lab-sbx DevSecOps toolbox
+description: gitleaks, osv-scanner, syft, grype, cosign and trivy, pinned.
+sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+licenses: [Apache-2.0, MIT]
+
+provides:
+  - "gitleaks@8.30.1"
+  - "osv-scanner@2.7.1"
+  - "syft@1.57.2"
+  - "grype@0.122.1"
+  - "cosign@3.1.4"
+  - "trivy@0.76.2"
+
+dockerfile: devsecops.dockerfile

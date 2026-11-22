@@ -1,0 +1,13 @@
+{"schema_version": "1", "type": "step", "seq": 0, "ts": "2026-11-21T10:30:00Z", "run_id": "20261121-103000-demo", "name": "create", "status": "start"}
+{"schema_version": "1", "type": "step", "seq": 1, "ts": "2026-11-21T10:30:01Z", "run_id": "20261121-103000-demo", "name": "create", "status": "ok", "detail": "sandbox lab-demo-103000"}
+{"schema_version": "1", "type": "agent.message", "seq": 2, "ts": "2026-11-21T10:30:02Z", "run_id": "20261121-103000-demo", "agent": "claude", "text": "Starting with the dependency manifest."}
+{"schema_version": "1", "type": "agent.tool", "seq": 3, "ts": "2026-11-21T10:30:03Z", "run_id": "20261121-103000-demo", "agent": "claude", "tool": "Bash", "summary": "osv-scanner scan source -r /home/agent/target"}
+{"schema_version": "1", "type": "blocked", "seq": 4, "ts": "2026-11-21T10:30:04Z", "run_id": "20261121-103000-demo", "host": "example.com:443"}
+{"schema_version": "1", "type": "ask", "seq": 5, "ts": "2026-11-21T10:30:05Z", "run_id": "20261121-103000-demo", "ask_id": "a1", "question": "Login page found. Test with the admin test account?", "choices": ["yes", "no"], "allow_text": true, "timeout_s": 1800}
+{"schema_version": "1", "type": "answer", "seq": 6, "ts": "2026-11-21T10:30:06Z", "run_id": "20261121-103000-demo", "ask_id": "a1", "by": "user", "value": "no"}
+{"schema_version": "1", "type": "ask", "seq": 7, "ts": "2026-11-21T10:30:07Z", "run_id": "20261121-103000-demo", "ask_id": "a2", "question": "Retry the slow scan?", "choices": [], "allow_text": true, "timeout_s": 30}
+{"schema_version": "1", "type": "answer", "seq": 8, "ts": "2026-11-21T10:30:08Z", "run_id": "20261121-103000-demo", "ask_id": "a2", "by": "timeout", "value": null}
+{"schema_version": "1", "type": "finding", "seq": 9, "ts": "2026-11-21T10:30:09Z", "run_id": "20261121-103000-demo", "id": "F-1", "title": "Known vulnerability in requests", "status": "candidate", "severity": "high"}
+{"schema_version": "1", "type": "finding", "seq": 10, "ts": "2026-11-21T10:30:10Z", "run_id": "20261121-103000-demo", "id": "F-1", "title": "Known vulnerability in requests", "status": "proven", "severity": "high", "cvss": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}
+{"schema_version": "1", "type": "step", "seq": 11, "ts": "2026-11-21T10:30:11Z", "run_id": "20261121-103000-demo", "name": "agent", "status": "ok"}
+{"schema_version": "1", "type": "done", "seq": 12, "ts": "2026-11-21T10:30:12Z", "run_id": "20261121-103000-demo", "exit_code": 0, "status": "completed", "report": "runs/20261121-103000-demo/report.md"}

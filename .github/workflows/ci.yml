@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: ruff + pytest (py${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --quiet "pytest>=8" "ruff>=0.6"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest
+
+  recipes:
+    name: recipe-lint + evals + index
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # Stdlib only: no install step on purpose.
+      - name: recipe-lint
+        run: python -m lab lint
+      - name: recipe evals (golden fixtures)
+        run: python -m lab eval
+      - name: gen_index check
+        run: python scripts/gen_index.py --check
+      - name: every recipe prints a plan
+        run: |
+          set -euo pipefail
+          python -m lab list | awk '$2 != "planned" {print $1}' | while read -r recipe; do
+            scope="recipes/${recipe}/scope.example.yaml"
+            args=(--dry-run)
+            if [ -f "$scope" ]; then
+              from="$(date -u +%F)"
+              to="$(date -u -d '+7 days' +%F)"
+              sed -e "s/not_before: .*/not_before: \"${from}\"/" -e "s/not_after: .*/not_after: \"${to}\"/" "$scope" > /tmp/scope.yaml
+              args+=(--scope /tmp/scope.yaml)
+            fi
+            scope_arg=()
+            if [ -f "$scope" ]; then scope_arg=(/tmp/scope.yaml); fi
+            read -r -a target_args <<< "$(python scripts/ci_dry_args.py "recipes/${recipe}" "${scope_arg[@]}")"
+            args+=("${target_args[@]}")
+            python -m lab run "$recipe" "${args[@]}" > /dev/null
+            echo "ok ${recipe}"
+          done
+
+  shell:
+    name: shellcheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git ls-files '*.sh')
+          if [ "${#files[@]}" -gt 0 ]; then shellcheck -x "${files[@]}"; fi
+
+  yaml:
+    name: yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install --quiet "yamllint==1.35.1"
+      - run: yamllint -c scripts/yamllint.yml .

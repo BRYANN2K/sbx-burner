@@ -1,0 +1,446 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BRYANN2K/agent-lab-sbx/lab/schema/events.schema.json",
+  "title": "agent-lab live run event",
+  "description": "One NDJSON line written by `lab run --events FILE|-` (and passed through by burner). Every event carries schema_version, type, seq (monotonic per run, starting at 0, usable as a cursor), ts (RFC 3339) and run_id. Validate an event against $defs[<type>]. Readers must ignore unknown event types for forward compatibility; within a known type, additionalProperties is false. Agent-controlled text (ask.question, ask.choices, agent.message.text, agent.tool.summary) is stripped of control and escape sequences, length-capped and redacted by the runner before it is written. The schema enforces the same limits (maxLength 4096 per text field, 512 per choice, 64 choices; no C0 control character except tab and newline, no DEL, no ESC, no C1 control character U+0080-U+009F), so a decoder rejects any event that slipped through.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/step"
+    },
+    {
+      "$ref": "#/$defs/agent.message"
+    },
+    {
+      "$ref": "#/$defs/agent.tool"
+    },
+    {
+      "$ref": "#/$defs/finding"
+    },
+    {
+      "$ref": "#/$defs/blocked"
+    },
+    {
+      "$ref": "#/$defs/ask"
+    },
+    {
+      "$ref": "#/$defs/answer"
+    },
+    {
+      "$ref": "#/$defs/done"
+    }
+  ],
+  "$defs": {
+    "step": {
+      "description": "A plan step (create, policy-allow, tools, target-*, app-*, demo, policy-close:*, agent, policy-log, report, destroy) started, passed, failed or was skipped.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "step"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "start",
+            "ok",
+            "fail",
+            "skip"
+          ]
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent.message": {
+      "description": "Text the agent said (assistant message), normalized from Claude Code stream-json or Codex exec --json.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "text"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "agent.message"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent": {
+          "enum": [
+            "claude",
+            "codex"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent.tool": {
+      "description": "A tool call by the agent with a one-line summary (command head, file path). Never secret values: the runner redacts the summary.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "tool",
+        "summary"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "agent.tool"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent": {
+          "enum": [
+            "claude",
+            "codex"
+          ]
+        },
+        "tool": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "description": "A finding or hypothesis seen in evidence/evidence.json while the run goes (candidate), and its final gate outcome (proven or rejected).",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "id",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "finding"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "proven",
+            "rejected"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "cvss": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "blocked": {
+      "description": "Egress denied by the sandbox network policy, from `sbx policy log` when available.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "host"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "blocked"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ask": {
+      "description": "The agent asked the operator a question through lab-ask. choices may be empty when allow_text is true.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "ask_id",
+        "question",
+        "choices",
+        "allow_text",
+        "timeout_s"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "ask"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ask_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "question": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$",
+          "minLength": 1
+        },
+        "choices": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$",
+            "minLength": 1
+          }
+        },
+        "allow_text": {
+          "type": "boolean"
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "answer": {
+      "description": "The answer handed back to the agent, as recorded by the HOST (the only authority). by=timeout or skip carries value null (the agent uses its fallback). by=forged reports an answer file the runner did not write (the agent wrote it itself): it is never delivered and the report flags it.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "ask_id",
+        "by",
+        "value"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "answer"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ask_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "by": {
+          "enum": [
+            "user",
+            "timeout",
+            "skip",
+            "forged"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "done": {
+      "description": "The run finished. report is the path of report.md, or null when no report was written.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "seq",
+        "ts",
+        "run_id",
+        "exit_code",
+        "report"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1"
+        },
+        "type": {
+          "const": "done"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ts": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string"
+        },
+        "report": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# syntax=docker/sandbox-kit:3
+# Kali Linux (rolling) as a sandbox workload.
+# kalilinux/kali-rolling does not meet the sbx kit platform floor on its own (bash, curl,
+# git, a CA store and a non-root `agent` user with uid 1000 and home
+# /home/agent). The companion Dockerfile adds exactly that and nothing else.
+# The agent CLI is layered on top with kits/agent-claude or kits/agent-codex.
+# TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
+schemaVersion: "3"
+kind: workload
+displayName: Kali Linux (rolling) (agent-lab-sbx)
+description: Kali Linux (rolling) base with the sbx platform floor, for lab recipes.
+sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+
+capabilities:
+  - type: com.docker.sandbox/sbx@1
+# No run-time network grant: package mirrors are not opened to the agent.
+# Recipes that apt-install list their mirrors in run.network.install_allow,
+# which the runner opens for the tools step only.
+# TODO(verify): whether the kit spec has a build-only network phase.
+
+dockerfile: base-kali.dockerfile
