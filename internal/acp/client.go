@@ -62,6 +62,9 @@ type Update struct {
 	Title    string // tool title, cleaned
 	Status   string // tool status
 	ToolKind string
+	Command  string // rawInput.command, cleaned (tool calls)
+	Content  string // the first text content, cleaned: the agent's description, or the output once completed
+	Output   string // rawOutput when it is text (or its stdout), cleaned
 }
 
 // Permission is a cleaned session/request_permission.
@@ -363,6 +366,9 @@ func (c *Client) onNotification(m message) {
 		u.Title = sanitize.Line(str("title"), 500)
 		u.Status = sanitize.Line(str("status"), 20)
 		u.ToolKind = sanitize.Line(str("kind"), 20)
+		u.Command = sanitize.Line(toolCommand(p.Update["rawInput"]), 2000)
+		u.Content = sanitize.Text(toolText(p.Update["content"]), 16<<10)
+		u.Output = sanitize.Text(rawOutput(p.Update["rawOutput"]), 16<<10)
 	case "plan":
 	default:
 		u.Kind = "other"
@@ -632,4 +638,68 @@ func (c *Client) watchIdle(ctx context.Context, cancel context.CancelFunc) {
 			}
 		}
 	}
+}
+
+// toolCommand is rawInput.command: a string, or an argv (a trailing
+// `bash -lc SCRIPT` reads as the script).
+func toolCommand(raw json.RawMessage) string {
+	var in struct {
+		Command json.RawMessage `json:"command"`
+	}
+	if json.Unmarshal(raw, &in) != nil || len(in.Command) == 0 {
+		return ""
+	}
+	var s string
+	if json.Unmarshal(in.Command, &s) == nil {
+		return s
+	}
+	var argv []string
+	if json.Unmarshal(in.Command, &argv) != nil || len(argv) == 0 || len(argv) > 64 {
+		return ""
+	}
+	if n := len(argv); n >= 3 && (argv[n-2] == "-lc" || argv[n-2] == "-c") {
+		return argv[n-1]
+	}
+	return strings.Join(argv, " ")
+}
+
+// toolText is the first text block of a tool call's content.
+func toolText(raw json.RawMessage) string {
+	var blocks []struct {
+		Type    string `json:"type"`
+		Content struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if json.Unmarshal(raw, &blocks) != nil {
+		return ""
+	}
+	for i, b := range blocks {
+		if i >= 16 {
+			break
+		}
+		if b.Type == "content" && b.Content.Type == "text" && b.Content.Text != "" {
+			return b.Content.Text
+		}
+	}
+	return ""
+}
+
+// rawOutput is a tool's rawOutput when it is text, or its stdout/output.
+func rawOutput(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var o map[string]json.RawMessage
+	if json.Unmarshal(raw, &o) != nil {
+		return ""
+	}
+	for _, k := range []string{"formatted_output", "aggregated_output", "stdout", "output"} {
+		if json.Unmarshal(o[k], &s) == nil && s != "" {
+			return s
+		}
+	}
+	return ""
 }
