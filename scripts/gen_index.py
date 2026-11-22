@@ -64,7 +64,7 @@ def sync_index(root: Path) -> str:
             f"  - path: recipes/{r.id}",
             f"    name: {r.meta['name']}",
             f"    category: {r.meta['category']}",
-            f"    summary: {json.dumps(r.meta['summary'])}",
+            f"    summary: {json.dumps(r.meta['summary'], ensure_ascii=False)}",
             f"    risk: {r.meta['risk']}",
             f"    status: {r.meta['status']}",
             f"    variants: {{linux: {v.get('linux')}, macos: {v.get('macos')}}}",

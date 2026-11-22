@@ -69,9 +69,42 @@ More in [Getting started](docs/getting-started.md).
 ## Gallery
 
 <!-- recipes:start -->
-| Recipe | Category | Summary | Risk | Status |
-|---|---|---|---|---|
-| _The table is generated from the recipes. No recipe is listed yet._ | | | | |
+32 recipes. Generated from `recipes.yaml` by `scripts/gen_index.py`; do not edit by hand.
+
+| Recipe | Category | Summary | Risk | Linux | macOS |
+| --- | --- | --- | --- | --- | --- |
+| [scope-guard](recipes/foundation/scope-guard/RECIPE.md) | foundation | Prove that a scope file is enforced by the sandbox network policy, by probing every in-scope host and a set of canaries that must stay blocked. | low | beta | planned |
+| [triage-and-report](recipes/foundation/triage-and-report/RECIPE.md) | foundation | Triage a pile of candidate findings against the evidence gate, keeping only what the supplied proof supports, and emit a clean evidence file. | low | beta | planned |
+| [api-greybox](recipes/pentest/api-greybox/RECIPE.md) | pentest | Grey-box API test with a schema and two test users; proves broken authorization (BOLA, BFLA, mass assignment) with request pairs. | high | beta | planned |
+| [binary-blackbox](recipes/pentest/binary-blackbox/RECIPE.md) | pentest | Black-box analysis of a Linux binary — static triage, radare2 hypotheses, and dynamic proof of each behaviour with a crafted input. | medium | beta | planned |
+| [bug-bounty](recipes/pentest/bug-bounty/RECIPE.md) | pentest | Authorized bug-bounty testing of one program — distill the rules, bounded recon and manual checks, minimal proof, one platform-neutral report per finding. | high | beta | planned |
+| [dast-light](recipes/pentest/dast-light/RECIPE.md) | pentest | Passive OWASP ZAP baseline scan of a local web app, then triage; each kept alert is deduplicated and confirmed with one manual request. | medium | beta | planned |
+| [web-recon](recipes/pentest/web-recon/RECIPE.md) | pentest | Map the attack surface of in-scope web hosts with httpx, ffuf and low-severity nuclei templates, and write it to artifacts/surface.json. | medium | beta | planned |
+| [webapp-blackbox](recipes/pentest/webapp-blackbox/RECIPE.md) | pentest | Black-box test of an in-scope web app — map, then auth, session, access control, injection and business logic; one minimal PoC per finding. | high | beta | planned |
+| [whitebox-review](recipes/pentest/whitebox-review/RECIPE.md) | pentest | Source review with reachability; each finding has a source-to-sink trace, a concrete input, a local confirmation when possible, and a fix diff. | medium | beta | planned |
+| [container-scan](recipes/devsecops/container-scan/RECIPE.md) | devsecops | Scan the user's container image — a Dockerfile context or an image ref/tarball — with trivy and grype, then reconcile and rank fixes. | low | beta | planned |
+| [fuzzing](recipes/devsecops/fuzzing/RECIPE.md) | devsecops | Fuzz the bundled C and Go targets (or a mounted target) for five minutes each, then deduplicate, minimise and classify every crash with its reproducer. | low | beta | planned |
+| [gate](recipes/devsecops/gate/RECIPE.md) | devsecops | Run secrets, SCA, SAST, IaC and licence checks on a codebase, merge every report into one SARIF and decide pass or fail from a read-only policy file. | low | beta | planned |
+| [iac-scan](recipes/devsecops/iac-scan/RECIPE.md) | devsecops | Scan Terraform, Kubernetes manifests and Dockerfiles for misconfigurations with trivy, then split real exposure from hygiene. | low | beta | planned |
+| [license-compliance](recipes/devsecops/license-compliance/RECIPE.md) | devsecops | Build an SBOM with syft and check every component licence against an allow / review / deny policy file. | low | beta | planned |
+| [pr-security-review](recipes/devsecops/pr-security-review/RECIPE.md) | devsecops | Review a pull request diff for security issues; report only findings with the vulnerable line, an exploit scenario and the diff hunk. | low | beta | planned |
+| [sast-semgrep](recipes/devsecops/sast-semgrep/RECIPE.md) | devsecops | Static-analyse a codebase with semgrep and a small set of bundled original rules, confirming every hit against the code before reporting. | low | beta | planned |
+| [sbom-sign](recipes/devsecops/sbom-sign/RECIPE.md) | devsecops | Build CycloneDX and SPDX SBOMs of a project with syft, sign the CycloneDX document with a throwaway cosign key pair, and verify the signature offline. | low | beta | planned |
+| [sca-osv](recipes/devsecops/sca-osv/RECIPE.md) | devsecops | Scan a project's lockfiles and manifests for known dependency vulnerabilities with osv-scanner, then report one finding per advisory group. | low | beta | planned |
+| [secrets-scan](recipes/devsecops/secrets-scan/RECIPE.md) | devsecops | Scan a repository and its git history for leaked credentials with gitleaks, then triage every hit before reporting. | low | beta | planned |
+| [supply-chain-risk](recipes/devsecops/supply-chain-risk/RECIPE.md) | devsecops | Assess a project's third-party dependencies for supply-chain risk: install scripts, floating versions, look-alike names, registry health and OpenSSF Scorecard. | low | beta | planned |
+| [ctf-lab](recipes/training/ctf-lab/RECIPE.md) | training | Build a three-challenge CTF with per-build random flags, verify each challenge is solvable and the checker works, then reset to a clean state. | medium | beta | planned |
+| [ctf-solver](recipes/training/ctf-solver/RECIPE.md) | training | Solve CTF challenges from a target directory or on scope hosts, one finding per solved challenge with a solve script and the checker's verdict. | medium | beta | planned |
+| [vuln-lab](recipes/training/vuln-lab/RECIPE.md) | training | Start OWASP Juice Shop and DVWA inside the sandbox, prove three well-known training flaws with saved requests and responses, then reset the lab. | medium | beta | planned |
+| [ios-app-audit](recipes/apple/ios-app-audit/RECIPE.md) | apple | Audit an iOS app you own: entitlements, privacy manifest, transport security, storage and dependency risks. | medium | n/a | planned |
+| [macho-triage](recipes/apple/macho-triage/RECIPE.md) | apple | Static triage of a Mach-O sample: signature, entitlements, capabilities and YARA matches, offline. | high | n/a | planned |
+| [macos-es-detections](recipes/apple/macos-es-detections/RECIPE.md) | apple | Replay ATT&CK tests on macOS and check Endpoint Security events against expected detections. | medium | n/a | planned |
+| [macos-malware-dynamic](recipes/apple/macos-malware-dynamic/RECIPE.md) | apple | Detonate a macOS sample offline in a SIP-off VM, capture ES events and persistence changes, then destroy the VM. | high | n/a | planned |
+| [macos-mscp-audit](recipes/apple/macos-mscp-audit/RECIPE.md) | apple | Audit a macOS VM against an mSCP baseline (CIS or NIST) and report pass or fail per rule. | low | n/a | planned |
+| [notarize-sign](recipes/apple/notarize-sign/RECIPE.md) | apple | Sign and notarize a macOS app in a clean VM, with credentials injected by the host proxy only. | medium | n/a | planned |
+| [safari-qa](recipes/apple/safari-qa/RECIPE.md) | apple | Run web QA in real Safari through safaridriver in a macOS VM, with screenshots as evidence. | low | n/a | planned |
+| [swiftui-dev](recipes/apple/swiftui-dev/RECIPE.md) | apple | SwiftUI coding agent with build, simulator run and screenshot feedback in a macOS VM. | low | n/a | planned |
+| [xcode-ci](recipes/apple/xcode-ci/RECIPE.md) | apple | Build, test and archive an Xcode project in a throwaway macOS VM, with signing through the host proxy. | low | n/a | planned |
 <!-- recipes:end -->
 
 Categories and build order are in the [roadmap](docs/roadmap.md).
