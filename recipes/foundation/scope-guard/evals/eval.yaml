@@ -1,0 +1,35 @@
+# python -m lab eval foundation/scope-guard                  # golden fixture (CI)
+# python -m lab eval foundation/scope-guard --run runs/<id>  # after a real run
+description: >-
+  A correct run probed the in-scope service and each canary once, recorded
+  every probe in probes.jsonl, found the policy enforced (no out-of-scope
+  host answered) and produced no finding.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: curl
+  - type: artifact_exists
+    path: artifacts/probes.jsonl
+  - type: artifact_exists
+    path: artifacts/policy-summary.md
+  - type: artifact_contains
+    path: artifacts/probes.jsonl
+    pattern: '"host":"localhost:8080".*"observed":"reachable"'
+  - type: artifact_contains
+    path: artifacts/probes.jsonl
+    pattern: '"host":"example\.com".*"observed":"blocked"'
+  - type: artifact_contains
+    path: artifacts/probes.jsonl
+    pattern: '"host":"example\.org".*"observed":"blocked"'
+  - type: metric
+    name: in_scope_reachable
+    equals: 1
+  - type: metric
+    name: out_of_scope_blocked
+    equals: 2
+  - type: metric
+    name: out_of_scope_reachable
+    equals: 0
+  - type: max_findings
+    count: 0
+  - type: no_demotions

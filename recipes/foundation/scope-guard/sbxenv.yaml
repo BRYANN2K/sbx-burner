@@ -1,0 +1,12 @@
+# Stock Docker Sandboxes environment file for the Linux variant.
+# Use it without the lab runner:  sbx env run recipes/foundation/scope-guard
+# The runner (python -m lab run) adds scope enforcement, evidence and reports.
+# `sbx env` is experimental in sbx; the format may change.
+schemaVersion: "1"
+name: lab-scope-guard
+agent: claude
+workspace: .
+kits:
+  - ../../../kits/lab-tools
+sandboxOptions:
+  skills: "off"
