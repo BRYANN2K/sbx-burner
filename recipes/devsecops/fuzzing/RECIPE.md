@@ -4,7 +4,6 @@ category: devsecops
 summary: Fuzz the bundled C and Go targets (or a mounted target) for five minutes each, then deduplicate, minimise and classify every crash with its reproducer.
 risk: low
 time: 20m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

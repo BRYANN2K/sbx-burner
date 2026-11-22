@@ -4,7 +4,6 @@ category: foundation
 summary: Prove that a scope file is enforced by the sandbox network policy, by probing every in-scope host and a set of canaries that must stay blocked.
 risk: low
 time: 5m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

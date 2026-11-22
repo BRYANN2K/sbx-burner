@@ -4,7 +4,6 @@ category: apple
 summary: SwiftUI coding agent with build, simulator run and screenshot feedback in a macOS VM.
 risk: low
 time: 30m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

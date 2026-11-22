@@ -4,7 +4,6 @@ category: devsecops
 summary: Build CycloneDX and SPDX SBOMs of a project with syft, sign the CycloneDX document with a throwaway cosign key pair, and verify the signature offline.
 risk: low
 time: 15m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

@@ -16,7 +16,7 @@
 │                           │                                 │ risk     low                                           │
 │                           │                                 │ time     10m                                           │
 │                           │                                 │ targets  folder · git repo                             │
-│                           │                                 │ agents   claude · codex                                │
+│                           │                                 │ tested   not yet                                       │
 │                           │                                 │ scope    none needed                                   │
 │                           │                                 │                                                        │
 │                           │                                 │                                                        │

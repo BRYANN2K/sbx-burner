@@ -210,7 +210,7 @@ func (m model) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 			h.msg = r.Name + " is planned: not runnable yet."
 			return m, nil
 		}
-		m.flow = newFlow(r, m.cfg.Cwd, m.checks, m.acpAgents)
+		m.flow = newFlow(r, m.cfg.Cwd, m.checks, m.agents, m.acpAgents)
 		m.scr = scrFlow
 		return m, m.flow.focusCmd()
 	case "esc":
@@ -389,7 +389,7 @@ func detailFields(r catalog.Recipe) [][2]string {
 		{"risk", r.Risk},
 		{"time", r.Time},
 		{"targets", strings.Join(ts, " · ")},
-		{"agents", strings.Join(r.Agents, " · ")},
+		{"tested", testedWith(r)},
 		{"scope", scope},
 	}
 	if r.Source != catalog.Official {
@@ -509,4 +509,13 @@ func agentName(a string) string {
 		return n
 	}
 	return a
+}
+
+// testedWith is the recipe's optional tested_with list: agents proven by a
+// real run. Every runner agent may run any recipe.
+func testedWith(r catalog.Recipe) string {
+	if len(r.TestedWith) == 0 {
+		return "not yet"
+	}
+	return strings.Join(r.TestedWith, " · ")
 }

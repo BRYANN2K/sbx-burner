@@ -4,7 +4,6 @@ category: apple
 summary: Audit a macOS VM against an mSCP baseline (CIS or NIST) and report pass or fail per rule.
 risk: low
 time: 30m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

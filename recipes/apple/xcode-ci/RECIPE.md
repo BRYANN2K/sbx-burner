@@ -4,7 +4,6 @@ category: apple
 summary: Build, test and archive an Xcode project in a throwaway macOS VM, with signing through the host proxy.
 risk: low
 time: 30m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

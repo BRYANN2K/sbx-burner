@@ -47,6 +47,14 @@ def _list_of_str(value: Any) -> bool:
     return isinstance(value, list) and bool(value) and all(isinstance(v, str) and v for v in value)
 
 
+# Entries starting with WARNING are reported but never fail the lint.
+WARNING = "warning: "
+
+
+def is_failure(errors: list[str]) -> bool:
+    return any(not e.startswith(WARNING) for e in errors)
+
+
 def lint_recipe(recipe: Recipe, repo_root: Path = REPO_ROOT) -> list[str]:
     errors = list(recipe.errors)
     path = recipe.path
@@ -72,12 +80,16 @@ def lint_recipe(recipe: Recipe, repo_root: Path = REPO_ROOT) -> list[str]:
     if "summary" in meta and isinstance(meta["summary"], str) and len(meta["summary"]) > 160:
         errors.append("RECIPE.md: summary is longer than 160 characters")
     if "agents" in meta:
-        if not _list_of_str(meta["agents"]):
-            errors.append("RECIPE.md: agents must be a non-empty list")
+        errors.append(
+            WARNING + "RECIPE.md: 'agents' is obsolete and ignored (every runner agent can run a recipe); remove it, or use tested_with"
+        )
+    if "tested_with" in meta:
+        if not _list_of_str(meta["tested_with"]):
+            errors.append("RECIPE.md: tested_with must be a non-empty list")
         else:
-            for agent in meta["agents"]:
+            for agent in meta["tested_with"]:
                 if agent not in AGENTS:
-                    errors.append(f"RECIPE.md: unknown agent {agent!r} (known: {', '.join(AGENTS)})")
+                    errors.append(f"RECIPE.md: tested_with: unknown agent {agent!r} (known: {', '.join(AGENTS)})")
     variants_meta = meta.get("variants")
     if "variants" in meta and not (isinstance(variants_meta, dict) and {"linux", "macos"} <= set(variants_meta)):
         errors.append("RECIPE.md: variants must map both 'linux' and 'macos' to a status")

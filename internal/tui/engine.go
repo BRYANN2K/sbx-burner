@@ -36,6 +36,8 @@ type Model struct {
 // Engine is what the TUI needs from the runner. Tests use a fake.
 type Engine interface {
 	Caps() Caps
+	// Agents lists every agent the runner can launch (python -m lab agents).
+	Agents(ctx context.Context) ([]string, error)
 	// ACPAgents lists the agents burner can drive over ACP.
 	ACPAgents(ctx context.Context) ([]string, error)
 	// Models lists the models an ACP agent offers.
@@ -71,6 +73,14 @@ func burnerJSON(ctx context.Context, timeout time.Duration, v any, args ...strin
 		return errors.New("output too large")
 	}
 	return json.Unmarshal(out, v)
+}
+
+func (e realEngine) Agents(ctx context.Context) ([]string, error) {
+	table, err := engine.Agents(ctx, e.root)
+	if err != nil {
+		return nil, err
+	}
+	return engine.AgentNames(table), nil
 }
 
 func (e realEngine) ACPAgents(ctx context.Context) ([]string, error) {

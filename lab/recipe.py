@@ -47,7 +47,10 @@ TARGET_MODES = ("required", "optional", "none")
 # localhost), url (a remote app, needs a scope) and demo (the bundled lab
 # target via run.demo).
 TARGET_KINDS = ("path", "repo", "app", "image", "port", "url", "demo")
-FRONTMATTER_KEYS = ("name", "category", "summary", "risk", "time", "agents", "variants", "status", "licence", "sources")
+FRONTMATTER_KEYS = ("name", "category", "summary", "risk", "time", "variants", "status", "licence", "sources")
+# Optional frontmatter: tested_with lists the agents proven by a real run.
+# It is information only; every agent the runner knows may run a recipe.
+OPTIONAL_FRONTMATTER_KEYS = ("tested_with",)
 AGENTS_MD_SECTIONS = ("Role", "Scope rules", "Allowed tools", "Evidence format", "Stop conditions")
 FULL_RECIPE_FILES = ("RECIPE.md", "recipe.yaml", "AGENTS.md", "sbxenv.yaml", "run.py")
 STUB_RECIPE_FILES = ("RECIPE.md", "recipe.yaml")

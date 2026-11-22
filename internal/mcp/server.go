@@ -212,7 +212,7 @@ func toolDefs() []map[string]any {
 	runProps := map[string]any{
 		"recipe":       str,
 		"scope":        map[string]any{"type": "string", "description": "name of a scope file in the host's scopes directory (list_scopes)"},
-		"agent":        map[string]any{"type": "string", "enum": []string{"claude", "codex", "devin"}},
+		"agent":        map[string]any{"type": "string", "description": "an agent the runner can launch (burner agents); the engine refuses unknown names"},
 		"target":       map[string]any{"type": "string", "description": "host path under an allowed target root"},
 		"target_image": str,
 		"target_port":  str,
@@ -368,8 +368,8 @@ func (s *Server) runOptions(r catalog.Recipe, args map[string]any) (engine.RunOp
 	o := engine.RunOptions{Recipe: r.EngineRef(), Agent: "claude"}
 	get := func(k string) string { v, _ := args[k].(string); return strings.TrimSpace(v) }
 	if a := get("agent"); a != "" {
-		if a != "claude" && a != "codex" && a != "devin" {
-			return o, fmt.Errorf("agent %q not supported", a)
+		if !engine.ValidAgentName(a) {
+			return o, fmt.Errorf("agent %q is not a valid agent name", a)
 		}
 		o.Agent = a
 	}

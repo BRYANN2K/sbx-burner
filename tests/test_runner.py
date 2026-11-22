@@ -155,10 +155,15 @@ def test_expired_scope_is_refused(make_recipe, repo, tmp_path, scope_file):
         _plan(make_recipe(), repo, tmp_path, scope_path=str(scope_file))
 
 
-def test_unknown_or_unsupported_agent(make_recipe, repo, tmp_path):
-    recipe = make_recipe(**{"RECIPE.md": ("agents: [claude, codex]", "agents: [claude]")})
-    with pytest.raises(runner.Refused, match="does not support"):
-        _plan(recipe, repo, tmp_path, agent_name="codex")
+def test_every_runner_agent_may_run_a_recipe(make_recipe, repo, tmp_path):
+    recipe = make_recipe()
+    assert "agents" not in recipe.meta
+    for name in ("claude", "codex", "devin"):
+        _plan(recipe, repo, tmp_path, agent_name=name)
+
+
+def test_unknown_agent_is_refused(make_recipe, repo, tmp_path):
+    recipe = make_recipe()
     with pytest.raises(runner.Refused, match="unknown agent"):
         _plan(recipe, repo, tmp_path, agent_name="gemini")
 
@@ -1002,7 +1007,7 @@ def test_valid_image_refs_plan(make_recipe, repo, tmp_path):
 
 
 def test_devin_plan_uses_the_builtin_workload(make_recipe, repo, tmp_path):
-    recipe = make_recipe(**{"RECIPE.md": ("agents: [claude, codex]", "agents: [claude, codex, devin]")})
+    recipe = make_recipe()
     plan = _plan(recipe, repo, tmp_path, agent_name="devin")
     assert _argv(plan, "credentials") == ["sbx", "secret", "ls", "--service", "devin", "--quiet"]
     create = _argv(plan, "create")

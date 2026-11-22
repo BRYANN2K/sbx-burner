@@ -59,6 +59,7 @@ type flowModel struct {
 	r      catalog.Recipe
 	cwd    string
 	checks []doctor.Result
+	agents []string // every agent the runner can launch
 	acp    []string // agents burner drives over ACP
 
 	answers []answer
@@ -106,8 +107,8 @@ var kindLabel = map[string]string{
 	"demo":  "Demo target",
 }
 
-func newFlow(r catalog.Recipe, cwd string, checks []doctor.Result, acp []string) *flowModel {
-	f := &flowModel{r: r, cwd: cwd, checks: checks, acp: acp}
+func newFlow(r catalog.Recipe, cwd string, checks []doctor.Result, agents, acp []string) *flowModel {
+	f := &flowModel{r: r, cwd: cwd, checks: checks, agents: agents, acp: acp}
 	f.advance()
 	return f
 }
@@ -173,9 +174,10 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 	}
 
 	// Agent.
-	agents := r.Agents
+	// Every agent the runner can launch; recipes no longer restrict it.
+	agents := f.agents
 	if len(agents) == 0 {
-		agents = []string{"claude", "codex"}
+		agents = doctor.KnownAgents()
 	}
 	var aopts []option
 	def := -1
@@ -196,7 +198,7 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		aopts = append(aopts, option{label: agentName(a), value: a, note: note})
 	}
 	if len(aopts) == 0 {
-		w.ask(question{section: "agent", title: "Agent", kind: qSelect, hint: "This recipe lists no agent burner supports yet."})
+		w.ask(question{section: "agent", title: "Agent", kind: qSelect, hint: "The runner reported no agent burner supports yet."})
 		return
 	}
 	if def < 0 {

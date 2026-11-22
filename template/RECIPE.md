@@ -4,7 +4,6 @@ category: __CATEGORY__
 summary: One sentence, under 160 characters, saying what the agent does and what it produces.
 risk: low
 time: 15m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

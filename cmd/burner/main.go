@@ -54,6 +54,7 @@ Usage:
   burner run <recipe> [flags] run a recipe (same flags as the menu asks)
   burner new <category>/<name>
   burner lint [recipe...]     check recipes against the contract
+  burner agents [--json]      the agents the runner can launch
   burner eval [recipe]        check a recipe produces its evidence
   burner scope <file> [--host H]
   burner doctor [--json]
@@ -75,7 +76,7 @@ Run flags (targets):
   --target-url URL           remote app listed in the scope file
   --with-submodules
 Run flags (other):
-  --demo  --scope FILE  --agent claude|codex|devin  --dry-run  --keep  --runs-dir DIR
+  --demo  --scope FILE  --agent NAME (burner agents)  --dry-run  --keep  --runs-dir DIR
   --prompt TEXT  --prompt-file FILE   notes for the agent (repeatable)
   --on-ask skip|fail|timeout=30m      when nobody answers the agent
   --acp   drive the agent over ACP (live permissions, model choice, follow-up notes)
@@ -137,7 +138,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdACP(rest, stdout, stderr)
 	case "acp-bridge":
 		return cmdACPBridge(rest, stderr)
-	case "lint", "eval", "scope":
+	case "lint", "eval", "scope", "agents":
 		root, err := catalog.FindRoot(catalogFlag)
 		if err != nil {
 			return fail(stderr, exitNotReady, err)
@@ -255,8 +256,12 @@ func cmdShow(catalogFlag string, args []string, stdout, stderr io.Writer) int {
 		_ = json.NewEncoder(stdout).Encode(r)
 		return exitOK
 	}
-	fmt.Fprintf(stdout, "%s\n%s\n\ntarget   %s (%s)\nscope    %s\nrisk     %s\ntime     %s\nagents   %s\nimage    %s\n",
-		displayID(r), r.Summary, strings.Join(r.Targets, ", "), r.TargetMode, r.Scope, r.Risk, r.Time, strings.Join(r.Agents, ", "), r.Image)
+	tested := "not yet"
+	if len(r.TestedWith) > 0 {
+		tested = strings.Join(r.TestedWith, ", ")
+	}
+	fmt.Fprintf(stdout, "%s\n%s\n\ntarget   %s (%s)\nscope    %s\nrisk     %s\ntime     %s\ntested   %s\nimage    %s\n",
+		displayID(r), r.Summary, strings.Join(r.Targets, ", "), r.TargetMode, r.Scope, r.Risk, r.Time, tested, r.Image)
 	return exitOK
 }
 
