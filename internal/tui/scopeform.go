@@ -78,27 +78,28 @@ type techRow struct {
 // scopeForm is the scope form: it edits a scope document and keeps every
 // field it does not show (notes, test accounts, extra targets).
 type scopeForm struct {
-	doc     map[string]any
-	path    string // scope edit: the file to replace
-	title   string // category/recipe, or the file name
-	field   int
-	name    string
-	targets []string
-	auth    string
-	ref     string
-	days    int
-	techs   []techRow
-	risky   []techRow
-	tcur    int // cursor in techs then risky
-	out     []string
-	net     string // strict | standard
-	owner   string
-	adding  string // "targets" | "out" | "export"
-	input   textinput.Model
-	busy    bool
-	errs    []string
-	note    string
-	today   time.Time
+	overwrite bool // the file exists: the next enter replaces it
+	doc       map[string]any
+	path      string // scope edit: the file to replace
+	title     string // category/recipe, or the file name
+	field     int
+	name      string
+	targets   []string
+	auth      string
+	ref       string
+	days      int
+	techs     []techRow
+	risky     []techRow
+	tcur      int // cursor in techs then risky
+	out       []string
+	net       string // strict | standard
+	owner     string
+	adding    string // "targets" | "out" | "export"
+	input     textinput.Model
+	busy      bool
+	errs      []string
+	note      string
+	today     time.Time
 }
 
 func newScopeForm(doc map[string]any, title, path string, today time.Time) *scopeForm {
@@ -360,6 +361,9 @@ func (m model) saveScope(export bool, out string) tea.Cmd {
 	if !export && f.path != "" {
 		out, force = f.path, true
 	}
+	if !export && f.overwrite {
+		force = true
+	}
 	ctx, eng := m.ctx, m.eng
 	return func() tea.Msg {
 		r, err := eng.ScopeSave(ctx, doc, out, force)
@@ -383,6 +387,10 @@ func (m model) updateScopeForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !msg.res.Written {
 			f.errs = nil
 			for _, e := range msg.res.Errors {
+				if strings.HasSuffix(e, " exists") && !msg.export {
+					f.overwrite = true
+					continue
+				}
 				f.errs = append(f.errs, sanitize.Line(e, 300))
 			}
 			return m, nil
@@ -484,7 +492,9 @@ func (m model) keyScopeForm(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		f.busy, f.errs, f.note = true, nil, ""
-		return m, m.saveScope(false, "")
+		cmd := m.saveScope(false, "")
+		f.overwrite = false
+		return m, cmd
 	case "x":
 		if field != "name" && !(field == "auth" && f.auth == "written") {
 			f.adding = "export"
@@ -687,15 +697,6 @@ func (m model) viewScopeForm() string {
 	if f.adding == "export" {
 		L = append(L, "", sBold.Render("Export to"), "    "+f.input.View())
 	}
-	for _, e := range f.errs {
-		for _, t := range wrap(e, formW-8) {
-			L = append(L, "  "+sAmber.Render(t))
-		}
-	}
-	if f.note != "" {
-		L = append(L, "", "  "+sSoft.Render(f.note))
-	}
-
 	// Preview.
 	on, risky := 0, 0
 	for _, t := range f.techs {
@@ -743,6 +744,24 @@ func (m model) viewScopeForm() string {
 	P = append(P, sSoft.Render("export to…")+strings.Repeat(" ", max(1, sideW-16))+sDim.Render("x"))
 	if f.busy {
 		P = append(P, "", sAmber.Render(m.spin())+" "+sDim.Render("saving"))
+	}
+	// Problems, errors and notes live here, always visible, not at the
+	// bottom of a form that may be scrolled.
+	if pr := f.problems(); len(pr) > 0 {
+		P = append(P, "", sAmber.Render("needs "+strings.Join(pr, ", ")))
+	}
+	for _, e := range f.errs {
+		for _, t := range wrap(e, sideW-4) {
+			P = append(P, sAmber.Render(t))
+		}
+	}
+	if f.overwrite {
+		P = append(P, "", sAmber.Render("this scope exists"), sSoft.Render("enter again to replace it"))
+	}
+	if f.note != "" {
+		for _, t := range wrap(f.note, sideW-4) {
+			P = append(P, sSoft.Render(t))
+		}
 	}
 	for i := range P {
 		P[i] = ellipsis(P[i], sideW-4)
