@@ -92,6 +92,14 @@ On top of them:
   prompt, then the sandbox is removed, whatever happens. The Model question
   and setup do this on their own when nothing is cached; "Agent default"
   stays selectable meanwhile.
+- "Other model…" takes a model id the agent does not list (letters, digits
+  and `. _ : / -`, up to 80). Claude gets it through
+  `session/set_config_option`, which claude-agent-acp passes on to Claude
+  Code for a new session; Codex gets it in `CODEX_CONFIG` (`{"model": id}`),
+  which codex-acp merges into the session config. Other agents over ACP run
+  only the ids they list. In Interactive mode, `--model` goes to the agent's
+  own TUI (claude, codex). Typed ids are kept per agent in
+  `~/.burner/config.yaml` (`custom_models`) and offered next time.
 - `--permission auto|ask`: `auto` (default) allows every request inside the
   sandbox and logs each one; `ask` sends each request to you as a question.
 - When the agent ends a turn, burner asks for a follow-up note. Pick Finish
