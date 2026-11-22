@@ -4,6 +4,7 @@ ignore: |
   runs/
   .venv/
   node_modules/
+  proving-ground/.build/
 rules:
   line-length:
     max: 160

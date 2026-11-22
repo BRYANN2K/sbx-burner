@@ -1,0 +1,6 @@
+# CodeQL configuration (dormant until a workflow references it).
+# proving-ground/ holds intentionally vulnerable target code for the recipe
+# proving ground; scanning it would only re-report the planted issues.
+name: "repo-codeql-config"
+paths-ignore:
+  - proving-ground

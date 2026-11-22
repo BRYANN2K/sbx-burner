@@ -6,7 +6,7 @@ export default {
     'scope-enum': [
       1,
       'always',
-      ['runner', 'recipe', 'kit', 'skill', 'schema', 'lint', 'index', 'template', 'eval', 'scope', 'deps', 'ci'],
+      ['runner', 'recipe', 'kit', 'skill', 'schema', 'lint', 'index', 'template', 'eval', 'scope', 'deps', 'ci', 'proving-ground'],
     ],
     'subject-case': [2, 'never', ['upper-case', 'pascal-case', 'start-case']],
     'header-max-length': [2, 'always', 100],

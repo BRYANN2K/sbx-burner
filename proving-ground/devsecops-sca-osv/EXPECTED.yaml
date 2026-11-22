@@ -1,0 +1,16 @@
+recipe: devsecops/sca-osv
+must_find:
+  - id_hint: lodash-advisory
+    where: {rule: "GHSA-.*|CVE-.*", location: ".*package-lock\\.json.*lodash.*"}
+    class: known-vulnerable-dependency
+  - id_hint: minimist-advisory
+    where: {rule: "GHSA-.*|CVE-.*", location: ".*minimist.*"}
+    class: known-vulnerable-dependency
+  - id_hint: requests-advisory
+    where: {rule: "GHSA-.*|CVE-.*", location: ".*requirements\\.txt.*requests.*"}
+    class: known-vulnerable-dependency
+must_not_find:
+  - where: {location: ".*requirements-dev\\.txt.*"}
+    reason: dev-only pin (black), not shipped with the service
+min_findings: 3
+max_findings: 10

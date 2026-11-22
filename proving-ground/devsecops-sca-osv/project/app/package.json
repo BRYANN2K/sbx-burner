@@ -1,0 +1,14 @@
+{
+  "name": "pg-status-board",
+  "version": "0.3.1",
+  "private": true,
+  "description": "Tiny status board: serves uptime counters as JSON.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "lodash": "4.17.20",
+    "minimist": "1.2.5"
+  }
+}

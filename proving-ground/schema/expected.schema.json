@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "proving-ground EXPECTED.yaml",
+  "type": "object",
+  "required": ["recipe"],
+  "additionalProperties": false,
+  "properties": {
+    "recipe": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+      "description": "must match the folder's target.yaml recipe"
+    },
+    "must_find": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/must_find"},
+      "description": "each entry must full-match at least one finding on every listed where key"
+    },
+    "must_hypothesize": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/must_find"},
+      "description": "each entry must full-match at least one hypothesis (id, title, rationale, next_step); counted in recall"
+    },
+    "must_not_find": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/must_not_find"},
+      "description": "decoys: any finding full-matching one fails precision"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/artifact"},
+      "description": "files the run must write under evidence/; scored on real runs, counted in recall"
+    },
+    "recipe_eval_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["all", "min_findings", "max_findings", "min_hypotheses", "artifact_contains", "demoted", "report_contains", "report_excludes", "summary_matches", "metric"]
+      },
+      "description": "recipe eval check types scored on top of the generic ones (tool_ran, artifact_exists, artifact_absent, no_demotions, evidence schema); 'all' scores every check"
+    },
+    "min_findings": {"type": "integer", "minimum": 0},
+    "max_findings": {"type": "integer", "minimum": 0}
+  },
+  "$defs": {
+    "where": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "finding field name -> full-match regex (rule, location, cwe, target, title, severity, tool)"
+    },
+    "must_find": {
+      "type": "object",
+      "required": ["where"],
+      "additionalProperties": false,
+      "properties": {
+        "id_hint": {"type": "string"},
+        "class": {"type": "string"},
+        "where": {"$ref": "#/$defs/where"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "id_hint": {"type": "string"},
+        "path": {"type": "string", "description": "glob relative to the run's workspace/evidence/ dir"},
+        "contains": {"type": "string", "description": "regex searched in the file text; omitted means the file exists and is not empty"}
+      }
+    },
+    "must_not_find": {
+      "type": "object",
+      "required": ["where", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {"type": "string"},
+        "where": {"$ref": "#/$defs/where"}
+      }
+    }
+  }
+}

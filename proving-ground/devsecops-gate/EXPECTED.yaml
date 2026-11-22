@@ -1,0 +1,13 @@
+recipe: devsecops/gate
+must_find:
+  - id_hint: gate-secrets-block
+    where: {rule: "gate-blocked:secrets"}
+    class: leaked-credential
+  - id_hint: gate-sca-block
+    where: {rule: "gate-blocked:sca", location: ".*minimist.*"}
+    class: known-vulnerable-dependency
+  - id_hint: gate-sast-block
+    where: {rule: "gate-blocked:sast", location: ".*tools\\.py.*"}
+    class: os-command-injection
+min_findings: 3
+max_findings: 6

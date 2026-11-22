@@ -1,0 +1,8 @@
+recipe: devsecops/secrets-scan
+summary: git repo built into .build/ with a fake AWS-style key committed then removed in history; a random key-shaped value in a unit test at HEAD
+build: build.sh
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/.build/devsecops-secrets-scan/repo"]
+needs: [git]
+cost: small

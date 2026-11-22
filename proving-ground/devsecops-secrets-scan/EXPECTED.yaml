@@ -1,0 +1,10 @@
+recipe: devsecops/secrets-scan
+must_find:
+  - id_hint: aws-key-in-history
+    where: {rule: ".*aws.*", location: "\\.env.*"}
+    class: leaked-credential-in-history
+must_not_find:
+  - where: {location: ".*tests/test_exporter\\.py.*"}
+    reason: random key-shaped value in a unit test for a mocked client; gitleaks reports it (generic-api-key), a correct run dismisses it
+min_findings: 1
+max_findings: 4

@@ -1,0 +1,7 @@
+recipe: devsecops/gate
+summary: small service with a generated fake key (.env), a vulnerable pin (minimist), and a shell-injection SAST flaw; the gate must block all three classes
+build: build.sh
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/.build/devsecops-gate/target"]
+cost: medium
