@@ -122,6 +122,7 @@ func Decode(line []byte) (Event, error) {
 }
 
 func clean(e *Event) {
+	raw := *e
 	l := sanitize.Line
 	e.RunID, e.Name, e.Status, e.Agent, e.Tool = l(e.RunID, 120), l(e.Name, 80), l(e.Status, 20), l(e.Agent, 20), l(e.Tool, 80)
 	e.Detail, e.Summary, e.Host = l(e.Detail, 500), l(e.Summary, 500), l(e.Host, 300)
@@ -129,6 +130,14 @@ func clean(e *Event) {
 	e.Question = sanitize.Text(e.Question, sanitize.MaxField)
 	e.Choices = sanitize.Choices(e.Choices)
 	e.ID, e.Title, e.Severity, e.CVSS, e.By = l(e.ID, 40), l(e.Title, 300), l(e.Severity, 20), l(e.CVSS, 120), l(e.By, 20)
+	if e.Type == "agent.tool" {
+		// A tool call's id (up to 128) and, for tool "output", its last
+		// lines: line breaks are kept.
+		e.ID = l(raw.ID, 128)
+		if e.Tool == "output" {
+			e.Summary = sanitize.Text(raw.Summary, 1600)
+		}
+	}
 	e.Report = l(e.Report, 500)
 	if e.Value != nil {
 		v := sanitize.Text(*e.Value, sanitize.MaxField)
