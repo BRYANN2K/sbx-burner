@@ -1,0 +1,110 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/sast-semgrep",
+  "summary": "Scanned sast-demo (3 Python files) with semgrep 1.183.0 and the bundled lab rules, metrics off. 4 raw hits: request data reaches shell=True in /ping (command injection), app.run(debug=True), and a fixed /tmp path opened for writing. The second shell hit in /diag is dismissed: the host is allow-listed by a regex before the sink. semgrep skipped tests/test_ping.py (default ignores); it holds the same pattern but is test code.",
+  "tools_run": [
+    {
+      "name": "semgrep",
+      "version": "1.183.0",
+      "command": "semgrep scan --config fixtures/rules --metrics=off --json --output evidence/artifacts/semgrep.json .",
+      "exit_code": 0,
+      "output": "artifacts/semgrep.json"
+    },
+    {
+      "name": "semgrep",
+      "version": "1.183.0",
+      "command": "semgrep scan --config fixtures/rules --metrics=off --sarif --output evidence/artifacts/semgrep.sarif .",
+      "exit_code": 0,
+      "output": "artifacts/semgrep.sarif"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SAST-001",
+      "title": "Request data reaches a shell command in /ping",
+      "severity": "critical",
+      "cwe": "CWE-78",
+      "target": "sast-demo",
+      "location": "app.py:11",
+      "tool": "semgrep",
+      "rule": "lab-python-shell-true-user-input",
+      "description": "flask.request.args.get(\"host\") flows into subprocess.run(\"ping -c1 \" + host, shell=True) at app.py:10-11 with no validation. Any HTTP client can append shell syntax (?host=;id) and run commands on the server.",
+      "proof": {
+        "poc": "jq '.results[] | select(.check_id | endswith(\"lab-python-shell-true-user-input\")) | {path, start}' evidence/artifacts/semgrep.json && sed -n '9,11p' /home/agent/target/app.py",
+        "artifacts": [
+          "artifacts/semgrep.json"
+        ]
+      },
+      "remediation": "Pass an argument list without a shell: subprocess.run([\"ping\", \"-c1\", host], capture_output=True); validate host against an allow-list or socket.inet_aton.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 9.8
+      }
+    },
+    {
+      "id": "SAST-002",
+      "title": "Flask app runs with debug=True",
+      "severity": "medium",
+      "cwe": "CWE-489",
+      "target": "sast-demo",
+      "location": "app.py:30",
+      "tool": "semgrep",
+      "rule": "lab-flask-debug-true",
+      "description": "app.run(debug=True) at app.py:30 enables the Werkzeug debugger. If the app is reachable beyond localhost, the interactive console and leaked source/config follow; the console PIN is the only barrier.",
+      "proof": {
+        "poc": "jq '.results[] | select(.check_id | endswith(\"lab-flask-debug-true\")) | {path, start}' evidence/artifacts/semgrep.json && sed -n '29,30p' /home/agent/target/app.py",
+        "artifacts": [
+          "artifacts/semgrep.json"
+        ]
+      },
+      "remediation": "Read the flag from the environment: app.run(debug=os.environ.get(\"FLASK_DEBUG\") == \"1\") and keep it off outside local development."
+    },
+    {
+      "id": "SAST-003",
+      "title": "Fixed temp path opened for writing in tools.py",
+      "severity": "low",
+      "cwe": "CWE-377",
+      "target": "sast-demo",
+      "location": "tools.py:6",
+      "tool": "semgrep",
+      "rule": "lab-python-hardcoded-tmp-path",
+      "description": "store_report() opens /tmp/report.txt for writing at tools.py:6. Another local user can pre-create the path (symlink or file) so the write lands elsewhere.",
+      "proof": {
+        "poc": "jq '.results[] | select(.check_id | endswith(\"lab-python-hardcoded-tmp-path\")) | {path, start}' evidence/artifacts/semgrep.json && sed -n '4,7p' /home/agent/target/tools.py",
+        "artifacts": [
+          "artifacts/semgrep.json"
+        ]
+      },
+      "remediation": "Use tempfile.NamedTemporaryFile or tempfile.mkstemp for a unique, safely-created file."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H-001",
+      "title": "shell=True on request data in /diag (app.py:20)",
+      "rationale": "Same sink as SAST-001, but host is validated by re.fullmatch(r\"[a-zA-Z0-9.-]{1,64}\", host) at app.py:18-19 before the sink: shell metacharacters cannot pass. Dismissed as sanitised.",
+      "next_step": "None. If the allow-list loosens, re-triage."
+    },
+    {
+      "id": "H-002",
+      "title": "shell=True on request data in tests/test_ping.py",
+      "rationale": "semgrep skipped the file under its default ignores (tests/). The file holds the same vulnerable pattern but is test code that is not deployed.",
+      "next_step": "Confirm tests/ is not shipped in the deployment artefact."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/semgrep.json",
+      "description": "Raw semgrep report (trimmed to the fields used in triage)"
+    },
+    {
+      "path": "artifacts/semgrep.sarif",
+      "description": "semgrep report as SARIF (trimmed)"
+    }
+  ],
+  "metrics": {
+    "raw_hits": 4,
+    "confirmed": 3,
+    "dismissed": 2
+  }
+}

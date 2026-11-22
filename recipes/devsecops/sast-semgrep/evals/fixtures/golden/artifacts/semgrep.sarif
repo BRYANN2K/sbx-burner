@@ -1,0 +1,142 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Semgrep OSS",
+          "version": null,
+          "rules": [
+            {
+              "id": "fixtures.rules.lab-flask-debug-true",
+              "name": "fixtures.rules.lab-flask-debug-true",
+              "shortDescription": {
+                "text": "Semgrep Finding: fixtures.rules.lab-flask-debug-true"
+              }
+            },
+            {
+              "id": "fixtures.rules.lab-python-hardcoded-tmp-path",
+              "name": "fixtures.rules.lab-python-hardcoded-tmp-path",
+              "shortDescription": {
+                "text": "Semgrep Finding: fixtures.rules.lab-python-hardcoded-tmp-path"
+              }
+            },
+            {
+              "id": "fixtures.rules.lab-python-shell-true-user-input",
+              "name": "fixtures.rules.lab-python-shell-true-user-input",
+              "shortDescription": {
+                "text": "Semgrep Finding: fixtures.rules.lab-python-shell-true-user-input"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "fixtures.rules.lab-python-shell-true-user-input",
+          "level": null,
+          "message": {
+            "text": "Data from the HTTP request reaches a shell command (shell=True or os.system). An attacker can append shell syntax and run commands. Pass an argument list without a shell and validate the value."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "endColumn": 44,
+                  "endLine": 11,
+                  "snippet": {
+                    "text": "    out = subprocess.run(\"ping -c1 \" + host, shell=True, capture_output=True)"
+                  },
+                  "startColumn": 26,
+                  "startLine": 11
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "fixtures.rules.lab-python-shell-true-user-input",
+          "level": null,
+          "message": {
+            "text": "Data from the HTTP request reaches a shell command (shell=True or os.system). An attacker can append shell syntax and run commands. Pass an argument list without a shell and validate the value."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "endColumn": 44,
+                  "endLine": 20,
+                  "snippet": {
+                    "text": "    out = subprocess.run(\"ping -c1 \" + host, shell=True, capture_output=True)"
+                  },
+                  "startColumn": 26,
+                  "startLine": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "fixtures.rules.lab-flask-debug-true",
+          "level": null,
+          "message": {
+            "text": "Flask runs with debug=True. The Werkzeug debugger gives an interactive Python console to anyone who can reach the port. Read the flag from the environment and keep it off outside local development."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "endColumn": 24,
+                  "endLine": 30,
+                  "snippet": {
+                    "text": "    app.run(debug=True)"
+                  },
+                  "startColumn": 5,
+                  "startLine": 30
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "fixtures.rules.lab-python-hardcoded-tmp-path",
+          "level": null,
+          "message": {
+            "text": "A file is opened for writing at a fixed path under /tmp or /var/tmp. Another local user can create that path first (symlink or pre-made file). Use tempfile.NamedTemporaryFile or tempfile.mkstemp."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "tools.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "endColumn": 38,
+                  "endLine": 6,
+                  "snippet": {
+                    "text": "    with open(\"/tmp/report.txt\", \"w\") as fh:"
+                  },
+                  "startColumn": 10,
+                  "startLine": 6
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

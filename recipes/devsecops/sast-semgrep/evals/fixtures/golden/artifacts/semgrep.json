@@ -1,0 +1,106 @@
+{
+  "version": "1.183.0",
+  "errors": [],
+  "results": [
+    {
+      "check_id": "fixtures.rules.lab-python-shell-true-user-input",
+      "path": "app.py",
+      "start": {
+        "line": 11,
+        "col": 26,
+        "offset": 184
+      },
+      "end": {
+        "line": 11,
+        "col": 44,
+        "offset": 202
+      },
+      "extra": {
+        "severity": "ERROR",
+        "message": "Data from the HTTP request reaches a shell command (shell=True or os.system). An attacker can append shell syntax and run commands. Pass an argument list without a shell and validate the value.",
+        "metadata": {
+          "cwe": "CWE-78",
+          "category": "security",
+          "confidence": "MEDIUM",
+          "licence": "Apache-2.0"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "fixtures.rules.lab-python-shell-true-user-input",
+      "path": "app.py",
+      "start": {
+        "line": 20,
+        "col": 26,
+        "offset": 450
+      },
+      "end": {
+        "line": 20,
+        "col": 44,
+        "offset": 468
+      },
+      "extra": {
+        "severity": "ERROR",
+        "message": "Data from the HTTP request reaches a shell command (shell=True or os.system). An attacker can append shell syntax and run commands. Pass an argument list without a shell and validate the value.",
+        "metadata": {
+          "cwe": "CWE-78",
+          "category": "security",
+          "confidence": "MEDIUM",
+          "licence": "Apache-2.0"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "fixtures.rules.lab-flask-debug-true",
+      "path": "app.py",
+      "start": {
+        "line": 30,
+        "col": 5,
+        "offset": 620
+      },
+      "end": {
+        "line": 30,
+        "col": 24,
+        "offset": 639
+      },
+      "extra": {
+        "severity": "WARNING",
+        "message": "Flask runs with debug=True. The Werkzeug debugger gives an interactive Python console to anyone who can reach the port. Read the flag from the environment and keep it off outside local development.",
+        "metadata": {
+          "cwe": "CWE-489",
+          "category": "security",
+          "confidence": "HIGH",
+          "licence": "Apache-2.0"
+        },
+        "lines": "requires login"
+      }
+    },
+    {
+      "check_id": "fixtures.rules.lab-python-hardcoded-tmp-path",
+      "path": "tools.py",
+      "start": {
+        "line": 6,
+        "col": 10,
+        "offset": 88
+      },
+      "end": {
+        "line": 6,
+        "col": 38,
+        "offset": 116
+      },
+      "extra": {
+        "severity": "WARNING",
+        "message": "A file is opened for writing at a fixed path under /tmp or /var/tmp. Another local user can create that path first (symlink or pre-made file). Use tempfile.NamedTemporaryFile or tempfile.mkstemp.",
+        "metadata": {
+          "cwe": "CWE-377",
+          "category": "security",
+          "confidence": "MEDIUM",
+          "licence": "Apache-2.0"
+        },
+        "lines": "requires login"
+      }
+    }
+  ]
+}

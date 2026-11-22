@@ -1,0 +1,35 @@
+# python -m lab eval devsecops/sast-semgrep                  # golden fixture (CI)
+# python -m lab eval devsecops/sast-semgrep --run runs/<id>  # after a run on evals/make-target.sh
+# The golden artifacts are trimmed from a real semgrep 1.183.0 run on the
+# make-target.sh output (bundled rules, --metrics=off).
+description: >-
+  Against the planted Flask app, the agent confirms the request-to-shell
+  injection, the debug mode and the fixed temp path, and keeps the
+  sanitised route and the test file out of the findings.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: semgrep
+  - type: artifact_exists
+    path: artifacts/semgrep.json
+  - type: artifact_exists
+    path: artifacts/semgrep.sarif
+  - type: min_findings
+    count: 1
+    where: {tool: semgrep, rule: ".*lab-python-shell-true-user-input", severity: "high|critical"}
+  - type: min_findings
+    count: 1
+    where: {rule: ".*lab-flask-debug-true", location: "app\\.py:.*"}
+  - type: min_findings
+    count: 1
+    where: {rule: ".*lab-python-hardcoded-tmp-path", location: "tools\\.py:.*"}
+  # The sanitised route and the test file are not findings.
+  - type: max_findings
+    count: 0
+    where: {location: "app\\.py:20"}
+  - type: max_findings
+    count: 0
+    where: {location: "tests/.*"}
+  - type: min_hypotheses
+    count: 1
+  - type: no_demotions
