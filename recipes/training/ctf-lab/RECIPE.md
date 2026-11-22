@@ -4,7 +4,6 @@ category: training
 summary: Build a three-challenge CTF with per-build random flags, verify each challenge is solvable and the checker works, then reset to a clean state.
 risk: medium
 time: 15m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

@@ -4,7 +4,6 @@ category: devsecops
 summary: Build an SBOM with syft and check every component licence against an allow / review / deny policy file.
 risk: low
 time: 10m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

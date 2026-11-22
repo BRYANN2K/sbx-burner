@@ -4,7 +4,6 @@ category: foundation
 summary: Triage a pile of candidate findings against the evidence gate, keeping only what the supplied proof supports, and emit a clean evidence file.
 risk: low
 time: 15m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

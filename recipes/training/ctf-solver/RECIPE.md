@@ -4,7 +4,6 @@ category: training
 summary: Solve CTF challenges from a target directory or on scope hosts, one finding per solved challenge with a solve script and the checker's verdict.
 risk: medium
 time: 30m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

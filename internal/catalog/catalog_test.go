@@ -110,10 +110,10 @@ func TestUserRecipeCannotShadowOfficial(t *testing.T) {
 func TestFrontmatterWithColonInSummaryIsRead(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "devsecops", "scr")
 	os.MkdirAll(dir, 0o755)
-	os.WriteFile(filepath.Join(dir, "RECIPE.md"), []byte("---\nname: scr\nsummary: Assess risk: install scripts and more.\nrisk: low\nagents: [claude, codex]\nstatus: beta\n---\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "RECIPE.md"), []byte("---\nname: scr\nsummary: Assess risk: install scripts and more.\nrisk: low\ntested_with: [claude, codex]\nstatus: beta\n---\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "recipe.yaml"), []byte("scope: none\n"), 0o644)
 	r, err := LoadRecipe(dir, Official)
-	if err != nil || r.Summary != "Assess risk: install scripts and more." || len(r.Agents) != 2 || r.Status != "beta" {
+	if err != nil || r.Summary != "Assess risk: install scripts and more." || len(r.TestedWith) != 2 || r.Status != "beta" {
 		t.Fatalf("r=%+v err=%v", r, err)
 	}
 }

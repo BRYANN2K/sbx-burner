@@ -4,7 +4,6 @@ category: apple
 summary: Run web QA in real Safari through safaridriver in a macOS VM, with screenshots as evidence.
 risk: low
 time: 20m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

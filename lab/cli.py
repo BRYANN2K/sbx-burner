@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from . import __version__, evals, lint, runner
+from . import __version__, evals, lint, runner, sbx
 from . import scope as scope_mod
 from .recipe import RecipeError, discover, find
 from .sbx import AGENTS
@@ -111,6 +112,33 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def agent_table() -> list[dict]:
+    """Every agent the runner can launch: the source of truth for burner."""
+    out = []
+    for a in sbx.AGENTS.values():
+        out.append(
+            {
+                "name": a.name,
+                "secret_service": a.secret_service,
+                "setup_commands": list(a.setup_commands),
+                "own_workload_ok": bool(a.mixin_kit),
+                "acp": getattr(a, "acp", None) or None,
+                "login_note": a.interactive_login_note,
+            }
+        )
+    return out
+
+
+def _cmd_agents(args: argparse.Namespace) -> int:
+    table = agent_table()
+    if args.json:
+        print(json.dumps({"agents": table}, indent=2))
+        return 0
+    for a in table:
+        print(f"{a['name']:<8} secret: {a['secret_service']:<10} setup: {'; '.join(a['setup_commands'])}")
+    return 0
+
+
 def _cmd_lint(args: argparse.Namespace) -> int:
     if args.recipe:
         # Lint the named recipes only; the index is checked by a full run.
@@ -125,9 +153,13 @@ def _cmd_lint(args: argparse.Namespace) -> int:
         recipes = len(report) - 2
     failed = 0
     for label, errors in report.items():
-        if errors:
+        if lint.is_failure(errors):
             failed += 1
             print(f"FAIL {label}")
+            for error in errors:
+                print(f"     - {error}")
+        elif errors:
+            print(f"warn {label}")
             for error in errors:
                 print(f"     - {error}")
         elif args.verbose:
@@ -186,6 +218,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_list = sub.add_parser("list", help="list recipes")
     p_list.set_defaults(func=_cmd_list)
+
+    p_agents = sub.add_parser("agents", help="list the agents the runner can launch")
+    p_agents.add_argument("--json", action="store_true")
+    p_agents.set_defaults(func=_cmd_agents)
 
     p_lint = sub.add_parser("lint", help="validate every recipe against the contract")
     p_lint.add_argument("recipe", nargs="*", help="lint only these recipes (default: everything, including the index)")

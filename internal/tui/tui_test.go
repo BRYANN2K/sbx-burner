@@ -60,6 +60,9 @@ type fakeEngine struct {
 
 func (f *fakeEngine) Caps() Caps                                  { return f.caps }
 func (f *fakeEngine) ACPAgents(context.Context) ([]string, error) { return f.acp, nil }
+func (f *fakeEngine) Agents(context.Context) ([]string, error) {
+	return []string{"claude", "codex"}, nil
+}
 func (f *fakeEngine) Models(context.Context, string) (ModelList, error) {
 	return f.models, nil
 }
@@ -86,13 +89,13 @@ func recipes() []catalog.Recipe {
 	return []catalog.Recipe{
 		{ID: "devsecops/secrets-scan", Category: "devsecops", Name: "secrets-scan", Source: catalog.Official, Status: "beta",
 			Summary: "Scan a repository and its git history for leaked credentials with gitleaks, then triage every hit before reporting.",
-			Risk:    "low", Time: "10m", Agents: []string{"claude", "codex"}, Scope: "none", TargetMode: "required", Targets: []string{"path", "repo"}},
+			Risk:    "low", Time: "10m", Scope: "none", TargetMode: "required", Targets: []string{"path", "repo"}},
 		{ID: "devsecops/sca-osv", Category: "devsecops", Name: "sca-osv", Source: catalog.Official, Status: "beta",
-			Summary: "Scan lockfiles for known vulnerabilities.", Risk: "low", Time: "10m", Agents: []string{"claude", "codex"}, Scope: "none", TargetMode: "required", Targets: []string{"path", "repo"}},
+			Summary: "Scan lockfiles for known vulnerabilities.", Risk: "low", Time: "10m", Scope: "none", TargetMode: "required", Targets: []string{"path", "repo"}},
 		{ID: "pentest/web-recon", Category: "pentest", Name: "web-recon", Source: catalog.Official, Status: "beta",
-			Summary: "Map the attack surface of in-scope web hosts.", Risk: "medium", Time: "20m", Agents: []string{"claude", "codex"}, Scope: "required", TargetMode: "required", Targets: []string{"app", "image", "port", "url", "demo"}},
+			Summary: "Map the attack surface of in-scope web hosts.", Risk: "medium", Time: "20m", Scope: "required", TargetMode: "required", Targets: []string{"app", "image", "port", "url", "demo"}},
 		{ID: "apple/macho-triage", Category: "apple", Name: "macho-triage", Source: catalog.Official, Status: "planned",
-			Summary: "Static triage of a Mach-O sample.", Agents: []string{"claude", "codex"}, Scope: "required"},
+			Summary: "Static triage of a Mach-O sample.", Scope: "required"},
 	}
 }
 
@@ -122,6 +125,7 @@ func testModel(t *testing.T, eng Engine) model {
 		Now:    func() time.Time { return now },
 	})
 	m.checks, m.checking = checks(), false
+	m.agents = []string{"claude", "codex"}
 	m.w, m.h = 120, 40
 	return m
 }
@@ -372,7 +376,7 @@ func TestFlowBackAndACPHidden(t *testing.T) {
 		t.Fatal("esc on the first question did not go home")
 	}
 	// Without ACP support there is no Mode or Model question.
-	f := newFlow(recipes()[0], treeDir(t), checks(), nil)
+	f := newFlow(recipes()[0], treeDir(t), checks(), []string{"claude", "codex"}, nil)
 	f.answers = []answer{{value: "path"}, {value: "here"}, {value: "codex"}}
 	f.advance()
 	if f.q == nil || f.q.kind != qNotes {
@@ -418,7 +422,7 @@ func TestFlowACPShowsModeModelAndPermissions(t *testing.T) {
 }
 
 func TestFlowNoACPForOtherAgents(t *testing.T) {
-	f := newFlow(recipes()[0], treeDir(t), checks(), []string{"codex"})
+	f := newFlow(recipes()[0], treeDir(t), checks(), []string{"claude", "codex"}, []string{"codex"})
 	f.answers = []answer{{value: "path"}, {value: "here"}, {value: "claude"}}
 	f.advance()
 	if f.q == nil || f.q.kind != qNotes {
@@ -623,7 +627,7 @@ func TestCategoryOrderAndCounts(t *testing.T) {
 func TestDetailWrapsEveryField(t *testing.T) {
 	r := catalog.Recipe{ID: "pentest/binary-blackbox", Category: "pentest", Name: "binary-blackbox", Source: catalog.Official, Status: "beta",
 		Summary: "Black-box analysis of a Linux binary — static triage, radare2 hypotheses, and dynamic proof of each behaviour with a crafted input.",
-		Risk:    "medium", Time: "30m", Agents: []string{"claude", "codex", "devin"}, Scope: "required", Targets: []string{"path", "repo", "image", "app", "url"}}
+		Risk:    "medium", Time: "30m", TestedWith: []string{"codex"}, Scope: "required", Targets: []string{"path", "repo", "image", "app", "url"}}
 	m := testModel(t, &fakeEngine{})
 	m.home = newHome([]catalog.Recipe{r})
 	m.home.col = 1

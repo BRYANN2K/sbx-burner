@@ -4,7 +4,6 @@ category: devsecops
 summary: Scan the user's container image — a Dockerfile context or an image ref/tarball — with trivy and grype, then reconcile and rank fixes.
 risk: low
 time: 30m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

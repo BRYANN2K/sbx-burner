@@ -4,7 +4,6 @@ category: apple
 summary: Sign and notarize a macOS app in a clean VM, with credentials injected by the host proxy only.
 risk: medium
 time: 30m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

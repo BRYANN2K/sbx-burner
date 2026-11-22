@@ -4,7 +4,6 @@ category: apple
 summary: Replay ATT&CK tests on macOS and check Endpoint Security events against expected detections.
 risk: medium
 time: 45m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

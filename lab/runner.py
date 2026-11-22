@@ -305,8 +305,6 @@ def build_plan(
         raise Refused(f"{recipe.id}: the linux variant is not runnable (status: {recipe.linux.get('status', 'missing')})")
     if agent_name not in sbx.AGENTS:
         raise Refused(f"unknown agent {agent_name!r} (known: {', '.join(sbx.AGENTS)})")
-    if agent_name not in (recipe.meta.get("agents") or []):
-        raise Refused(f"{recipe.id} does not support agent {agent_name!r}")
     agent = sbx.AGENTS[agent_name]
     if acp and not agent.acp:
         wired = ", ".join(name for name, a in sbx.AGENTS.items() if a.acp)
@@ -709,7 +707,7 @@ def build_plan(
         if not agent.mixin_kit:
             raise Refused(
                 f"{recipe.id} uses its own workload ({linux['workload']}); {agent.name} has no mixin kit yet. "
-                "Use --agent claude or codex for this recipe."
+                f"Use --agent {' or '.join(a.name for a in sbx.AGENTS.values() if a.mixin_kit)} for this recipe."
             )
         workload = str((repo_root / linux["workload"]).resolve())
         kits.insert(0, str((repo_root / agent.mixin_kit).resolve()))

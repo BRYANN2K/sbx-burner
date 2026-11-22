@@ -4,7 +4,6 @@ category: training
 summary: Start OWASP Juice Shop and DVWA inside the sandbox, prove three well-known training flaws with saved requests and responses, then reset the lab.
 risk: medium
 time: 25m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

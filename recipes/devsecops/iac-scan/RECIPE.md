@@ -4,7 +4,6 @@ category: devsecops
 summary: Scan Terraform, Kubernetes manifests and Dockerfiles for misconfigurations with trivy, then split real exposure from hygiene.
 risk: low
 time: 15m
-agents: [claude, codex]
 variants:
   linux: beta
   macos: planned

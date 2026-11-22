@@ -34,11 +34,11 @@ type Recipe struct {
 	Dir      string `json:"dir"`
 	Source   Source `json:"source"`
 
-	Summary string   `json:"summary"`
-	Risk    string   `json:"risk"`
-	Time    string   `json:"time"`
-	Agents  []string `json:"agents"`
-	Status  string   `json:"status"`
+	Summary    string   `json:"summary"`
+	Risk       string   `json:"risk"`
+	Time       string   `json:"time"`
+	TestedWith []string `json:"tested_with,omitempty"`
+	Status     string   `json:"status"`
 
 	Scope      string   `json:"scope"`       // required | optional | none
 	TargetMode string   `json:"target_mode"` // required | optional | none
@@ -70,13 +70,13 @@ func (r Recipe) EngineRef() string {
 func (r Recipe) Runnable() bool { return r.Status != "planned" }
 
 type frontmatter struct {
-	Name     string   `yaml:"name"`
-	Category string   `yaml:"category"`
-	Summary  string   `yaml:"summary"`
-	Risk     string   `yaml:"risk"`
-	Time     string   `yaml:"time"`
-	Agents   []string `yaml:"agents"`
-	Status   string   `yaml:"status"`
+	Name       string   `yaml:"name"`
+	Category   string   `yaml:"category"`
+	Summary    string   `yaml:"summary"`
+	Risk       string   `yaml:"risk"`
+	Time       string   `yaml:"time"`
+	TestedWith []string `yaml:"tested_with"`
+	Status     string   `yaml:"status"`
 }
 
 type recipeYAML struct {
@@ -249,8 +249,8 @@ func LoadRecipe(path string, source Source) (Recipe, error) {
 	}
 	// Team catalogs are third-party text: clean what reaches the terminal.
 	r.Summary, r.Risk, r.Time, r.Status = sanitize.Line(fm.Summary, 300), sanitize.Line(fm.Risk, 20), sanitize.Line(fm.Time, 20), sanitize.Line(fm.Status, 20)
-	for _, a := range fm.Agents {
-		r.Agents = append(r.Agents, sanitize.Line(a, 40))
+	for _, a := range fm.TestedWith {
+		r.TestedWith = append(r.TestedWith, sanitize.Line(a, 40))
 	}
 
 	raw, err := os.ReadFile(filepath.Join(path, "recipe.yaml"))
@@ -318,10 +318,10 @@ func lenientFrontmatter(raw []byte) frontmatter {
 			fm.Time = value
 		case "status":
 			fm.Status = value
-		case "agents":
+		case "tested_with":
 			for _, a := range strings.Split(strings.Trim(value, "[]"), ",") {
 				if a = strings.TrimSpace(a); a != "" {
-					fm.Agents = append(fm.Agents, a)
+					fm.TestedWith = append(fm.TestedWith, a)
 				}
 			}
 		}

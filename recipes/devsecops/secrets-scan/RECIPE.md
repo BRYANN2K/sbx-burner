@@ -4,7 +4,7 @@ category: devsecops
 summary: Scan a repository and its git history for leaked credentials with gitleaks, then triage every hit before reporting.
 risk: low
 time: 10m
-agents: [claude, codex]
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned

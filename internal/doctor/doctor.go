@@ -44,6 +44,17 @@ var AgentServices = map[string]struct{ Service, Fix string }{
 	"devin":  {"devin", "sbx run devin <folder>   (sign in once)"},
 }
 
+// KnownAgents returns burner's own agent names, sorted; used only when the
+// engine's agent table is unavailable.
+func KnownAgents() []string {
+	names := make([]string, 0, len(AgentServices))
+	for a := range AgentServices {
+		names = append(names, a)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // Runner executes a command and returns combined output. Tests replace it.
 type Runner func(ctx context.Context, name string, args ...string) (string, error)
 

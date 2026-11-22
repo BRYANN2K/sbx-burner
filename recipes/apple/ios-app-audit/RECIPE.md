@@ -4,7 +4,6 @@ category: apple
 summary: Audit an iOS app you own: entitlements, privacy manifest, transport security, storage and dependency risks.
 risk: medium
 time: 60m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned

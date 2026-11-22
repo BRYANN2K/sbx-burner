@@ -67,7 +67,7 @@ def test_missing_files_and_stub(make_recipe, repo):
     stub.mkdir(parents=True)
     (stub / "RECIPE.md").write_text(
         "---\nname: xcode-ci\ncategory: apple\nsummary: Build and test an Xcode project.\nrisk: low\ntime: 20m\n"
-        "agents: [claude]\nvariants:\n  linux: n/a\n  macos: planned\nstatus: planned\nlicence: Apache-2.0\n"
+        "variants:\n  linux: n/a\n  macos: planned\nstatus: planned\nlicence: Apache-2.0\n"
         "sources:\n  - https://github.com/BRYANN2K/macsbx\n---\n\n# xcode-ci\n",
         encoding="utf-8",
     )
@@ -297,3 +297,23 @@ def test_gen_index_keeps_non_ascii_summaries_readable(make_recipe, repo):
     assert "\\u" not in index, "summaries are written as UTF-8, not escaped"
     entry = [e for e in miniyaml.loads(index)["recipes"] if e["path"].endswith("/demo")][0]
     assert entry["summary"] == summary
+
+
+def test_obsolete_agents_field_warns_and_tested_with_is_checked(make_recipe):
+    from lab import lint
+
+    recipe = make_recipe(**{"RECIPE.md": ("time: ", "agents: [claude]\ntested_with: [codex, gemini]\ntime: ")})
+    errors = lint.lint_recipe(recipe, recipe.path.parents[2])
+    warnings = [e for e in errors if e.startswith(lint.WARNING)]
+    assert any("'agents' is obsolete" in w for w in warnings)
+    assert any("tested_with: unknown agent 'gemini'" in e for e in errors if not e.startswith(lint.WARNING))
+
+
+def test_agents_command_lists_the_runner_table(capsys):
+    import json as _json
+
+    from lab import cli
+
+    assert cli.main(["agents", "--json"]) == 0
+    names = [a["name"] for a in _json.loads(capsys.readouterr().out)["agents"]]
+    assert names == ["claude", "codex", "devin"]

@@ -4,7 +4,6 @@ category: apple
 summary: Static triage of a Mach-O sample: signature, entitlements, capabilities and YARA matches, offline.
 risk: high
 time: 20m
-agents: [claude, codex]
 variants:
   linux: n/a
   macos: planned
