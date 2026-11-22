@@ -1,11 +1,12 @@
 import json
+import re
 import shutil
 
 import gen_index
 import new_recipe
 import pytest
 
-from lab import cli, evals, lint, recipe
+from lab import cli, evals, lint, miniyaml, recipe
 
 
 def _errors(repo):
@@ -281,3 +282,18 @@ def test_ci_dry_args_picks_a_target_per_recipe(make_recipe, scope_file):
     assert ci_dry_args.dry_args(image, None)[0] == "--target-image"
     with pytest.raises(SystemExit, match="no target the CI dry run can pass"):
         ci_dry_args.dry_args(url, None)
+
+
+def test_gen_index_keeps_non_ascii_summaries_readable(make_recipe, repo):
+    """recipes.yaml must round-trip through lab/miniyaml: no \\u escapes for non-ASCII text."""
+    import gen_index
+
+    r = make_recipe()
+    md = r.path / "RECIPE.md"
+    summary = "Map \u2014 then test caf\u00e9 apps"
+    text = re.sub(r"(?m)^summary: .*$", f"summary: {summary}", md.read_text(encoding="utf-8"), count=1)
+    md.write_text(text, encoding="utf-8")
+    index = gen_index.sync_index(repo)
+    assert "\\u" not in index, "summaries are written as UTF-8, not escaped"
+    entry = [e for e in miniyaml.loads(index)["recipes"] if e["path"].endswith("/demo")][0]
+    assert entry["summary"] == summary
