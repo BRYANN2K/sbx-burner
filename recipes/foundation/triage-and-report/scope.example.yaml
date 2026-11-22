@@ -1,0 +1,29 @@
+# Optional for this recipe. Copy to scope.yaml, edit the dates, then:
+#   python -m lab run foundation/triage-and-report --target ./candidates --scope scope.yaml
+# With a scope file, candidates whose target host is out of scope are
+# rejected in triage and demoted again by the runner's gate.
+schema_version: "1"
+id: triage-review
+owner: Your Name
+authorization:
+  # own-lab: targets you start yourself (localhost, private IPs, .test, .internal, .lab).
+  type: own-lab
+valid:
+  not_before: "2026-11-01"
+  not_after: "2026-12-31"
+targets:
+  - name: lab-services
+    # Hosts the candidates may legitimately reference.
+    hosts:
+      - localhost:3000
+      - "*.lab.internal"
+network:
+  # strict: only the hosts in this file, the agent API and the recipe's tool
+  # hosts are reachable (needs the global sbx policy set to deny-all).
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  # The recipe performs no target contact; triage is offline analysis.
+  allowed: [triage]
+  forbidden: [dos, social-engineering, data-destruction]
