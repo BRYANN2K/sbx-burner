@@ -1,0 +1,42 @@
+[
+ {
+  "RuleID": "github-pat",
+  "Description": "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure.",
+  "StartLine": 2,
+  "EndLine": 2,
+  "StartColumn": 32,
+  "EndColumn": 71,
+  "Match": "REDACTED",
+  "Secret": "REDACTED",
+  "File": "/home/agent/target/scripts/release.sh",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.653056,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/home/agent/target/scripts/release.sh:github-pat:2"
+ },
+ {
+  "RuleID": "curl-auth-header",
+  "Description": "Discovered a potential authorization token provided in a curl command header, which could compromise the curl accessed resource.",
+  "StartLine": 2,
+  "EndLine": 2,
+  "StartColumn": 2,
+  "EndColumn": 72,
+  "Match": "curl -H \"Authorization: token REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "/home/agent/target/scripts/release.sh",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.653056,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/home/agent/target/scripts/release.sh:curl-auth-header:2"
+ }
+]

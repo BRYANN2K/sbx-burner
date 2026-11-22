@@ -1,0 +1,12 @@
+# Stock Docker Sandboxes environment file for the Linux variant.
+# Use it without the lab runner:  sbx env run recipes/devsecops/gate
+# The runner (python -m lab run) adds the read-only target, evidence and reports.
+# `sbx env` is experimental in sbx; the format may change.
+schemaVersion: "1"
+name: lab-gate
+agent: claude
+workspace: .
+kits:
+  - ../../../kits/devsecops
+sandboxOptions:
+  skills: "off"

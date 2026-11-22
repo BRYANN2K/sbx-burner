@@ -1,0 +1,133 @@
+{
+  "gate_passed": false,
+  "policy": "gate-policy.yaml",
+  "policy_sha256": "8dc1c9d4ca213ba4955c4e11298cf6996ddac57f7e57524c84579548d25c7cca",
+  "dockerfile_found": false,
+  "checks": {
+    "secrets": {
+      "status": "fail",
+      "total": 2,
+      "blocking": 2,
+      "report": "gitleaks.json"
+    },
+    "sca": {
+      "status": "fail",
+      "total": 1,
+      "blocking": 1,
+      "report": "osv.json"
+    },
+    "sast": {
+      "status": "fail",
+      "total": 1,
+      "blocking": 1,
+      "report": "semgrep.json"
+    },
+    "iac": {
+      "status": "fail",
+      "total": 17,
+      "blocking": 3,
+      "report": "trivy-config.json"
+    },
+    "container": {
+      "status": "skipped",
+      "total": 0,
+      "blocking": 0,
+      "report": "trivy-image.json"
+    },
+    "sbom": {
+      "status": "pass",
+      "total": 3,
+      "blocking": 0,
+      "report": "sbom.cdx.json",
+      "components": 3
+    },
+    "licence": {
+      "status": "fail",
+      "total": 1,
+      "blocking": 1,
+      "report": "sbom.cdx.json",
+      "unknown_licences": 0
+    }
+  },
+  "reasons": [
+    "secrets: 2 blocking finding(s)",
+    "sca: 1 blocking finding(s)",
+    "sast: 1 blocking finding(s)",
+    "iac: 3 blocking finding(s)",
+    "licence: 1 blocking finding(s)"
+  ],
+  "blocking_items": [
+    {
+      "check": "secrets",
+      "tool": "gitleaks",
+      "rule": "github-pat",
+      "location": "/home/agent/target/scripts/release.sh:2",
+      "severity": "high",
+      "title": "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure.",
+      "fix": ""
+    },
+    {
+      "check": "secrets",
+      "tool": "gitleaks",
+      "rule": "curl-auth-header",
+      "location": "/home/agent/target/scripts/release.sh:2",
+      "severity": "high",
+      "title": "Discovered a potential authorization token provided in a curl command header, which could compromise the curl accessed resource.",
+      "fix": ""
+    },
+    {
+      "check": "sca",
+      "tool": "osv-scanner",
+      "rule": "GHSA-xvch-5gv4-984h",
+      "location": "package-lock.json:minimist@1.2.5",
+      "severity": "critical",
+      "title": "Prototype Pollution in minimist",
+      "fix": "0.2.4, 1.2.6"
+    },
+    {
+      "check": "sast",
+      "tool": "semgrep",
+      "rule": "fixtures.python.subprocess-shell-true",
+      "location": "/home/agent/target/app/tools.py:11",
+      "severity": "high",
+      "title": "subprocess called with shell=True on a value that may hold user input",
+      "fix": ""
+    },
+    {
+      "check": "iac",
+      "tool": "trivy",
+      "rule": "KSV-0014",
+      "location": "k8s/deployment.yaml:17",
+      "severity": "high",
+      "title": "Root file system is not read-only",
+      "fix": "Change 'containers[].securityContext.readOnlyRootFilesystem' to 'true'."
+    },
+    {
+      "check": "iac",
+      "tool": "trivy",
+      "rule": "KSV-0017",
+      "location": "k8s/deployment.yaml:17",
+      "severity": "high",
+      "title": "Privileged",
+      "fix": "Change 'containers[].securityContext.privileged' to 'false'."
+    },
+    {
+      "check": "iac",
+      "tool": "trivy",
+      "rule": "KSV-0118",
+      "location": "k8s/deployment.yaml:15",
+      "severity": "high",
+      "title": "Default security context configured",
+      "fix": "To enhance security, it is strongly recommended not to rely on the default security context. Instead, it is advisable to explicitly define the required security parameters (such as runAsNonRoot, capabilities, readOnlyRootFilesystem, etc.) within the security context."
+    },
+    {
+      "check": "licence",
+      "tool": "syft",
+      "rule": "licence-denied",
+      "location": "pkg:npm/lab-pdf-render@0.9.0",
+      "severity": "high",
+      "title": "GPL-3.0-only is on the deny list",
+      "fix": "replace the component or get a written exception"
+    }
+  ]
+}

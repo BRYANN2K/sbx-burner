@@ -1,0 +1,151 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/gate",
+  "summary": "Ran all six gate checks on the target: secrets (gitleaks), SCA (osv-scanner), SAST (semgrep), IaC (trivy config), SBOM and licence (syft); the container check was skipped, no Dockerfile found. Gate FAILED under fixtures/gate-policy.yaml: 8 blocking items across 5 checks (2 leaked credentials, minimist GHSA-xvch-5gv4-984h critical, subprocess shell=True, 3 high k8s misconfigs, GPL-3.0-only component).",
+  "tools_run": [
+    {
+      "name": "gitleaks",
+      "version": "8.30.1",
+      "command": "gitleaks dir /home/agent/target --report-path evidence/artifacts/gitleaks.json --report-format json --redact",
+      "exit_code": 1,
+      "output": "artifacts/gitleaks.json"
+    },
+    {
+      "name": "osv-scanner",
+      "version": "2.7.1",
+      "command": "osv-scanner scan --recursive /home/agent/target --format json",
+      "exit_code": 1,
+      "output": "artifacts/osv.json"
+    },
+    {
+      "name": "semgrep",
+      "version": "1.186.0",
+      "command": "semgrep scan --metrics=off --config fixtures/semgrep-rules.yaml --json -o evidence/artifacts/semgrep.json /home/agent/target",
+      "exit_code": 0,
+      "output": "artifacts/semgrep.json"
+    },
+    {
+      "name": "trivy",
+      "version": "0.76.2",
+      "command": "trivy config /home/agent/target --format json -o evidence/artifacts/trivy-config.json",
+      "exit_code": 0,
+      "output": "artifacts/trivy-config.json"
+    },
+    {
+      "name": "syft",
+      "version": "1.57.2",
+      "command": "syft dir:/home/agent/target -o cyclonedx-json=evidence/artifacts/sbom.cdx.json",
+      "exit_code": 0,
+      "output": "artifacts/sbom.cdx.json"
+    },
+    {
+      "name": "gate.py",
+      "version": "1",
+      "command": "python3 fixtures/gate.py --artifacts evidence/artifacts --policy fixtures/gate-policy.yaml --target /home/agent/target",
+      "exit_code": 1,
+      "output": "artifacts/gate-result.json"
+    }
+  ],
+  "findings": [
+    {
+      "id": "GATE-001",
+      "title": "secrets check blocked the gate: 2 leaked credentials in scripts/release.sh",
+      "severity": "high",
+      "target": "/home/agent/target",
+      "location": "scripts/release.sh:2",
+      "tool": "gitleaks",
+      "rule": "gate-blocked:secrets",
+      "description": "gitleaks reports github-pat and curl-auth-header on scripts/release.sh:2; policy secrets_fail_on=any makes every leak blocking.",
+      "proof": {
+        "poc": "gitleaks dir /home/agent/target --report-path evidence/artifacts/gitleaks.json --report-format json --redact",
+        "artifacts": ["artifacts/gitleaks.json", "artifacts/gate-result.json"]
+      },
+      "remediation": "Remove the token from the script, rotate it, and read it from the environment or a secret store."
+    },
+    {
+      "id": "GATE-002",
+      "title": "sca check blocked the gate: minimist 1.2.5 has a critical advisory",
+      "severity": "critical",
+      "target": "/home/agent/target",
+      "location": "package-lock.json:minimist@1.2.5",
+      "tool": "osv-scanner",
+      "rule": "gate-blocked:sca",
+      "description": "GHSA-xvch-5gv4-984h (prototype pollution, max_severity 9.8) affects minimist 1.2.5; sca_fail_severities=[critical, high] and a fix (1.2.6) exists.",
+      "proof": {
+        "poc": "osv-scanner scan --recursive /home/agent/target --format json",
+        "artifacts": ["artifacts/osv.json", "artifacts/gate-result.json"]
+      },
+      "remediation": "Upgrade minimist to 1.2.6 or later."
+    },
+    {
+      "id": "GATE-003",
+      "title": "sast check blocked the gate: subprocess with shell=True on request input",
+      "severity": "high",
+      "target": "/home/agent/target",
+      "location": "app/tools.py:11",
+      "tool": "semgrep",
+      "rule": "gate-blocked:sast",
+      "description": "Rule fixtures.python.subprocess-shell-true (ERROR) hits app/tools.py:11 where a request parameter is concatenated into a shell command; sast_fail_severities=[critical, high].",
+      "proof": {
+        "poc": "semgrep scan --config fixtures/semgrep-rules.yaml --json /home/agent/target",
+        "artifacts": ["artifacts/semgrep.json", "artifacts/gate-result.json"]
+      },
+      "remediation": "Pass the value as an argument list with shell=False and validate the host input."
+    },
+    {
+      "id": "GATE-004",
+      "title": "iac check blocked the gate: 3 high misconfigurations in k8s/deployment.yaml",
+      "severity": "high",
+      "target": "/home/agent/target",
+      "location": "k8s/deployment.yaml",
+      "tool": "trivy",
+      "rule": "gate-blocked:iac",
+      "description": "17 misconfigurations total; KSV-0017 (privileged), KSV-0014 (root filesystem not read-only) and KSV-0118 (default security context) are high and iac_fail_severities=[critical, high].",
+      "proof": {
+        "poc": "trivy config /home/agent/target --format json",
+        "artifacts": ["artifacts/trivy-config.json", "artifacts/gate-result.json"]
+      },
+      "remediation": "Set privileged: false, readOnlyRootFilesystem: true and an explicit securityContext with capabilities dropped."
+    },
+    {
+      "id": "GATE-005",
+      "title": "licence check blocked the gate: lab-pdf-render is GPL-3.0-only",
+      "severity": "high",
+      "target": "/home/agent/target",
+      "location": "pkg:npm/lab-pdf-render@0.9.0",
+      "tool": "syft",
+      "rule": "gate-blocked:licence",
+      "description": "The syft SBOM declares lab-pdf-render 0.9.0 as GPL-3.0-only, which is on the policy licence_deny list.",
+      "proof": {
+        "poc": "syft dir:/home/agent/target -o cyclonedx-json=evidence/artifacts/sbom.cdx.json",
+        "artifacts": ["artifacts/sbom.cdx.json", "artifacts/gate-result.json"]
+      },
+      "remediation": "Replace the component or get a written licence exception recorded in the policy."
+    }
+  ],
+  "hypotheses": [],
+  "artifacts": [
+    {"path": "artifacts/gitleaks.json", "description": "Raw gitleaks report (masked)"},
+    {"path": "artifacts/gitleaks.sarif", "description": "gitleaks SARIF report"},
+    {"path": "artifacts/osv.json", "description": "Raw osv-scanner report"},
+    {"path": "artifacts/osv.sarif", "description": "osv-scanner SARIF report"},
+    {"path": "artifacts/semgrep.json", "description": "Raw semgrep report"},
+    {"path": "artifacts/semgrep.sarif", "description": "semgrep SARIF report"},
+    {"path": "artifacts/trivy-config.json", "description": "Raw trivy IaC report"},
+    {"path": "artifacts/trivy-config.sarif", "description": "trivy IaC SARIF report"},
+    {"path": "artifacts/sbom.cdx.json", "description": "CycloneDX SBOM from syft"},
+    {"path": "artifacts/gate.sarif", "description": "Merged SARIF, one run per scanner plus the licence policy run"},
+    {"path": "artifacts/gate-result.json", "description": "Per-check counts, blocking items, reasons and policy hash"},
+    {"path": "artifacts/pr-summary.md", "description": "Gate decision table for the pull request"}
+  ],
+  "metrics": {
+    "gate_passed": false,
+    "secrets_findings": 2,
+    "sca_findings": 1,
+    "sast_findings": 1,
+    "iac_findings": 17,
+    "container_findings": 0,
+    "sbom_components": 3,
+    "licence_findings": 1
+  }
+}

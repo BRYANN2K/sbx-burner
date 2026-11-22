@@ -1,0 +1,1259 @@
+{
+ "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+ "version": "2.1.0",
+ "runs": [
+  {
+   "tool": {
+    "driver": {
+     "name": "gitleaks",
+     "semanticVersion": "v8.0.0",
+     "informationUri": "https://github.com/gitleaks/gitleaks",
+     "rules": [
+      {
+       "id": "curl-auth-header",
+       "shortDescription": {
+        "text": "Discovered a potential authorization token provided in a curl command header, which could compromise the curl accessed resource."
+       }
+      },
+      {
+       "id": "github-pat",
+       "shortDescription": {
+        "text": "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure."
+       }
+      }
+     ]
+    }
+   },
+   "results": [
+    {
+     "message": {
+      "text": "github-pat has detected secret for file /home/agent/target/scripts/release.sh."
+     },
+     "ruleId": "github-pat",
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "/home/agent/target/scripts/release.sh"
+        },
+        "region": {
+         "startLine": 2,
+         "startColumn": 32,
+         "endLine": 2,
+         "endColumn": 71,
+         "snippet": {
+          "text": "REDACTED"
+         }
+        }
+       }
+      }
+     ],
+     "partialFingerprints": {
+      "commitSha": "",
+      "email": "",
+      "author": "",
+      "date": "",
+      "commitMessage": ""
+     },
+     "properties": {
+      "tags": []
+     }
+    },
+    {
+     "message": {
+      "text": "curl-auth-header has detected secret for file /home/agent/target/scripts/release.sh."
+     },
+     "ruleId": "curl-auth-header",
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "/home/agent/target/scripts/release.sh"
+        },
+        "region": {
+         "startLine": 2,
+         "startColumn": 2,
+         "endLine": 2,
+         "endColumn": 72,
+         "snippet": {
+          "text": "REDACTED"
+         }
+        }
+       }
+      }
+     ],
+     "partialFingerprints": {
+      "commitSha": "",
+      "email": "",
+      "author": "",
+      "date": "",
+      "commitMessage": ""
+     },
+     "properties": {
+      "tags": []
+     }
+    }
+   ]
+  },
+  {
+   "addresses": [],
+   "artifacts": [
+    {
+     "length": -1,
+     "location": {
+      "index": -1,
+      "uri": "file:///home/agent/target/package-lock.json"
+     },
+     "parentIndex": -1,
+     "roles": []
+    }
+   ],
+   "graphs": [],
+   "invocations": [],
+   "language": "en-US",
+   "logicalLocations": [],
+   "newlineSequences": [
+    "\r\n",
+    "\n"
+   ],
+   "policies": [],
+   "redactionTokens": [],
+   "results": [
+    {
+     "partialFingerprints": {
+      "primaryLocationLineHash": "df5cdbbb5ad28524626e97a4f6adf574bd0dcf776a09fb85ec8cfeed00deaada"
+     },
+     "attachments": [],
+     "codeFlows": [],
+     "fixes": [],
+     "graphTraversals": [],
+     "graphs": [],
+     "kind": "fail",
+     "level": "warning",
+     "locations": [
+      {
+       "annotations": [],
+       "id": -1,
+       "logicalLocations": [],
+       "physicalLocation": {
+        "artifactLocation": {
+         "index": -1,
+         "uri": "file:///home/agent/target/package-lock.json"
+        }
+       },
+       "relationships": []
+      }
+     ],
+     "message": {
+      "arguments": [],
+      "text": "Package 'minimist@1.2.5' is vulnerable to 'CVE-2021-44906' (also known as 'GHSA-xvch-5gv4-984h')."
+     },
+     "rank": -1,
+     "relatedLocations": [],
+     "ruleId": "CVE-2021-44906",
+     "ruleIndex": 0,
+     "stacks": [],
+     "taxa": []
+    }
+   ],
+   "runAggregates": [],
+   "taxonomies": [],
+   "threadFlowLocations": [],
+   "tool": {
+    "driver": {
+     "contents": [
+      "localizedData",
+      "nonLocalizedData"
+     ],
+     "informationUri": "https://github.com/google/osv-scanner",
+     "isComprehensive": false,
+     "language": "en-US",
+     "locations": [],
+     "name": "osv-scanner",
+     "notifications": [],
+     "rules": [
+      {
+       "deprecatedIds": [
+        "CVE-2021-44906",
+        "GHSA-xvch-5gv4-984h"
+       ],
+       "fullDescription": {
+        "markdown": "Minimist prior to 1.2.6 and 0.2.4 is vulnerable to Prototype Pollution via file `index.js`, function `setKey()` (lines 69-95).",
+        "text": "Minimist prior to 1.2.6 and 0.2.4 is vulnerable to Prototype Pollution via file `index.js`, function `setKey()` (lines 69-95)."
+       },
+       "help": {
+        "markdown": "**Your dependency is vulnerable to [CVE-2021-44906](https://osv.dev/CVE-2021-44906)**.\n\n## [GHSA-xvch-5gv4-984h](https://osv.dev/GHSA-xvch-5gv4-984h)\n\n<details>\n<summary>Details</summary>\n\n> Minimist prior to 1.2.6 and 0.2.4 is vulnerable to Prototype Pollution via file `index.js`, function `setKey()` (lines 69-95).\n\n</details>\n\n---\n\n### Affected Packages\n\n| Source | Package Name | Package Version |\n| --- | --- | --- |\n| lockfile:/home/agent/target/package-lock.json | minimist | 1.2.5 |\n\n## Remediation\n\nTo fix these vulnerabilities, update the vulnerabilities past the listed fixed versions below.\n\n### Fixed Versions\n\n| Vulnerability ID | Package Name | Fixed Version |\n| --- | --- | --- |\n| GHSA-xvch-5gv4-984h | minimist | 0.2.4, 1.2.6 |\n\nIf you believe these vulnerabilities do not affect your code and wish to ignore them, add them to the ignore list in an\n`osv-scanner.toml` file located in the same directory as the lockfile containing the vulnerable dependency.\n\nSee the format and more options in our documentation here: https://google.github.io/osv-scanner/configuration/\n\nAdd or append these values to the following config files to ignore this vulnerability:\n\n`/home/agent/target/osv-scanner.toml`\n\n```\n[[IgnoredVulns]]\nid = \"CVE-2021-44906\"\nreason = \"Your reason for ignoring this vulnerability\"\n```\n",
+        "text": "**Your dependency is vulnerable to [CVE-2021-44906](https://osv.dev/CVE-2021-44906)**.\n\n## [GHSA-xvch-5gv4-984h](https://osv.dev/GHSA-xvch-5gv4-984h)\n\n<details>\n<summary>Details</summary>\n\n> Minimist prior to 1.2.6 and 0.2.4 is vulnerable to Prototype Pollution via file `index.js`, function `setKey()` (lines 69-95).\n\n</details>\n\n---\n\n### Affected Packages\n\n| Source | Package Name | Package Version |\n| --- | --- | --- |\n| lockfile:/home/agent/target/package-lock.json | minimist | 1.2.5 |\n\n## Remediation\n\nTo fix these vulnerabilities, update the vulnerabilities past the listed fixed versions below.\n\n### Fixed Versions\n\n| Vulnerability ID | Package Name | Fixed Version |\n| --- | --- | --- |\n| GHSA-xvch-5gv4-984h | minimist | 0.2.4, 1.2.6 |\n\nIf you believe these vulnerabilities do not affect your code and wish to ignore them, add them to the ignore list in an\n`osv-scanner.toml` file located in the same directory as the lockfile containing the vulnerable dependency.\n\nSee the format and more options in our documentation here: https://google.github.io/osv-scanner/configuration/\n\nAdd or append these values to the following config files to ignore this vulnerability:\n\n`/home/agent/target/osv-scanner.toml`\n\n```\n[[IgnoredVulns]]\nid = \"CVE-2021-44906\"\nreason = \"Your reason for ignoring this vulnerability\"\n```\n"
+       },
+       "id": "CVE-2021-44906",
+       "name": "CVE-2021-44906",
+       "properties": {
+        "security-severity": "9.8"
+       },
+       "relationships": [],
+       "shortDescription": {
+        "markdown": "CVE-2021-44906: Prototype Pollution in minimist",
+        "text": "CVE-2021-44906: Prototype Pollution in minimist"
+       }
+      }
+     ],
+     "supportedTaxonomies": [],
+     "taxa": [],
+     "version": "2.7.1"
+    },
+    "extensions": []
+   },
+   "translations": [],
+   "versionControlProvenance": [],
+   "webRequests": [],
+   "webResponses": []
+  },
+  {
+   "invocations": [
+    {
+     "executionSuccessful": true,
+     "toolExecutionNotifications": []
+    }
+   ],
+   "results": [
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "/home/agent/target/app/tools.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 68,
+         "endLine": 11,
+         "snippet": {
+          "text": "    return subprocess.check_output(\"ping -c 1 \" + host, shell=True)"
+         },
+         "startColumn": 12,
+         "startLine": 11
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "subprocess called with shell=True on a value that may hold user input"
+     },
+     "properties": {},
+     "ruleId": "fixtures.python.subprocess-shell-true"
+    }
+   ],
+   "tool": {
+    "driver": {
+     "name": "Semgrep OSS",
+     "rules": [
+      {
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "fullDescription": {
+        "text": "subprocess called with shell=True on a value that may hold user input"
+       },
+       "help": {
+        "markdown": "subprocess called with shell=True on a value that may hold user input",
+        "text": "subprocess called with shell=True on a value that may hold user input"
+       },
+       "id": "fixtures.python.subprocess-shell-true",
+       "name": "fixtures.python.subprocess-shell-true",
+       "properties": {
+        "precision": "very-high",
+        "tags": [
+         "CWE-78",
+         "security"
+        ]
+       },
+       "shortDescription": {
+        "text": "Semgrep Finding: fixtures.python.subprocess-shell-true"
+       }
+      }
+     ],
+     "semanticVersion": "1.186.0"
+    }
+   }
+  },
+  {
+   "tool": {
+    "driver": {
+     "fullName": "Trivy Vulnerability Scanner",
+     "informationUri": "https://github.com/aquasecurity/trivy",
+     "name": "Trivy",
+     "rules": [
+      {
+       "id": "KSV-0001",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Can elevate its own privileges"
+       },
+       "fullDescription": {
+        "text": "A program inside the container can elevate its own privileges and run as root, which might give the program control over the container and node."
+       },
+       "defaultConfiguration": {
+        "level": "warning"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0001",
+       "help": {
+        "text": "Misconfiguration KSV-0001\nType: Kubernetes Security Check\nSeverity: MEDIUM\nCheck: Can elevate its own privileges\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.allowPrivilegeEscalation' to false\nLink: [KSV-0001](https://avd.aquasec.com/misconfig/ksv-0001)\nA program inside the container can elevate its own privileges and run as root, which might give the program control over the container and node.",
+        "markdown": "**Misconfiguration KSV-0001**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|MEDIUM|Can elevate its own privileges|Container 'app' of Deployment 'gate-demo' should set 'securityContext.allowPrivilegeEscalation' to false|[KSV-0001](https://avd.aquasec.com/misconfig/ksv-0001)|\n\nA program inside the container can elevate its own privileges and run as root, which might give the program control over the container and node."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "5.5",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "MEDIUM"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0003",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Default capabilities: some containers do not drop all"
+       },
+       "fullDescription": {
+        "text": "The container should drop all default capabilities and add only those that are needed for its execution."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0003",
+       "help": {
+        "text": "Misconfiguration KSV-0003\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Default capabilities: some containers do not drop all\nMessage: Container 'app' of Deployment 'gate-demo' should add 'ALL' to 'securityContext.capabilities.drop'\nLink: [KSV-0003](https://avd.aquasec.com/misconfig/ksv-0003)\nThe container should drop all default capabilities and add only those that are needed for its execution.",
+        "markdown": "**Misconfiguration KSV-0003**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Default capabilities: some containers do not drop all|Container 'app' of Deployment 'gate-demo' should add 'ALL' to 'securityContext.capabilities.drop'|[KSV-0003](https://avd.aquasec.com/misconfig/ksv-0003)|\n\nThe container should drop all default capabilities and add only those that are needed for its execution."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0004",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Default capabilities: some containers do not drop any"
+       },
+       "fullDescription": {
+        "text": "Security best practices require containers to run with minimal required capabilities."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0004",
+       "help": {
+        "text": "Misconfiguration KSV-0004\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Default capabilities: some containers do not drop any\nMessage: Container 'app' of 'deployment' 'gate-demo' in 'demo' namespace should set securityContext.capabilities.drop\nLink: [KSV-0004](https://avd.aquasec.com/misconfig/ksv-0004)\nSecurity best practices require containers to run with minimal required capabilities.",
+        "markdown": "**Misconfiguration KSV-0004**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Default capabilities: some containers do not drop any|Container 'app' of 'deployment' 'gate-demo' in 'demo' namespace should set securityContext.capabilities.drop|[KSV-0004](https://avd.aquasec.com/misconfig/ksv-0004)|\n\nSecurity best practices require containers to run with minimal required capabilities."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0011",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "CPU not limited"
+       },
+       "fullDescription": {
+        "text": "Enforcing CPU limits prevents DoS via resource exhaustion."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0011",
+       "help": {
+        "text": "Misconfiguration KSV-0011\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: CPU not limited\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.limits.cpu'\nLink: [KSV-0011](https://avd.aquasec.com/misconfig/ksv-0011)\nEnforcing CPU limits prevents DoS via resource exhaustion.",
+        "markdown": "**Misconfiguration KSV-0011**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|CPU not limited|Container 'app' of Deployment 'gate-demo' should set 'resources.limits.cpu'|[KSV-0011](https://avd.aquasec.com/misconfig/ksv-0011)|\n\nEnforcing CPU limits prevents DoS via resource exhaustion."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0012",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Runs as root user"
+       },
+       "fullDescription": {
+        "text": "Force the running image to run as a non-root user to ensure least privileges."
+       },
+       "defaultConfiguration": {
+        "level": "warning"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0012",
+       "help": {
+        "text": "Misconfiguration KSV-0012\nType: Kubernetes Security Check\nSeverity: MEDIUM\nCheck: Runs as root user\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsNonRoot' to true\nLink: [KSV-0012](https://avd.aquasec.com/misconfig/ksv-0012)\nForce the running image to run as a non-root user to ensure least privileges.",
+        "markdown": "**Misconfiguration KSV-0012**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|MEDIUM|Runs as root user|Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsNonRoot' to true|[KSV-0012](https://avd.aquasec.com/misconfig/ksv-0012)|\n\nForce the running image to run as a non-root user to ensure least privileges."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "5.5",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "MEDIUM"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0014",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Root file system is not read-only"
+       },
+       "fullDescription": {
+        "text": "An immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0014",
+       "help": {
+        "text": "Misconfiguration KSV-0014\nType: Kubernetes Security Check\nSeverity: HIGH\nCheck: Root file system is not read-only\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.readOnlyRootFilesystem' to true\nLink: [KSV-0014](https://avd.aquasec.com/misconfig/ksv-0014)\nAn immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk.",
+        "markdown": "**Misconfiguration KSV-0014**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|HIGH|Root file system is not read-only|Container 'app' of Deployment 'gate-demo' should set 'securityContext.readOnlyRootFilesystem' to true|[KSV-0014](https://avd.aquasec.com/misconfig/ksv-0014)|\n\nAn immutable root file system prevents applications from writing to their local disk. This can limit intrusions, as attackers will not be able to tamper with the file system or write foreign executables to disk."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "8.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "HIGH"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0015",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "CPU requests not specified"
+       },
+       "fullDescription": {
+        "text": "When containers have resource requests specified, the scheduler can make better decisions about which nodes to place pods on, and how to deal with resource contention."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0015",
+       "help": {
+        "text": "Misconfiguration KSV-0015\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: CPU requests not specified\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.requests.cpu'\nLink: [KSV-0015](https://avd.aquasec.com/misconfig/ksv-0015)\nWhen containers have resource requests specified, the scheduler can make better decisions about which nodes to place pods on, and how to deal with resource contention.",
+        "markdown": "**Misconfiguration KSV-0015**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|CPU requests not specified|Container 'app' of Deployment 'gate-demo' should set 'resources.requests.cpu'|[KSV-0015](https://avd.aquasec.com/misconfig/ksv-0015)|\n\nWhen containers have resource requests specified, the scheduler can make better decisions about which nodes to place pods on, and how to deal with resource contention."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0016",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Memory requests not specified"
+       },
+       "fullDescription": {
+        "text": "When containers have memory requests specified, the scheduler can make better decisions about which nodes to place pods on, and how to deal with resource contention."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0016",
+       "help": {
+        "text": "Misconfiguration KSV-0016\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Memory requests not specified\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.requests.memory'\nLink: [KSV-0016](https://avd.aquasec.com/misconfig/ksv-0016)\nWhen containers have memory requests specified, the scheduler can make better decisions about which nodes to place pods on, and how to deal with resource contention.",
+        "markdown": "**Misconfiguration KSV-0016**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Memory requests not specified|Container 'app' of Deployment 'gate-demo' should set 'resources.requests.memory'|[KSV-0016](https://avd.aquasec.com/misconfig/ksv-0016)|\n\nWhen containers have memory requests specified, the scheduler can make better decisions about which nodes to place pods on, and how to deal with resource contention."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0017",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Privileged"
+       },
+       "fullDescription": {
+        "text": "Privileged containers share namespaces with the host system and do not offer any security. They should be used exclusively for system containers that require high privileges."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0017",
+       "help": {
+        "text": "Misconfiguration KSV-0017\nType: Kubernetes Security Check\nSeverity: HIGH\nCheck: Privileged\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.privileged' to false\nLink: [KSV-0017](https://avd.aquasec.com/misconfig/ksv-0017)\nPrivileged containers share namespaces with the host system and do not offer any security. They should be used exclusively for system containers that require high privileges.",
+        "markdown": "**Misconfiguration KSV-0017**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|HIGH|Privileged|Container 'app' of Deployment 'gate-demo' should set 'securityContext.privileged' to false|[KSV-0017](https://avd.aquasec.com/misconfig/ksv-0017)|\n\nPrivileged containers share namespaces with the host system and do not offer any security. They should be used exclusively for system containers that require high privileges."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "8.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "HIGH"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0018",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Memory not limited"
+       },
+       "fullDescription": {
+        "text": "Enforcing memory limits prevents DoS via resource exhaustion."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0018",
+       "help": {
+        "text": "Misconfiguration KSV-0018\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Memory not limited\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.limits.memory'\nLink: [KSV-0018](https://avd.aquasec.com/misconfig/ksv-0018)\nEnforcing memory limits prevents DoS via resource exhaustion.",
+        "markdown": "**Misconfiguration KSV-0018**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Memory not limited|Container 'app' of Deployment 'gate-demo' should set 'resources.limits.memory'|[KSV-0018](https://avd.aquasec.com/misconfig/ksv-0018)|\n\nEnforcing memory limits prevents DoS via resource exhaustion."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0020",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Runs with UID <= 10000"
+       },
+       "fullDescription": {
+        "text": "Force the container to run with user ID > 10000 to avoid conflicts with the host\u2019s user table."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0020",
+       "help": {
+        "text": "Misconfiguration KSV-0020\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Runs with UID <= 10000\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsUser' > 10000\nLink: [KSV-0020](https://avd.aquasec.com/misconfig/ksv-0020)\nForce the container to run with user ID > 10000 to avoid conflicts with the host\u2019s user table.",
+        "markdown": "**Misconfiguration KSV-0020**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Runs with UID <= 10000|Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsUser' > 10000|[KSV-0020](https://avd.aquasec.com/misconfig/ksv-0020)|\n\nForce the container to run with user ID > 10000 to avoid conflicts with the host\u2019s user table."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0021",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Runs with GID <= 10000"
+       },
+       "fullDescription": {
+        "text": "Force the container to run with group ID > 10000 to avoid conflicts with the host\u2019s user table."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0021",
+       "help": {
+        "text": "Misconfiguration KSV-0021\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Runs with GID <= 10000\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsGroup' > 10000\nLink: [KSV-0021](https://avd.aquasec.com/misconfig/ksv-0021)\nForce the container to run with group ID > 10000 to avoid conflicts with the host\u2019s user table.",
+        "markdown": "**Misconfiguration KSV-0021**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Runs with GID <= 10000|Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsGroup' > 10000|[KSV-0021](https://avd.aquasec.com/misconfig/ksv-0021)|\n\nForce the container to run with group ID > 10000 to avoid conflicts with the host\u2019s user table."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0030",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Runtime/Default Seccomp profile not set"
+       },
+       "fullDescription": {
+        "text": "According to pod security standard 'Seccomp', the RuntimeDefault seccomp profile must be required, or allow specific additional profiles."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0030",
+       "help": {
+        "text": "Misconfiguration KSV-0030\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Runtime/Default Seccomp profile not set\nMessage: Either Pod or Container should set 'securityContext.seccompProfile.type' to 'RuntimeDefault'\nLink: [KSV-0030](https://avd.aquasec.com/misconfig/ksv-0030)\nAccording to pod security standard 'Seccomp', the RuntimeDefault seccomp profile must be required, or allow specific additional profiles.",
+        "markdown": "**Misconfiguration KSV-0030**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Runtime/Default Seccomp profile not set|Either Pod or Container should set 'securityContext.seccompProfile.type' to 'RuntimeDefault'|[KSV-0030](https://avd.aquasec.com/misconfig/ksv-0030)|\n\nAccording to pod security standard 'Seccomp', the RuntimeDefault seccomp profile must be required, or allow specific additional profiles."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0104",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Seccomp policies disabled"
+       },
+       "fullDescription": {
+        "text": "A program inside the container can bypass Seccomp protection policies."
+       },
+       "defaultConfiguration": {
+        "level": "warning"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0104",
+       "help": {
+        "text": "Misconfiguration KSV-0104\nType: Kubernetes Security Check\nSeverity: MEDIUM\nCheck: Seccomp policies disabled\nMessage: container \"app\" of deployment \"gate-demo\" in \"demo\" namespace should specify a seccomp profile\nLink: [KSV-0104](https://avd.aquasec.com/misconfig/ksv-0104)\nA program inside the container can bypass Seccomp protection policies.",
+        "markdown": "**Misconfiguration KSV-0104**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|MEDIUM|Seccomp policies disabled|container \"app\" of deployment \"gate-demo\" in \"demo\" namespace should specify a seccomp profile|[KSV-0104](https://avd.aquasec.com/misconfig/ksv-0104)|\n\nA program inside the container can bypass Seccomp protection policies."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "5.5",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "MEDIUM"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0106",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Container capabilities must only include NET_BIND_SERVICE"
+       },
+       "fullDescription": {
+        "text": "Containers must drop ALL capabilities, and are only permitted to add back the NET_BIND_SERVICE capability."
+       },
+       "defaultConfiguration": {
+        "level": "note"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0106",
+       "help": {
+        "text": "Misconfiguration KSV-0106\nType: Kubernetes Security Check\nSeverity: LOW\nCheck: Container capabilities must only include NET_BIND_SERVICE\nMessage: container should drop all\nLink: [KSV-0106](https://avd.aquasec.com/misconfig/ksv-0106)\nContainers must drop ALL capabilities, and are only permitted to add back the NET_BIND_SERVICE capability.",
+        "markdown": "**Misconfiguration KSV-0106**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|LOW|Container capabilities must only include NET_BIND_SERVICE|container should drop all|[KSV-0106](https://avd.aquasec.com/misconfig/ksv-0106)|\n\nContainers must drop ALL capabilities, and are only permitted to add back the NET_BIND_SERVICE capability."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "2.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "LOW"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0118",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Default security context configured"
+       },
+       "fullDescription": {
+        "text": "Security context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0118",
+       "help": {
+        "text": "Misconfiguration KSV-0118\nType: Kubernetes Security Check\nSeverity: HIGH\nCheck: Default security context configured\nMessage: deployment gate-demo in demo namespace is using the default security context, which allows root privileges\nLink: [KSV-0118](https://avd.aquasec.com/misconfig/ksv-0118)\nSecurity context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access.",
+        "markdown": "**Misconfiguration KSV-0118**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|HIGH|Default security context configured|deployment gate-demo in demo namespace is using the default security context, which allows root privileges|[KSV-0118](https://avd.aquasec.com/misconfig/ksv-0118)|\n\nSecurity context controls the allocation of security parameters for the pod/container/volume, ensuring the appropriate level of protection. Relying on default security context may expose vulnerabilities to potential attacks that rely on privileged access."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "8.0",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "HIGH"
+        ]
+       }
+      },
+      {
+       "id": "KSV-0125",
+       "name": "Misconfiguration",
+       "shortDescription": {
+        "text": "Restrict container images to trusted registries"
+       },
+       "fullDescription": {
+        "text": "Ensure that all containers use images only from trusted registry domains."
+       },
+       "defaultConfiguration": {
+        "level": "warning"
+       },
+       "helpUri": "https://avd.aquasec.com/misconfig/ksv-0125",
+       "help": {
+        "text": "Misconfiguration KSV-0125\nType: Kubernetes Security Check\nSeverity: MEDIUM\nCheck: Restrict container images to trusted registries\nMessage: Container app in deployment gate-demo (namespace: demo) uses an image from an untrusted registry.\nLink: [KSV-0125](https://avd.aquasec.com/misconfig/ksv-0125)\nEnsure that all containers use images only from trusted registry domains.",
+        "markdown": "**Misconfiguration KSV-0125**\n| Type | Severity | Check | Message | Link |\n| --- | --- | --- | --- | --- |\n|Kubernetes Security Check|MEDIUM|Restrict container images to trusted registries|Container app in deployment gate-demo (namespace: demo) uses an image from an untrusted registry.|[KSV-0125](https://avd.aquasec.com/misconfig/ksv-0125)|\n\nEnsure that all containers use images only from trusted registry domains."
+       },
+       "properties": {
+        "precision": "very-high",
+        "security-severity": "5.5",
+        "tags": [
+         "misconfiguration",
+         "security",
+         "MEDIUM"
+        ]
+       }
+      }
+     ],
+     "version": "0.76.2"
+    }
+   },
+   "results": [
+    {
+     "ruleId": "KSV-0001",
+     "ruleIndex": 0,
+     "level": "warning",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0001\nSeverity: MEDIUM\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.allowPrivilegeEscalation' to false\nLink: [KSV-0001](https://avd.aquasec.com/misconfig/ksv-0001)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0003",
+     "ruleIndex": 1,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0003\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should add 'ALL' to 'securityContext.capabilities.drop'\nLink: [KSV-0003](https://avd.aquasec.com/misconfig/ksv-0003)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0004",
+     "ruleIndex": 2,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0004\nSeverity: LOW\nMessage: Container 'app' of 'deployment' 'gate-demo' in 'demo' namespace should set securityContext.capabilities.drop\nLink: [KSV-0004](https://avd.aquasec.com/misconfig/ksv-0004)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0011",
+     "ruleIndex": 3,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0011\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.limits.cpu'\nLink: [KSV-0011](https://avd.aquasec.com/misconfig/ksv-0011)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0012",
+     "ruleIndex": 4,
+     "level": "warning",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0012\nSeverity: MEDIUM\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsNonRoot' to true\nLink: [KSV-0012](https://avd.aquasec.com/misconfig/ksv-0012)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0014",
+     "ruleIndex": 5,
+     "level": "error",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0014\nSeverity: HIGH\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.readOnlyRootFilesystem' to true\nLink: [KSV-0014](https://avd.aquasec.com/misconfig/ksv-0014)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0015",
+     "ruleIndex": 6,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0015\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.requests.cpu'\nLink: [KSV-0015](https://avd.aquasec.com/misconfig/ksv-0015)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0016",
+     "ruleIndex": 7,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0016\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.requests.memory'\nLink: [KSV-0016](https://avd.aquasec.com/misconfig/ksv-0016)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0017",
+     "ruleIndex": 8,
+     "level": "error",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0017\nSeverity: HIGH\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.privileged' to false\nLink: [KSV-0017](https://avd.aquasec.com/misconfig/ksv-0017)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0018",
+     "ruleIndex": 9,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0018\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should set 'resources.limits.memory'\nLink: [KSV-0018](https://avd.aquasec.com/misconfig/ksv-0018)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0020",
+     "ruleIndex": 10,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0020\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsUser' > 10000\nLink: [KSV-0020](https://avd.aquasec.com/misconfig/ksv-0020)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0021",
+     "ruleIndex": 11,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0021\nSeverity: LOW\nMessage: Container 'app' of Deployment 'gate-demo' should set 'securityContext.runAsGroup' > 10000\nLink: [KSV-0021](https://avd.aquasec.com/misconfig/ksv-0021)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0030",
+     "ruleIndex": 12,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0030\nSeverity: LOW\nMessage: Either Pod or Container should set 'securityContext.seccompProfile.type' to 'RuntimeDefault'\nLink: [KSV-0030](https://avd.aquasec.com/misconfig/ksv-0030)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0104",
+     "ruleIndex": 13,
+     "level": "warning",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0104\nSeverity: MEDIUM\nMessage: container \"app\" of deployment \"gate-demo\" in \"demo\" namespace should specify a seccomp profile\nLink: [KSV-0104](https://avd.aquasec.com/misconfig/ksv-0104)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0106",
+     "ruleIndex": 14,
+     "level": "note",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0106\nSeverity: LOW\nMessage: container should drop all\nLink: [KSV-0106](https://avd.aquasec.com/misconfig/ksv-0106)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0118",
+     "ruleIndex": 15,
+     "level": "error",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0118\nSeverity: HIGH\nMessage: deployment gate-demo in demo namespace is using the default security context, which allows root privileges\nLink: [KSV-0118](https://avd.aquasec.com/misconfig/ksv-0118)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 15,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "KSV-0125",
+     "ruleIndex": 16,
+     "level": "warning",
+     "message": {
+      "text": "Artifact: k8s/deployment.yaml\nType: kubernetes\nVulnerability KSV-0125\nSeverity: MEDIUM\nMessage: Container app in deployment gate-demo (namespace: demo) uses an image from an untrusted registry.\nLink: [KSV-0125](https://avd.aquasec.com/misconfig/ksv-0125)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "k8s/deployment.yaml",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 17,
+         "startColumn": 1,
+         "endLine": 20,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "k8s/deployment.yaml"
+       }
+      }
+     ]
+    }
+   ],
+   "columnKind": "utf16CodeUnits",
+   "originalUriBaseIds": {
+    "ROOTPATH": {
+     "uri": "file:///home/agent/target/"
+    }
+   }
+  },
+  {
+   "tool": {
+    "driver": {
+     "name": "licence-policy",
+     "rules": [
+      {
+       "id": "licence-denied",
+       "shortDescription": {
+        "text": "Licence on the deny list"
+       }
+      }
+     ]
+    }
+   },
+   "results": [
+    {
+     "ruleId": "licence-denied",
+     "level": "error",
+     "message": {
+      "text": "pkg:npm/lab-pdf-render@0.9.0: GPL-3.0-only is on the deny list"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "sbom.cdx.json"
+        }
+       },
+       "logicalLocations": [
+        {
+         "name": "pkg:npm/lab-pdf-render@0.9.0"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

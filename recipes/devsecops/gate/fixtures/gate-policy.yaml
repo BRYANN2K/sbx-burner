@@ -1,0 +1,39 @@
+# Gate policy for devsecops/gate.
+# Edit a copy of this file BEFORE a run to match your organisation.
+# During a run the policy is read-only: the agent reports the decision, it
+# never changes the rules to make a failing gate pass.
+schema_version: "1"
+
+# Checks that must produce a report. A missing report fails the gate.
+required_checks: [secrets, sca, sast, iac, sbom, licence]
+# The image scan is required only when the target has a Dockerfile.
+container_required_with_dockerfile: true
+# What a required check that could not run does to the gate: fail | warn.
+on_check_error: fail
+
+# secrets (gitleaks): any | none. "any" fails on every leak.
+secrets_fail_on: any
+
+# SCA (osv-scanner): severities that fail, and whether a fix must exist.
+sca_fail_severities: [critical, high]
+sca_only_with_fix: true
+
+# SAST (semgrep): ERROR counts as high, WARNING as medium, INFO as low.
+sast_fail_severities: [critical, high]
+
+# IaC (trivy config).
+iac_fail_severities: [critical, high]
+
+# Container image (trivy image).
+container_fail_severities: [critical, high]
+container_only_with_fix: true
+
+# Licences (SPDX ids) that fail the gate when found in the SBOM.
+licence_deny:
+  - AGPL-3.0-only
+  - AGPL-3.0-or-later
+  - GPL-2.0-only
+  - GPL-2.0-or-later
+  - GPL-3.0-only
+  - GPL-3.0-or-later
+  - SSPL-1.0
