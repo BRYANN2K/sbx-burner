@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-from . import __version__, approve, evals, lint, runner, sbx, scope_new
+from . import __version__, approve, evals, lint, probe, runner, sbx, scope_new
 from . import scope as scope_mod
 from .recipe import RecipeError, discover, find
 from .sbx import AGENTS
@@ -237,6 +238,27 @@ def _cmd_scope(args: argparse.Namespace) -> int:
     return 0 if all(scope.in_scope(h) for h in args.host or []) else runner.EXIT_REFUSED
 
 
+def _cmd_models(args: argparse.Namespace) -> int:
+    def log(step: str) -> None:
+        print(f"models: {step}", file=sys.stderr, flush=True)
+
+    try:
+        data = probe.probe(args.agent, os.environ.get("BURNER_ACP_BRIDGE", ""), log=log)
+    except probe.ProbeError as exc:
+        if args.json:
+            print(json.dumps({"agent": args.agent, "error": str(exc)}))
+        else:
+            print(f"refused: {exc}", file=sys.stderr)
+        return exc.code
+    if args.json:
+        print(json.dumps(data, ensure_ascii=False))
+    else:
+        for v in data.get("values") or []:
+            mark = "*" if v.get("Value") == data.get("current") else " "
+            print(f" {mark} {v.get('Value', '')}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lab", description="Run disposable lab recipes for coding agents in Docker Sandboxes (sbx).")
     parser.add_argument("--version", action="version", version=f"lab {__version__}")
@@ -253,6 +275,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_agents = sub.add_parser("agents", help="list the agents the runner can launch")
     p_agents.add_argument("--json", action="store_true")
     p_agents.set_defaults(func=_cmd_agents)
+
+    p_models = sub.add_parser("models", help="ask an ACP agent for its models in a throwaway sandbox")
+    p_models.add_argument("--agent", required=True, choices=sorted(a for a, v in AGENTS.items() if v.acp))
+    p_models.add_argument("--json", action="store_true")
+    p_models.set_defaults(func=_cmd_models)
 
     p_lint = sub.add_parser("lint", help="validate every recipe against the contract")
     p_lint.add_argument("recipe", nargs="*", help="lint only these recipes (default: everything, including the index)")

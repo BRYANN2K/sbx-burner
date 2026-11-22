@@ -58,6 +58,9 @@ type setupModel struct {
 	prefs     Prefs
 	models    ModelList
 	modelsFor string
+	probing   bool            // asking the agent in a throwaway sandbox
+	modelsErr string          // the probe's failure
+	probed    map[string]bool // agents already probed
 	loading   bool
 	busy      bool
 	note      string
@@ -83,6 +86,8 @@ type sampleMsg struct {
 type setupModelsMsg struct {
 	agent string
 	list  ModelList
+	probe bool   // the answer of ProbeModels
+	err   string // the probe's failure
 }
 
 func sampleDir() string { return expandHome("~/burner-sample") }
@@ -197,7 +202,7 @@ func (m model) loadSetupModels() tea.Cmd {
 	ctx, eng := m.ctx, m.eng
 	return func() tea.Msg {
 		l, _ := eng.Models(ctx, agent)
-		return setupModelsMsg{agent, l}
+		return setupModelsMsg{agent: agent, list: l}
 	}
 }
 
@@ -256,8 +261,30 @@ func (m model) updateSetup(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.checking = true
 		return m, m.runChecks()
 	case setupModelsMsg:
-		if msg.agent == s.modelsFor {
-			s.models, s.loading = msg.list, false
+		if msg.agent != s.modelsFor {
+			return m, nil
+		}
+		s.models, s.loading = msg.list, false
+		switch {
+		case msg.probe:
+			s.probing, s.modelsErr = false, msg.err
+		case !msg.list.Known && !s.probed[msg.agent]:
+			if s.probed == nil {
+				s.probed = map[string]bool{}
+			}
+			s.probed[msg.agent], s.probing, s.modelsErr = true, true, ""
+			ctx, eng, agent := m.ctx, m.eng, msg.agent
+			return m, func() tea.Msg {
+				l, err := eng.ProbeModels(ctx, agent)
+				out := setupModelsMsg{agent: agent, list: l, probe: true}
+				if err != nil {
+					out.list, out.err = ModelList{}, l.Error
+					if out.err == "" {
+						out.err = sanitize.Line(err.Error(), 200)
+					}
+				}
+				return out
+			}
 		}
 		return m, nil
 	case sampleMsg:
@@ -736,6 +763,10 @@ func (m model) viewSetup() string {
 		switch {
 		case s.loading:
 			mline += "  " + sAmber.Render(m.spin()) + " " + sDim.Render("asking "+p.Agent+" for its models…")
+		case s.probing && s.modelsFor == p.Agent:
+			mline += "\n" + strings.Repeat(" ", 18) + sAmber.Render(m.spin()) + " " + sDim.Render("asking "+p.Agent+" for its models… (first time ~1 min)")
+		case s.modelsErr != "" && s.modelsFor == p.Agent:
+			mline += "\n" + strings.Repeat(" ", 18) + sAmber.Render(truncate(s.modelsErr, w-20))
 		case len(s.models.Values) == 0:
 			mline += "  " + sDim.Render("full list after the first run")
 		}

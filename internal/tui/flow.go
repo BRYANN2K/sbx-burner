@@ -54,6 +54,8 @@ type question struct {
 	dirs, files bool
 	types       []string
 	loading     string // shown with a spinner instead of the question
+	wait        string // shown with a spinner under the options, which stay usable
+	warn        string // one line under the options
 	loader      string // what startLoad runs: models | scope-dry
 	loadKey     string
 	loadOpts    engine.RunOptions
@@ -92,6 +94,9 @@ type flowModel struct {
 	models        ModelList
 	modelsFor     string
 	modelsLoading bool
+	modelsProbing bool            // asking the agent in a throwaway sandbox
+	modelsErr     string          // the probe's failure (sign-in hint)
+	probed        map[string]bool // agents already probed in this flow
 }
 
 // walker hands out recorded answers in order, then records the first
@@ -330,7 +335,13 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 				mo = append(mo, option{label: md.Value, value: md.Value, note: md.Name})
 			}
 		}
-		mdl, ok := w.ask(question{section: "model", title: "Model", kind: qSelect, options: mo, cursor: optIndex(mo, f.prefs.Model)})
+		q := question{section: "model", title: "Model", kind: qSelect, options: mo, cursor: optIndex(mo, f.prefs.Model)}
+		if f.modelsProbing {
+			q.wait = "asking " + o.Agent + " for its models… (first time ~1 min)"
+		} else if f.modelsErr != "" {
+			q.warn = f.modelsErr
+		}
+		mdl, ok := w.ask(q)
 		if !ok {
 			return
 		}
@@ -655,6 +666,25 @@ func (f *flowModel) back() bool {
 type modelsMsg struct {
 	agent  string
 	models ModelList
+	probe  bool   // the answer of ProbeModels, not of the cache
+	err    string // the probe's failure
+}
+
+// probeModels asks the agent itself when nothing is cached; "default"
+// stays selectable meanwhile.
+func (m model) probeModels(agent string) tea.Cmd {
+	ctx, eng := m.ctx, m.eng
+	return func() tea.Msg {
+		ms, err := eng.ProbeModels(ctx, agent)
+		msg := modelsMsg{agent: agent, models: ms, probe: true}
+		if err != nil {
+			msg.err = ms.Error
+			if msg.err == "" {
+				msg.err = sanitize.Line(err.Error(), 200)
+			}
+		}
+		return msg
+	}
 }
 
 func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -674,11 +704,34 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(f.focusCmd(), m.startLoad())
 	}
 	if mm, ok := msg.(modelsMsg); ok {
+		var probe tea.Cmd
 		if mm.agent == f.modelsFor {
+			cursor, title := f.cursor, ""
+			if f.q != nil {
+				title = f.q.title
+			}
 			f.models, f.modelsLoading = mm.models, false
+			switch {
+			case mm.probe:
+				f.modelsProbing, f.modelsErr = false, mm.err
+				if mm.err != "" {
+					f.models = ModelList{}
+				}
+			case !mm.models.Known && !f.probed[mm.agent]:
+				if f.probed == nil {
+					f.probed = map[string]bool{}
+				}
+				f.probed[mm.agent], f.modelsProbing, f.modelsErr = true, true, ""
+				probe = m.probeModels(mm.agent)
+			}
 			f.advance()
+			// The list grew under the user's cursor: keep it on "default"
+			// or wherever it was, not on the preference.
+			if mm.probe && f.q != nil && f.q.title == title && title == "Model" && cursor < len(f.q.options) {
+				f.cursor = cursor
+			}
 		}
-		return m, f.focusCmd()
+		return m, tea.Batch(f.focusCmd(), probe)
 	}
 	k, isKey := msg.(tea.KeyMsg)
 	if f.q == nil {
@@ -884,6 +937,12 @@ func (m model) viewFlow() string {
 			default:
 				body = append(body, "  "+sSoft.Render(line))
 			}
+		}
+		if q.wait != "" {
+			body = append(body, "", sAmber.Render(m.spin())+" "+sDim.Render(q.wait))
+		}
+		if q.warn != "" {
+			body = append(body, "", sAmber.Render(truncate(q.warn, inner-2)))
 		}
 	case q.kind == qInput:
 		if q.hint != "" {

@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
 	"github.com/BRYANN2K/sbx-burner/internal/sanitize"
@@ -23,6 +24,49 @@ import (
 // Risky techniques, off by default (lab/scope.py RISKY); checking one
 // writes it under techniques.risky.
 var riskyTechs = []string{"brute-force", "lockout-testing", "credential-reuse", "dos", "ddos", "data-destruction", "social-engineering", "phishing", "physical", "ransomware"}
+
+// techDesc is the one line shown next to the focused technique.
+var techDesc = map[string]string{
+	"recon":                      "passive discovery: DNS, headers, public pages",
+	"scan":                       "port and service scans of the targets",
+	"automated-scanning":         "scanners such as nuclei, ZAP or nikto",
+	"endpoint-mapping":           "list routes, parameters and APIs",
+	"content-discovery":          "find hidden paths and files with a wordlist",
+	"passive-scan":               "observe traffic and responses, send no attacks",
+	"rate-limit-observation":     "watch how the target throttles requests",
+	"authz-testing":              "what each role is allowed to do",
+	"input-validation":           "malformed and boundary inputs",
+	"code-review":                "read the source for flaws",
+	"local-dynamic-confirmation": "confirm a finding by running the code locally",
+	"remote-testing":             "send requests to the deployed target",
+	"auth-testing":               "login, password reset and MFA flows",
+	"session-testing":            "cookies, tokens and session lifetime",
+	"access-control-testing":     "one user reaching another user's data",
+	"input-validation-testing":   "malformed and boundary inputs",
+	"injection-testing":          "SQL, command and template injection",
+	"business-logic-testing":     "abuse of the app's own workflows",
+	"exploit":                    "prove a finding with a working exploit",
+	"exploit-weaponization":      "turn a proof into a reusable attack",
+	"static-analysis":            "read code or binaries without running them",
+	"dynamic-analysis":           "run the sample and watch what it does",
+	"disassembly":                "disassemble or decompile binaries",
+	"debugger":                   "step through the program in a debugger",
+	"file-handling":              "open, unpack and parse the files",
+	"input-crafting":             "craft inputs that trigger a behaviour",
+	"network-access":             "let the sample reach the network",
+	"oob-callback":               "out-of-band callbacks to a host you control",
+	"pivot":                      "use one target to reach another",
+	"brute-force":                "guess passwords or keys at volume",
+	"lockout-testing":            "trigger account lockouts",
+	"credential-reuse":           "try found credentials on other services",
+	"dos":                        "degrade or stop a service",
+	"ddos":                       "distributed denial of service",
+	"data-destruction":           "delete or corrupt data",
+	"social-engineering":         "manipulate people into acting",
+	"phishing":                   "deceptive messages to people",
+	"physical":                   "physical access to sites or devices",
+	"ransomware":                 "encrypt data the way ransomware does",
+}
 
 var formFields = []string{"name", "targets", "auth", "days", "techs", "out", "net"}
 
@@ -413,6 +457,9 @@ func (m model) keyScopeForm(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		f.field = (f.field + 1) % len(formFields)
+		if formFields[f.field] == "techs" {
+			f.tcur = 0 // entering from above: the first row
+		}
 		return m, nil
 	case "shift+tab", "up":
 		if key == "up" && field == "techs" && f.tcur > 0 {
@@ -420,6 +467,9 @@ func (m model) keyScopeForm(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		f.field = (f.field + len(formFields) - 1) % len(formFields)
+		if formFields[f.field] == "techs" {
+			f.tcur = len(f.techs) + len(f.risky) - 1 // entering from below: the last row
+		}
 		return m, nil
 	case "esc":
 		if m.flow == nil {
@@ -497,6 +547,11 @@ func (m model) keyScopeForm(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		f.days = opts[i]
 	case "techs":
+		if key == "a" || key == "n" {
+			for i := range f.techs {
+				f.techs[i].on = key == "a"
+			}
+		}
 		if key == " " {
 			if f.tcur < len(f.techs) {
 				f.techs[f.tcur].on = !f.techs[f.tcur].on
@@ -529,8 +584,10 @@ func (m model) viewScopeForm() string {
 
 	sideW := 40
 	formW := w - sideW
+	inner := formW - 4 // inside the column border and padding
+	focus := func(name string) bool { return formFields[f.field] == name }
 	label := func(name, text string) string {
-		if formFields[f.field] == name {
+		if focus(name) {
 			return sAmber.Render("❯ " + text)
 		}
 		return sDim.Render("  " + text)
@@ -541,69 +598,92 @@ func (m model) viewScopeForm() string {
 		}
 		return sDim.Render(" " + s + " ")
 	}
-	var L []string
-	cursor := func(name string) string {
-		if formFields[f.field] == name {
-			return sAmber.Render("▌")
+	// value is a field's value line: highlighted full width when the field
+	// has focus (plain text, the choice in brackets), styled otherwise.
+	value := func(name, styled, plain string) string {
+		if focus(name) {
+			return "  " + sel(inner-2, "  "+plain)
 		}
-		return ""
+		return "    " + styled
 	}
-	L = append(L, label("name", "Name"), "    "+sText.Render(f.name)+cursor("name"), "")
-	tl := "    "
-	for _, t := range f.targets {
-		tl += chip(t, true) + " "
+	choices := func(opts []string, cur string) (string, string) {
+		var st, pl []string
+		for _, o := range opts {
+			st = append(st, chip(o, o == cur))
+			if o == cur {
+				pl = append(pl, "["+o+"]")
+			} else {
+				pl = append(pl, " "+o+" ")
+			}
+		}
+		return strings.Join(st, " "), strings.Join(pl, " ")
 	}
-	L = append(L, label("targets", "Targets"), tl+sDim.Render("+ add host"))
+	hosts := func(hs []string, on bool) (string, string) {
+		styled, plain := "", ""
+		for _, h := range hs {
+			styled += chip(h, on) + " "
+			plain += h + "  "
+		}
+		return styled + sDim.Render("+ add host"), plain + "+ add host"
+	}
+	caret := ""
+	if focus("name") || focus("auth") {
+		caret = "▌"
+	}
+	var L []string
+	L = append(L, label("name", "Name"), value("name", sText.Render(f.name), f.name+caret), "")
+	st, pl := hosts(f.targets, true)
+	L = append(L, label("targets", "Targets"), value("targets", st, pl))
 	if f.adding == "targets" {
 		L = append(L, "    "+f.input.View())
 	}
-	L = append(L, "", label("auth", "Authorization"), "    "+chip("own-lab", f.auth == "own-lab")+" "+chip("written", f.auth == "written"))
+	st, pl = choices([]string{"own-lab", "written"}, f.auth)
+	L = append(L, "", label("auth", "Authorization"), value("auth", st, pl))
 	if f.auth == "written" {
 		ref := sText.Render(f.ref)
 		if f.ref == "" {
 			ref = sFaint.Render("contract, ticket or program URL")
 		}
-		L = append(L, "    "+sDim.Render("reference ")+ref+cursor("auth"))
+		L = append(L, value("auth", sDim.Render("reference ")+ref, "reference "+f.ref+caret))
 	}
-	dates := sDim.Render(f.today.Format("2006-01-02") + " → " + f.today.AddDate(0, 0, f.days).Format("2006-01-02"))
-	L = append(L, "", label("days", "Valid for"), "    "+chip("7 days", f.days == 7)+" "+chip("30 days", f.days == 30)+" "+chip("90 days", f.days == 90)+"  "+dates)
+	dates := f.today.Format("2006-01-02") + " → " + f.today.AddDate(0, 0, f.days).Format("2006-01-02")
+	st, pl = choices([]string{"7 days", "30 days", "90 days"}, fmt.Sprintf("%d days", f.days))
+	L = append(L, "", label("days", "Valid for"), value("days", st+"  "+sDim.Render(dates), pl+"  "+dates))
 	L = append(L, "", label("techs", "Techniques"))
-	colW := max(20, (formW-8)/2)
 	row := func(t techRow, i int, risky bool) string {
-		box := sFaint.Render("[ ]")
+		mark := "[ ]"
 		if t.on {
-			box = sSoft.Render("[x]")
-			if risky {
-				box = sAmber.Render("[x]")
+			mark = "[x]"
+		}
+		if focus("techs") && f.tcur == i {
+			line := "❯ " + mark + " " + t.name
+			if d := techDesc[t.name]; d != "" {
+				line = ellipsis(line+strings.Repeat(" ", max(2, 30-lipgloss.Width(line)))+d, inner-2)
 			}
+			return "  " + sel(inner-2, line)
 		}
-		s := box + " " + t.name
-		if formFields[f.field] == "techs" && f.tcur == i {
-			s = sSel.Render(box + " " + t.name)
+		switch {
+		case t.on && risky:
+			return "      " + sAmber.Render(mark+" "+t.name)
+		case t.on:
+			return "      " + sSoft.Render(mark) + " " + sText.Render(t.name)
 		}
-		return s + strings.Repeat(" ", max(1, colW-lipgloss.Width(box+" "+t.name)))
+		return "      " + sFaint.Render(mark) + " " + sDim.Render(t.name)
 	}
-	grid := func(rows []techRow, offset int, risky bool) {
-		for i := 0; i < len(rows); i += 2 {
-			line := "    " + row(rows[i], offset+i, risky)
-			if i+1 < len(rows) {
-				line += row(rows[i+1], offset+i+1, risky)
-			}
-			L = append(L, line)
-		}
+	for i, t := range f.techs {
+		L = append(L, row(t, i, false))
 	}
-	grid(f.techs, 0, false)
-	L = append(L, "    "+sDim.Render("risky"))
-	grid(f.risky, len(f.techs), true)
-	ol := "    "
-	for _, t := range f.out {
-		ol += chip(t, false) + " "
+	L = append(L, "", "    "+sDim.Render("risky"))
+	for i, t := range f.risky {
+		L = append(L, row(t, len(f.techs)+i, true))
 	}
-	L = append(L, "", label("out", "Out of scope"), ol+sDim.Render("+ add host"))
+	st, pl = hosts(f.out, false)
+	L = append(L, "", label("out", "Out of scope"), value("out", st, pl))
 	if f.adding == "out" {
 		L = append(L, "    "+f.input.View())
 	}
-	L = append(L, "", label("net", "Network"), "    "+chip("strict", f.net == "strict")+" "+chip("standard", f.net == "standard"))
+	st, pl = choices([]string{"strict", "standard"}, f.net)
+	L = append(L, "", label("net", "Network"), value("net", st, pl))
 	if f.adding == "export" {
 		L = append(L, "", sBold.Render("Export to"), "    "+f.input.View())
 	}
@@ -669,13 +749,34 @@ func (m model) viewScopeForm() string {
 	}
 
 	bodyH := m.h - 2
+	// A long form scrolls to keep the focused line (the last "❯ ") in view.
+	if avail := bodyH - 2; avail > 0 && len(L) > avail {
+		at := 0
+		for i, l := range L {
+			if strings.Contains(ansi.Strip(l), "❯ ") {
+				at = i
+			}
+		}
+		start := min(max(0, at-avail/2), len(L)-avail)
+		L = L[start : start+avail]
+	}
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
 		col(formW, bodyH, strings.Join(L, "\n"), "left"),
 		col(sideW, bodyH, strings.Join(P, "\n"), "right")) + "\n")
-	keys := []string{"tab", "next field", "space", "toggle", "←→", "choose", "a", "add host", "enter", "save + use", "x", "export", "esc", "back"}
+	save := "save + use"
 	if m.flow == nil {
-		keys[9] = "save"
+		save = "save"
 	}
+	keys := []string{"↑↓", "move", "tab", "next field"}
+	switch formFields[f.field] {
+	case "techs":
+		keys = append(keys, "space", "toggle", "a", "all", "n", "none")
+	case "targets", "out":
+		keys = append(keys, "a", "add host", "d", "remove last")
+	case "auth", "days", "net":
+		keys = append(keys, "←→", "choose")
+	}
+	keys = append(keys, "enter", save, "x", "export", "esc", "back")
 	b.WriteString(hints(keys...))
 	return b.String()
 }

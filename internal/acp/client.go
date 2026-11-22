@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -115,6 +116,9 @@ type Client struct {
 
 	sessionID string
 	Options   []ConfigOption
+	// AgentVersion is agentInfo.version from initialize, when it looks
+	// like a version.
+	AgentVersion string
 
 	permPending map[string]bool // agent request ids of unanswered permissions
 	permSlots   chan struct{}   // one handler at a time
@@ -442,6 +446,9 @@ func (c *Client) Initialize(ctx context.Context, version string) error {
 	}
 	var res struct {
 		ProtocolVersion int `json:"protocolVersion"`
+		AgentInfo       struct {
+			Version string `json:"version"`
+		} `json:"agentInfo"`
 	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
@@ -451,8 +458,13 @@ func (c *Client) Initialize(ctx context.Context, version string) error {
 	if res.ProtocolVersion != ProtocolVersion {
 		return fmt.Errorf("%w: agent speaks ACP v%d, burner speaks v%d", ErrProtocol, res.ProtocolVersion, ProtocolVersion)
 	}
+	if v := sanitize.Line(res.AgentInfo.Version, 64); versionRE.MatchString(v) {
+		c.AgentVersion = v
+	}
 	return nil
 }
+
+var versionRE = regexp.MustCompile(`^[0-9A-Za-z.+-]{1,64}$`)
 
 // NewSession opens a session in the sandbox workspace with no MCP servers
 // (R4) and records the agent's config options (model, mode, effort).
