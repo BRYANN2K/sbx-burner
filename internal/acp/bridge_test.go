@@ -441,3 +441,18 @@ func TestCodexTerminalOutputAndBoldThought(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestStripWorkspacePrefix(t *testing.T) {
+	b := &bridge{o: BridgeOptions{Cwd: "/Users/tester/.burner/runs/r/workspace"}}
+	for in, want := range map[string]string{
+		"W=/Users/tester/.burner/runs/r/workspace; cd $W && trufflehog git x > $W/a":  "trufflehog git x > $W/a",
+		"W=/Users/tester/.burner/runs/r/workspace; cd /home/agent/target && gitleaks": "cd /home/agent/target && gitleaks",
+		"cd /Users/tester/.burner/runs/r/workspace; cat a":                            "cat a",
+		"cd /Users/tester/.burner/runs/r/workspace && cat a":                          "cat a",
+		"W=/elsewhere; cd $W && ls":                                                   "W=/elsewhere; cd $W && ls",
+	} {
+		if got := b.stripCd(in); got != want {
+			t.Errorf("%q -> %q, want %q", in, got, want)
+		}
+	}
+}
