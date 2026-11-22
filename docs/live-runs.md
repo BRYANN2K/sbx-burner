@@ -75,3 +75,22 @@ The agent has write access to the workspace, so it could write an answer file it
 - An answer is valid only when `lab-ask` returns it.
 
 The hard boundary is the scope plus the network policy. See [Scope and safety](scope-and-safety.md).
+
+## ACP mode
+
+`burner run <recipe> --acp` drives the agent over the Agent Client Protocol
+instead of its headless command. The live view and `--json` stay the same.
+On top of them:
+
+- `--model ID` picks one of the models the agent offers. Without it, burner
+  asks at the start (attended runs) or keeps the agent's default (`--yes`).
+  `burner models --agent codex` shows the last list the agent sent.
+- `--permission auto|ask`: `auto` (default) allows every request inside the
+  sandbox and logs each one; `ask` sends each request to you as a question.
+- When the agent ends a turn, burner asks for a follow-up note. Pick Finish
+  to end the run.
+- The redacted ACP transcript is saved as `acp-transcript.jsonl` in the run
+  directory.
+
+Agents wired today: `burner acp agents`. Security rules:
+[docs/security/acp.md](security/acp.md).

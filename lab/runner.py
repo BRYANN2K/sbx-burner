@@ -9,6 +9,7 @@ prints that plan; a real run executes the same objects.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as _dt
 import hashlib
 import json
@@ -16,6 +17,7 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -60,6 +62,16 @@ TARGET_INSPECT_FILE = "target-image.txt"
 TARGET_IMAGE_REF_FILE = "target-image-ref"
 # Sourced by every recipe installer; copied next to the recipe tools.
 INSTALL_HELPER = "kits/lab-tools/lab-install.sh"
+# ACP transcript (R12): the bridge writes raw lines host-side, the runner
+# redacts them into ACP_TRANSCRIPT and removes the raw file.
+ACP_TRANSCRIPT_RAW = "acp-transcript.raw.jsonl"
+ACP_TRANSCRIPT = "acp-transcript.jsonl"
+ACP_MAX_OPEN_ASKS = 8
+# Every teardown step is bounded: SIGINT is ignored while it runs.
+TEARDOWN_TIMEOUT = 300
+ACP_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,127}$")
+# Bridge → runner message types the runner acts on; everything else is dropped.
+ACP_EVENT_TYPES = {"agent.message": ("text",), "agent.tool": ("tool", "summary")}
 # Host steps call sources.py standalone (it has no lab imports, so a plain
 # interpreter + absolute path always works, whatever the cwd).
 _SOURCES_PY = str(Path(__file__).resolve().with_name("sources.py"))
@@ -82,12 +94,23 @@ _FLAG_HINT = {
     "demo": "--demo",
 }
 
-PROMPT = (
-    "Read AGENTS.md and TASK.md in the current directory, then carry out the task. "
-    "Stay inside the scope in .lab/scope.json. Record proof for every finding under evidence/ "
-    "and write evidence/evidence.json following .lab/evidence.schema.json. "
-    "Stop when a stop condition in AGENTS.md is met."
-)
+
+def agent_prompt(has_scope: bool, skills_dir: str, skills: list[str]) -> str:
+    """The agent's first instruction. Names .lab/scope.json only when the run
+    writes one, and the skills where this agent's kit mounts them."""
+    parts = ["Read AGENTS.md and TASK.md in the current directory, then carry out the task."]
+    if has_scope:
+        parts.append("Stay inside the scope in .lab/scope.json.")
+    else:
+        parts.append("Stay on the target named in TASK.md.")
+    if skills:
+        listed = ", ".join(f"{skills_dir}/{name}/SKILL.md" for name in skills)
+        parts.append(f"The skills AGENTS.md mentions are in {listed}.")
+    parts.append(
+        "Record proof for every finding under evidence/ and write evidence/evidence.json "
+        "following .lab/evidence.schema.json. Stop when a stop condition in AGENTS.md is met."
+    )
+    return " ".join(parts)
 
 
 class Refused(Exception):
@@ -140,6 +163,8 @@ class Plan:
     notes: list[str] = field(default_factory=list)
     # --prompt/--prompt-file text shown in TASK.md; never part of argv/policy.
     operator_notes: list[dict[str, str]] = field(default_factory=list)
+    # --acp: the agent step is burner's ACP bridge (docs/security/acp.md).
+    acp: bool = False
 
     @property
     def workspace(self) -> Path:
@@ -269,6 +294,9 @@ def build_plan(
     keep: bool = False,
     repo_root: Path = REPO_ROOT,
     operator_notes: list[dict[str, str]] | None = None,
+    acp: bool = False,
+    model: str | None = None,
+    permission: str = "auto",
 ) -> Plan:
     """Validate the request and build the full command plan. Runs nothing."""
     if recipe.errors:
@@ -280,6 +308,15 @@ def build_plan(
     if agent_name not in (recipe.meta.get("agents") or []):
         raise Refused(f"{recipe.id} does not support agent {agent_name!r}")
     agent = sbx.AGENTS[agent_name]
+    if acp and not agent.acp:
+        wired = ", ".join(name for name, a in sbx.AGENTS.items() if a.acp)
+        raise Refused(f"--acp is not wired for {agent_name} yet (ACP agents: {wired})")
+    if permission not in ("auto", "ask"):
+        raise Refused("--permission must be auto or ask")
+    if model is not None and not ACP_MODEL_RE.match(model):
+        raise Refused(f"invalid --model {model!r}")
+    if model is not None and not acp:
+        raise Refused("--model needs --acp (the model list comes from the agent over ACP)")
 
     scope: scope_mod.Scope | None = None
     if scope_path:
@@ -480,9 +517,10 @@ def build_plan(
     app_hosts = list(sources.ecosystem_hosts(detected.get("ecosystem"))) if app_src_path is not None else []
     if app_src_is_repo:
         app_hosts = sources.all_ecosystem_hosts()
+    acp_hosts = list(agent.acp_install_hosts) if acp and agent.acp_install else []
     install_only = [
         h
-        for h in recipe.install_allow + app_hosts
+        for h in dict.fromkeys(recipe.install_allow + app_hosts + acp_hosts)
         if h not in policy["allow"] and not any(scope_mod._matches(d, h) for d in policy["deny"])
     ]
 
@@ -744,6 +782,15 @@ def build_plan(
                 timeout=1800,
             )
         )
+    if acp and agent.acp_install:
+        plan.setup.append(
+            Step(
+                "acp-install",
+                sbx.exec_(sandbox, ["bash", "-c", agent.acp_install], workdir=workspace),
+                f"install {agent.name}'s ACP server inside the sandbox (install window)",
+                timeout=900,
+            )
+        )
 
     # --- user target (still inside the install window, before the agent) --
     if kind == "app":
@@ -987,12 +1034,42 @@ def build_plan(
     # PATH is left as the sandbox sets it (tools and agent CLIs live in several
     # directories); lab-ask is called by its absolute workspace path instead.
     agent_env["LAB_WORKSPACE"] = workspace
-    plan.agent_step = Step(
-        "agent",
-        sbx.exec_(sandbox, [*agent.headless, PROMPT], workdir=workspace, env=agent_env),
-        f"run {agent.name} headless with the recipe AGENTS.md and skills",
-        timeout=int(recipe.run.get("timeout_minutes", 30)) * 60,
-    )
+    skill_names = [skill.name for skill in recipe.skills()] + [str(n) for n in recipe.run.get("shared_skills") or []]
+    prompt = agent_prompt(scope is not None, agent.skills_dir, skill_names)
+    if acp:
+        plan.acp = True
+        bridge = [
+            os.environ.get("BURNER_ACP_BRIDGE") or "burner",
+            "acp-bridge",
+            f"--agent={agent.name}",
+            f"--permission={permission}",
+            f"--cwd={workspace}",
+            f"--transcript={run_dir / ACP_TRANSCRIPT_RAW}",
+            f"--prompt={prompt}",
+        ]
+        if model:
+            bridge.append(f"--model={model}")
+        plan.agent_step = Step(
+            "agent",
+            [*bridge, "--", *sbx.exec_(sandbox, list(agent.acp), workdir=workspace, env=agent_env, interactive=True)],
+            f"drive {agent.name} over ACP (burner acp-bridge; permissions: "
+            + ("auto-allow, logged" if permission == "auto" else "ask the operator")
+            + (f"; model {model}" if model else "")
+            + ")",
+            timeout=int(recipe.run.get("timeout_minutes", 30)) * 60,
+        )
+        plan.notes.append(
+            "ACP mode: burner declares no client capability and refuses every agent request except "
+            "permissions (docs/security/acp.md); the raw transcript is redacted into "
+            f"{ACP_TRANSCRIPT}."
+        )
+    else:
+        plan.agent_step = Step(
+            "agent",
+            sbx.exec_(sandbox, [*agent.headless, prompt], workdir=workspace, env=agent_env),
+            f"run {agent.name} headless with the recipe AGENTS.md and skills",
+            timeout=int(recipe.run.get("timeout_minutes", 30)) * 60,
+        )
 
     # --- collect + teardown -----------------------------------------------
     plan.collect.append(
@@ -1289,6 +1366,12 @@ def prepare_workspace(plan: Plan, repo_root: Path = REPO_ROOT) -> None:
 
 
 Exec = Callable[[list[str], int | None], "subprocess.CompletedProcess[str]"]
+# Runs the ACP bridge: (argv, timeout, on_line(line, reply), abort_check).
+# ``reply(obj)`` writes one JSON line to the bridge's stdin.
+AcpExec = Callable[
+    [list[str], "int | None", "Callable[[str, Callable[[dict[str, Any]], None]], None]", "Callable[[], bool]"],
+    "subprocess.CompletedProcess[str]",
+]
 # Streams the agent step: (argv, timeout, on_line, abort_check) -> result.
 StreamExec = Callable[
     [list[str], "int | None", "Callable[[str], None]", "Callable[[], bool]"],
@@ -1298,6 +1381,194 @@ StreamExec = Callable[
 
 def _default_exec(argv: list[str], timeout: int | None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False)
+
+
+def _default_acp_exec(
+    argv: list[str],
+    timeout: int | None,
+    on_line: Callable[[str, Callable[[dict[str, Any]], None]], None],
+    abort_check: Callable[[], bool],
+) -> subprocess.CompletedProcess[str]:
+    """Run burner's ACP bridge with a stdin pipe for operator answers."""
+    proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    wlock = threading.Lock()
+    out: list[str] = []
+    err: list[str] = []
+
+    def reply(obj: dict[str, Any]) -> None:
+        with wlock:
+            try:
+                assert proc.stdin is not None
+                proc.stdin.write(json.dumps(obj) + "\n")
+                proc.stdin.flush()
+            except (OSError, ValueError):
+                pass
+
+    def pump() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            out.append(line)
+            try:
+                on_line(line, reply)
+            except Exception:  # noqa: S110 - the reader must outlive a bad callback
+                pass
+
+    def pump_err() -> None:
+        assert proc.stderr is not None
+        for line in proc.stderr:
+            if sum(len(x) for x in err) < 1 << 20:
+                err.append(line)
+
+    threads = [threading.Thread(target=pump, daemon=True), threading.Thread(target=pump_err, daemon=True)]
+    for t in threads:
+        t.start()
+    deadline = (time.monotonic() + timeout) if timeout else None
+    timed_out = False
+    while proc.poll() is None:
+        if abort_check():
+            proc.terminate()
+            break
+        if deadline and time.monotonic() > deadline:
+            timed_out = True
+            proc.terminate()
+            break
+        time.sleep(0.05)
+    try:
+        rc = proc.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        rc = proc.wait()
+    for t in threads:
+        t.join(timeout=3)
+    if timed_out:
+        rc = 124
+    return subprocess.CompletedProcess(argv, rc, "".join(out), "".join(err))
+
+
+def _acp_line_handler(
+    agent: str,
+    emit: Callable[..., Any],
+    ask_bridge: Any,
+    log: Callable[[str], None],
+    skipped: list[int],
+    seeds: evidence_mod.Seeds | None = None,
+) -> Callable[[str, Callable[[dict[str, Any]], None]], None]:
+    """Validate bridge lines; only known shapes reach events or the operator."""
+    ask_slots = threading.BoundedSemaphore(ACP_MAX_OPEN_ASKS)
+
+    def handle(line: str, reply: Callable[[dict[str, Any]], None]) -> None:
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            skipped[0] += 1
+            return
+        if not isinstance(msg, dict):
+            skipped[0] += 1
+            return
+        kind = msg.get("t")
+        if kind == "event":
+            fields_allowed = ACP_EVENT_TYPES.get(str(msg.get("type")))
+            data = msg.get("fields")
+            if fields_allowed is None or not isinstance(data, dict):
+                skipped[0] += 1
+                return
+            fields = {k: str(data[k]) for k in fields_allowed if isinstance(data.get(k), str)}
+            if len(fields) != len(fields_allowed):
+                skipped[0] += 1
+                return
+            emit(str(msg["type"]), agent=agent, **fields)
+        elif kind == "ask":
+            ask_id = str(msg.get("id", ""))
+            choices = msg.get("choices") if isinstance(msg.get("choices"), list) else []
+            choices = [str(c) for c in choices[:64]]
+            question = str(msg.get("question", ""))
+            allow_text = bool(msg.get("allow_text"))
+            if not ask_id.startswith("acp-") or not question:
+                skipped[0] += 1
+                return
+
+            if not ask_slots.acquire(blocking=False):
+                # More open questions than the bridge itself allows: no answer.
+                reply({"t": "answer", "id": ask_id, "value": None})
+                return
+
+            def wait() -> None:
+                try:
+                    value = ask_bridge.ask_host(ask_id, question, choices, allow_text)
+                    reply({"t": "answer", "id": ask_id, "value": value})
+                finally:
+                    ask_slots.release()
+
+            threading.Thread(target=wait, daemon=True).start()
+        elif kind == "log":
+            shown, _ = evidence_mod.redact(str(msg.get("text", "")), seeds=seeds, agent=True)
+            log("    acp: " + sanitize.clean_text(shown)[:500])
+        else:
+            skipped[0] += 1
+
+    return handle
+
+
+ACP_TRANSCRIPT_MAX = 64 << 20
+
+
+def _redact_acp_transcript(run_dir: Path, secrets: list[str], seeds: evidence_mod.Seeds | None = None) -> None:
+    """R12: keep a redacted transcript, drop the raw one (always)."""
+    raw = run_dir / ACP_TRANSCRIPT_RAW
+    try:
+        if raw.is_symlink() or not raw.is_file():
+            return
+        with raw.open("rb") as fh:
+            data = fh.read(ACP_TRANSCRIPT_MAX + 1)
+        text = data[:ACP_TRANSCRIPT_MAX].decode("utf-8", errors="replace")
+        if len(data) > ACP_TRANSCRIPT_MAX:
+            text += "\n[transcript truncated at 64 MiB]\n"
+        safe, _ = evidence_mod.redact(text, secrets, seeds, agent=True)
+        (run_dir / ACP_TRANSCRIPT).write_text(safe, encoding="utf-8")
+    finally:
+        raw.unlink(missing_ok=True)
+
+
+def _check_bridge(plan: Plan, path: str) -> None:
+    """BURNER_ACP_BRIDGE must be an executable file outside the run."""
+    if not path:
+        raise Refused("--acp runs through burner (burner run --acp); BURNER_ACP_BRIDGE is not set")
+    bridge = Path(path)
+    if not bridge.is_absolute():
+        raise Refused("BURNER_ACP_BRIDGE must be an absolute path")
+    real = bridge.resolve()
+    if not real.is_file() or not os.access(real, os.X_OK):
+        raise Refused(f"BURNER_ACP_BRIDGE is not an executable file: {path}")
+    for root in (plan.run_dir, plan.target):
+        if root is not None and real.is_relative_to(Path(root).resolve()):
+            raise Refused("BURNER_ACP_BRIDGE must not live in the run directory or the target")
+
+
+def _ignore_sigint() -> Any:
+    """Ignore SIGINT (main thread only); returns the handler to restore."""
+    if threading.current_thread() is not threading.main_thread():
+        return None
+    try:
+        return signal.signal(signal.SIGINT, signal.SIG_IGN)
+    except ValueError:
+        return None
+
+
+def _seed_from_target(plan: Plan, seeds: evidence_mod.Seeds) -> None:
+    """Harvest secret values from the host copy of the target and its git
+    history, so a partial value echoed by the agent is masked on screen."""
+    roots = [plan.target] if plan.target else []
+    for name in ("target-repo", "app-src"):
+        candidate = plan.run_dir / name
+        if candidate.is_dir() and not candidate.is_symlink():
+            roots.append(candidate)
+    for root in roots:
+        try:
+            seeds.scan_tree(root)
+            if root.is_dir():
+                seeds.scan_git(root, sources.GIT_SAFE_OPTS)
+        except OSError:
+            continue
 
 
 def _default_stream_exec(
@@ -1457,6 +1728,7 @@ def execute_plan(
     answers: str | Path | None = None,
     yes: bool = False,
     stream_exec: StreamExec | None = None,
+    acp_exec: AcpExec | None = None,
 ) -> int:
     """Run the plan. Always tears the sandbox down and always writes a report.
 
@@ -1466,12 +1738,21 @@ def execute_plan(
     """
     if log is None:
         log = (lambda s: print(s, file=sys.stderr)) if events == "-" else print
+    if plan.acp:
+        # Before anything is created: the bridge is burner's own binary.
+        _check_bridge(plan, os.environ.get("BURNER_ACP_BRIDGE", ""))
     run_dir = plan.run_dir
     # 0700: control.sock is live before its chmod 0600 lands; no gap for others.
     run_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(run_dir, 0o700)
     prepare_workspace(plan)
     writer = _events_writer(plan, events)
+    # Secrets seen in this run (target, history, tool output): masked in
+    # events, logs, the transcript and the report, fragments included.
+    seeds = evidence_mod.Seeds()
+    for value in plan.app_env_values:
+        seeds.add(value)
+    writer.seeds = seeds
     emit = writer.emit
     ask_bridge = ask_mod.AskBridge(plan.workspace, run_dir, on_ask=parse_on_ask(on_ask, yes), answers=answers, emit=emit, log=log)
     started = _dt.datetime.now().astimezone().isoformat(timespec="seconds")
@@ -1487,8 +1768,9 @@ def execute_plan(
         except subprocess.TimeoutExpired:
             rc, out, err = 124, "", f"timed out after {step.timeout}s"
         transcript.append({"step": step.name, "argv": step.argv, "exit_code": rc})
-        safe_out, _ = evidence_mod.redact(out or "", plan.app_env_values)
-        safe_err, _ = evidence_mod.redact(err or "", plan.app_env_values)
+        agent_text = step.name == "agent"
+        safe_out, _ = evidence_mod.redact(out or "", plan.app_env_values, seeds, agent_text)
+        safe_err, _ = evidence_mod.redact(err or "", plan.app_env_values, seeds, agent_text)
         (run_dir / "logs").mkdir(exist_ok=True)
         (run_dir / "logs" / f"{step.name.replace(':', '_')}.log").write_text(
             f"$ {shlex.join(step.argv)}\n[exit {rc}]\n--- stdout ---\n{safe_out}\n--- stderr ---\n{safe_err}\n", encoding="utf-8"
@@ -1508,7 +1790,11 @@ def execute_plan(
 
     def _watch_findings() -> None:
         last_mtime = 0
+        ticks = 0
         while not watch_stop.is_set():
+            ticks += 1
+            if ticks % 5 == 0:
+                seeds.scan_artifacts(plan.workspace / "evidence")
             try:
                 mtime = evidence_file.stat().st_mtime_ns
             except OSError:
@@ -1571,6 +1857,23 @@ def execute_plan(
 
                 return _streamer(argv, timeout, on_line, lambda: ask_bridge.abort)
 
+            if plan.acp:
+                acp_runner = acp_exec or _default_acp_exec
+                handler = _acp_line_handler(plan.agent.name, emit, ask_bridge, log, skipped, seeds)
+                unattended = ask_bridge.on_ask["mode"] != "timeout"
+
+                def _agent_exec(  # noqa: F811 - ACP replaces the headless streamer
+                    argv: list[str],
+                    timeout: int | None,
+                    _runner: AcpExec = acp_runner,
+                    _handler: Any = handler,
+                    _unattended: bool = unattended,
+                ) -> subprocess.CompletedProcess[str]:
+                    if _unattended:
+                        argv = [argv[0], argv[1], "--unattended", *argv[2:]]
+                    return _runner(argv, timeout, _handler, lambda: ask_bridge.abort)
+
+            _seed_from_target(plan, seeds)
             try:
                 ask_bridge.start()
             except ask_mod.AskError as exc:
@@ -1603,11 +1906,26 @@ def execute_plan(
             except (OSError, json.JSONDecodeError):
                 pass
     finally:
-        for step in plan.teardown:
-            # Host teardown (clone/tar cleanup) runs even when the sandbox
-            # was never created; sandbox teardown needs `created`.
-            if created or step.host:
-                run_step(step)
+        # A second Ctrl+C (or burner forwarding the first) must not cut the
+        # teardown short: the sandbox would stay up.
+        previous = _ignore_sigint()
+        try:
+            try:
+                for step in plan.teardown:
+                    # Host teardown (clone/tar cleanup) runs even when the sandbox
+                    # was never created; sandbox teardown needs `created`.
+                    if created or step.host:
+                        bounded = step if step.timeout else dataclasses.replace(step, timeout=TEARDOWN_TIMEOUT)
+                        if not run_step(bounded) and step.name == "destroy":
+                            log(f"    the sandbox may remain: sbx ls, then sbx rm --force {plan.sandbox}")
+            finally:
+                # After destroy (redaction must never keep the sandbox up);
+                # the raw transcript is removed either way.
+                if plan.acp:
+                    _redact_acp_transcript(run_dir, plan.app_env_values, seeds)
+        finally:
+            if previous is not None:
+                signal.signal(signal.SIGINT, previous)
 
     resolved = run_dir / TARGET_INSPECT_FILE
     if resolved.is_file():
@@ -1651,7 +1969,7 @@ def execute_plan(
         data = evidence_mod.empty(plan.recipe.id, f"No usable evidence file was produced ({exc}). Run status: {status}.")
         if code == EXIT_OK:
             code = EXIT_GATE_FAILED
-    result = evidence_mod.gate(data, evidence_dir, scope=plan.scope, extra_values=plan.app_env_values)
+    result = evidence_mod.gate(data, evidence_dir, scope=plan.scope, extra_values=plan.app_env_values, seeds=seeds)
     if not result.ok:
         fallback = evidence_mod.empty(plan.recipe.id, "The evidence file does not follow the schema; no finding was accepted.")
         errors = result.schema_errors

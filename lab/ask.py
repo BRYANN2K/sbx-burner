@@ -30,6 +30,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from . import sanitize
+
 ASK_DIR = ".lab/ask"
 ASK_LOG = "asks.jsonl"
 CONTROL_SOCK = "control.sock"
@@ -175,8 +177,8 @@ class AskBridge:
                 continue
             record = {
                 "ask_id": ask_id,
-                "question": str(data.get("question", "")),
-                "choices": data.get("choices") if isinstance(data.get("choices"), list) else [],
+                "question": sanitize.clean_text(data.get("question", "")),
+                "choices": sanitize.clean_choices(data.get("choices")) if isinstance(data.get("choices"), list) else [],
                 "allow_text": bool(data.get("allow_text")),
                 "timeout_s": int(data.get("timeout_s") or 0),
                 "state": "asked",
@@ -249,6 +251,44 @@ class AskBridge:
 
     # -- answering ---------------------------------------------------------
 
+    def ask_host(self, ask_id: str, question: str, choices: list[str], allow_text: bool) -> Any:
+        """Ask the operator on behalf of the host (ACP bridge), not the agent.
+
+        Same channels, timeout and ``--on-ask`` policy as a lab-ask question,
+        but nothing is written to the workspace: the answer is returned here.
+        Blocks until answered, expired, aborted or stopped; None means no
+        answer.
+        """
+        if not _ID_RE.match(ask_id) or ask_id in self.pending:
+            return None
+        done = threading.Event()
+        record = {
+            "ask_id": ask_id,
+            "question": sanitize.clean_text(question),
+            "choices": sanitize.clean_choices(choices),
+            "allow_text": allow_text,
+            "timeout_s": 0,
+            "state": "asked",
+            "answers": [],
+            "host": True,
+            "_done": done,
+        }
+        with self._dlock:
+            self.pending[ask_id] = record
+            self.records.append(record)
+        self.emit("ask", ask_id=ask_id, question=record["question"], choices=record["choices"], allow_text=allow_text, timeout_s=0)
+        self._log({"ts": _now(), "event": "ask", "ask_id": ask_id, "from": "host"})
+        if self.on_ask["mode"] == "skip":
+            self._deliver(ask_id, None, "skip")
+        elif self.on_ask["mode"] == "fail":
+            record["state"] = "unanswered"
+            self.abort = True
+            return None
+        while not done.wait(0.2):
+            if self._stop.is_set() or self.abort:
+                return None
+        return record["answers"][-1]["value"] if record["answers"] else None
+
     def _deliver(self, ask_id: str, value: Any, by: str) -> bool:
         record = self.pending.get(ask_id)
         if record is None or record["state"] != "asked":
@@ -260,6 +300,11 @@ class AskBridge:
                 return False
             record["state"] = by
             record["answers"].append({"by": by, "value": value, "ts": _now()})
+        if record.get("host"):
+            self.emit("answer", ask_id=ask_id, by=by, value=value)
+            self._log({"ts": _now(), "event": "answer", "ask_id": ask_id, "by": by, "value": value})
+            record["_done"].set()
+            return True
         answer = self.ask_dir / f"{ask_id}.answer.json"
         tmp = self.ask_dir / f".{ask_id}.answer.json.tmp"
         payload = json.dumps({"ask_id": ask_id, "value": value}) + "\n"

@@ -37,6 +37,9 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--target-url", metavar="URL", help="remote app to test; must be http(s) and authorized by --scope")
     parser.add_argument("--demo", action="store_true", help="start the recipe's bundled demo target (run.demo)")
+    parser.add_argument("--acp", action="store_true", help="drive the agent over ACP through burner (burner run --acp)")
+    parser.add_argument("--model", metavar="ID", help="model id offered by the agent over ACP (needs --acp)")
+    parser.add_argument("--permission", choices=("auto", "ask"), default="auto", help="ACP permissions: auto-allow (logged) or ask")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and run nothing")
     parser.add_argument("--keep", action="store_true", help="keep the sandbox after the run")
     parser.add_argument("--runs-dir", metavar="DIR", type=Path, help="where run directories are created (default: ./runs)")
@@ -80,6 +83,9 @@ def _run(recipe_ref: str, args: argparse.Namespace) -> int:
             runs_dir=args.runs_dir,
             keep=args.keep,
             operator_notes=operator_notes,
+            acp=args.acp,
+            model=args.model,
+            permission=args.permission,
         )
         if args.dry_run:
             print(runner.render_plan(plan))
