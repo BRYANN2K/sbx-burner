@@ -31,6 +31,26 @@ NEVER_ALLOWED = ("dos", "ddos", "social-engineering", "phishing", "physical", "d
 _HOST_RE = re.compile(r"^(?:\*\*?\.)?[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?$")
 
 
+# Marker for values `lab scope new` could not know. A scope that still holds
+# one is refused, so an authorization is never invented.
+TODO_MARK = "TODO(burner)"
+
+
+def todo_fields(data: Any, path: str = "") -> list[str]:
+    """Paths of the fields that still hold a TODO_MARK value."""
+    out: list[str] = []
+    if isinstance(data, str):
+        if TODO_MARK in data:
+            out.append(path or "(root)")
+    elif isinstance(data, dict):
+        for k, v in data.items():
+            out += todo_fields(v, f"{path}.{k}" if path else str(k))
+    elif isinstance(data, list):
+        for i, v in enumerate(data):
+            out += todo_fields(v, f"{path}[{i}]")
+    return out
+
+
 class ScopeError(ValueError):
     """The scope file is missing, invalid, expired or too broad."""
 
@@ -158,6 +178,9 @@ def validate(data: dict[str, Any], today: _dt.date | None = None, check_dates: b
     errors = jsonschema_lite.validate(data, schema)
     if errors:
         raise ScopeError("invalid scope file:\n  - " + "\n  - ".join(errors))
+
+    for where in todo_fields(data):
+        errors.append(f"{where}: still a {TODO_MARK} value; edit it before using this scope")
 
     auth = data["authorization"]
     try:

@@ -1,0 +1,40 @@
+pentest › web-recon                                                                                  step ▰▰▰▱▱▱  scope
+
+  Where is your target?  Docker image (local or registry)
+  Image  Image name (local or registry)
+  Image  ghcr.io/me/app:1.0
+  Port  8080
+  Scope file  Create from my target
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Scope preview                                                                                                        │
+│                                                                                                                      │
+│ authorization own-lab                                                                                                │
+│ targets       localhost: localhost:8080                                                                              │
+│ valid         2026-11-22 to 2026-12-22                                                                               │
+│ network       strict · allow none · deny none                                                                        │
+│ techniques    recon, scan                                                                                            │
+│ forbidden     dos                                                                                                    │
+│ file          ~/.burner/scopes/web-recon-localhost-8080.yaml                                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  enter use  │  e edit in $EDITOR  │  esc back

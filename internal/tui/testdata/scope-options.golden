@@ -1,0 +1,40 @@
+pentest › web-recon                                                                                  step ▰▰▰▱▱▱  scope
+
+  Where is your target?  Docker image (local or registry)
+  Image  Image name (local or registry)
+  Image  ghcr.io/me/app:1.0
+  Port  8080
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Scope file                                                                                                           │
+│                                                                                                                      │
+│ ❯ Create from my target         localhost:8080 · own-lab · 30 days                                                   │
+│   Browse…                                                                                                            │
+│   Type a path                                                                                                        │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter select  │  esc back  │  ctrl+c quit
