@@ -1,0 +1,157 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/iac-scan",
+  "summary": "Scanned iac-demo (1 Terraform module, 1 Kubernetes manifest, 1 Dockerfile) with trivy config 0.76.2 using the embedded checks, offline. 32 raw hits reduce to 2 exposures (SSH open to the internet, a privileged container that mounts the host filesystem) and 4 hygiene findings. The missing S3 public access block is a lead: the bucket has no public ACL or policy in this repository. Not covered: checkov was not run, and no Terraform plan was evaluated.",
+  "tools_run": [
+    {
+      "name": "trivy",
+      "version": "0.76.2",
+      "command": "trivy config --skip-check-update --skip-version-check --disable-telemetry --format json --output evidence/artifacts/trivy-config.json .",
+      "exit_code": 0,
+      "output": "artifacts/trivy-config.json"
+    },
+    {
+      "name": "trivy",
+      "version": "0.76.2",
+      "command": "trivy config --skip-check-update --skip-version-check --disable-telemetry --format sarif --output evidence/artifacts/trivy-config.sarif .",
+      "exit_code": 0,
+      "output": "artifacts/trivy-config.sarif"
+    }
+  ],
+  "findings": [
+    {
+      "id": "IAC-001",
+      "title": "Security group 'bastion' allows SSH from any address",
+      "severity": "high",
+      "cwe": "CWE-284",
+      "target": "iac-demo",
+      "location": "terraform/main.tf:10",
+      "tool": "trivy",
+      "rule": "AWS-0107",
+      "description": "aws_security_group.bastion has an ingress rule for TCP 22 with cidr_blocks 0.0.0.0/0. Any host on the internet can reach the SSH service of every instance in this group, which exposes it to password guessing and to any SSH pre-authentication flaw.",
+      "proof": {
+        "poc": "jq '.Results[].Misconfigurations[]? | select(.ID==\"AWS-0107\") | {ID, Severity, CauseMetadata}' evidence/artifacts/trivy-config.json",
+        "artifacts": [
+          "artifacts/trivy-config.json"
+        ]
+      },
+      "remediation": "Set cidr_blocks to the administration network (for example [\"10.0.0.0/8\"]) or remove the rule and use a session manager instead of direct SSH."
+    },
+    {
+      "id": "IAC-002",
+      "title": "Deployment 'collector' runs a privileged container with the host root filesystem mounted",
+      "severity": "high",
+      "cwe": "CWE-250",
+      "target": "iac-demo",
+      "location": "k8s/deployment.yaml:17",
+      "tool": "trivy",
+      "rule": "KSV-0017,KSV-0121,KSV-0023",
+      "description": "The container sets securityContext.privileged: true and mounts hostPath / at /host. Code execution in this container is code execution on the node: the process can read and write every file of the host, including kubelet credentials. Three checks report this one cause.",
+      "proof": {
+        "poc": "jq '.Results[].Misconfigurations[]? | select(.ID==\"KSV-0017\" or .ID==\"KSV-0121\" or .ID==\"KSV-0023\") | {ID, Title, CauseMetadata}' evidence/artifacts/trivy-config.json",
+        "artifacts": [
+          "artifacts/trivy-config.json"
+        ]
+      },
+      "remediation": "Set securityContext.privileged: false, drop the hostPath volume, and mount only the directory the collector reads (read-only). Add allowPrivilegeEscalation: false and capabilities.drop: [ALL]."
+    },
+    {
+      "id": "IAC-003",
+      "title": "Dockerfile runs as root from a mutable base tag",
+      "severity": "medium",
+      "cwe": "CWE-250",
+      "target": "iac-demo",
+      "location": "app/Dockerfile:1",
+      "tool": "trivy",
+      "rule": "DS-0002,DS-0001",
+      "description": "The image has no USER instruction, so the application runs as root, and it builds FROM debian:latest, so two builds of the same commit can ship different base images. Neither is reachable on its own; both make a compromise of the application worse.",
+      "proof": {
+        "poc": "jq '.Results[] | select(.Target==\"app/Dockerfile\") | .Misconfigurations[] | {ID, Title, Severity}' evidence/artifacts/trivy-config.json",
+        "artifacts": [
+          "artifacts/trivy-config.json"
+        ]
+      },
+      "remediation": "Pin the base image to a version tag and digest, add a non-root user (RUN useradd -r app, then USER app)."
+    },
+    {
+      "id": "IAC-004",
+      "title": "Hygiene: deployment misses pod security hardening",
+      "severity": "low",
+      "target": "iac-demo",
+      "location": "k8s/deployment.yaml:17",
+      "tool": "trivy",
+      "rule": "KSV-0001,KSV-0003,KSV-0004,KSV-0011,KSV-0012,KSV-0014,KSV-0015,KSV-0016,KSV-0018,KSV-0020,KSV-0021,KSV-0030,KSV-0104,KSV-0106,KSV-0118",
+      "description": "Grouped hygiene hits with no direct attack path: no CPU or memory requests and limits, no read-only root filesystem, no seccomp profile, default pod security context and other pod-security-standard gaps on the collector deployment.",
+      "proof": {
+        "poc": "jq -r '.Results[] | select(.Target==\"k8s/deployment.yaml\") | .Misconfigurations[] | select(.ID != \"KSV-0017\" and .ID != \"KSV-0023\" and .ID != \"KSV-0121\" and .ID != \"KSV-0125\") | [.ID, .Severity, .Title] | @tsv' evidence/artifacts/trivy-config.json",
+        "artifacts": [
+          "artifacts/trivy-config.json"
+        ]
+      },
+      "remediation": "Add resources.requests and resources.limits, readOnlyRootFilesystem: true, seccompProfile.type: RuntimeDefault and runAsNonRoot: true at the pod or container security context."
+    },
+    {
+      "id": "IAC-005",
+      "title": "Hygiene: Dockerfile has no HEALTHCHECK and installs recommended packages",
+      "severity": "low",
+      "target": "iac-demo",
+      "location": "app/Dockerfile:2",
+      "tool": "trivy",
+      "rule": "DS-0026,DS-0029",
+      "description": "The image builds without a HEALTHCHECK instruction and apt installs pull recommended packages, which grows the attack surface. Both are operational hygiene, no direct attack path.",
+      "proof": {
+        "poc": "jq -r '.Results[] | select(.Target==\"app/Dockerfile\") | .Misconfigurations[] | select(.ID==\"DS-0026\" or .ID==\"DS-0029\") | [.ID, .Severity, .Title] | @tsv' evidence/artifacts/trivy-config.json",
+        "artifacts": [
+          "artifacts/trivy-config.json"
+        ]
+      },
+      "remediation": "Add a HEALTHCHECK that matches the service and pass --no-install-recommends to apt-get install."
+    },
+    {
+      "id": "IAC-006",
+      "title": "Hygiene: bucket misses logging, versioning and customer-managed encryption",
+      "severity": "low",
+      "target": "iac-demo",
+      "location": "terraform/main.tf:14",
+      "tool": "trivy",
+      "rule": "AWS-0089,AWS-0090,AWS-0132",
+      "description": "The logs bucket has no access logging, no versioning and uses default S3-managed keys rather than a customer-managed KMS key. None of these open an attack path on their own; they weaken forensics, recovery and key control.",
+      "proof": {
+        "poc": "jq -r '.Results[] | .Misconfigurations[]? | select(.ID==\"AWS-0089\" or .ID==\"AWS-0090\" or .ID==\"AWS-0132\") | [.ID, .Severity, .Title] | @tsv' evidence/artifacts/trivy-config.json",
+        "artifacts": [
+          "artifacts/trivy-config.json"
+        ]
+      },
+      "remediation": "Enable access logging and versioning on the bucket and set a customer-managed KMS key in aws_s3_bucket_server_side_encryption_configuration."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H-001",
+      "title": "S3 bucket 'logs' has no public access block (AWS-0086, AWS-0087, AWS-0091, AWS-0093, AWS-0094)",
+      "rationale": "The repository defines no aws_s3_bucket_public_access_block for the bucket, but it also defines no public ACL or bucket policy. New buckets are private by default and the account may enforce a public access block. Nothing here proves the bucket is public.",
+      "next_step": "Check the account-level S3 Block Public Access setting, or add an aws_s3_bucket_public_access_block resource with all four flags set to true."
+    },
+    {
+      "id": "H-002",
+      "title": "Image pulled from a registry trivy does not know (KSV-0125)",
+      "rationale": "registry.example.test is not in the scanner's list of trusted registries. Whether it is trusted is an organisation decision the repository does not record.",
+      "next_step": "Compare with the organisation's registry allow-list or the cluster's admission policy."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/trivy-config.json",
+      "description": "Raw trivy config report (trimmed to the fields used in triage)"
+    },
+    {
+      "path": "artifacts/trivy-config.sarif",
+      "description": "trivy config report as SARIF"
+    }
+  ],
+  "metrics": {
+    "raw_hits": 32,
+    "exposures": 2,
+    "hygiene": 4
+  }
+}
