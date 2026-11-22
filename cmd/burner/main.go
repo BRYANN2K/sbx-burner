@@ -36,6 +36,10 @@ import (
 // Set by the release build (-ldflags "-X main.version=...").
 var version = "dev"
 
+// commit is the source commit the binary was built from (set at release);
+// the official catalog must contain it, so engine and binary match.
+var commit = ""
+
 // Exit codes, shared with the engine so agents read one table:
 //
 //	0 ok · 1 internal error · 2 usage or refused · 3 not ready (preflight,
@@ -145,7 +149,13 @@ func refreshCatalog(ctx context.Context, root, home string, stderr io.Writer) {
 		return
 	}
 	stamp := filepath.Join(home, "cache", "catalog-fetched")
+	fresh := false
 	if st, err := os.Stat(stamp); err == nil && time.Since(st.ModTime()) < time.Hour {
+		fresh = true
+	}
+	// A catalog older than the binary would run an engine that drops what
+	// the binary expects (seen: activity ids stripped); always catch up then.
+	if fresh && (commit == "" || catalogHas(ctx, root, commit)) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
@@ -156,6 +166,11 @@ func refreshCatalog(ctx context.Context, root, home string, stderr io.Writer) {
 	if err == nil && c.From != c.To {
 		fmt.Fprintf(stderr, "recipe catalog updated: %s → %s\n", c.From, c.To)
 	}
+}
+
+// catalogHas reports whether the catalog checkout already contains rev.
+func catalogHas(ctx context.Context, root, rev string) bool {
+	return exec.CommandContext(ctx, "git", "-C", root, "merge-base", "--is-ancestor", rev, "HEAD").Run() == nil
 }
 
 func main() {
