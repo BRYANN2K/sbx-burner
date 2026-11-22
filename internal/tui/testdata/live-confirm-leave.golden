@@ -5,6 +5,7 @@ secrets-scan · codex · headless                                               
 │ ✓ policy-close              │ ▎ by the repository instructions.                     │                                │
 │ – agent                     │                                                       │ NETWORK                        │
 │                             │ › gitleaks git --redact --report-format json          │ ⊘ ab.chatgpt.com:443   blocked │
+│                             │                                                       │                                │
 │                             │ ◆ aws-credential-a5c1cc1  critical  AWS access key …  │                                │
 │                             │   ? q1: Treat the key in tests/test_exporter.py as …  │                                │
 │                             │   ? q2: Second question                               │                                │
@@ -18,7 +19,6 @@ secrets-scan · codex · headless                                               
 │                             │ │   finding                                        │  │                                │
 │                             │ │   Type an answer…                                │  │                                │
 │                             │ ╰──────────────────────────────────────────────────╯  │                                │
-│                             │                                                       │                                │
 │                             │                                                       │                                │
 │                             │                                                       │                                │
 │                             │                                                       │                                │

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -517,18 +518,39 @@ func nz(s, d string) string {
 	return s
 }
 
-// stripCd drops the "cd <workspace>;" (or &&) the adapter prefixes.
+// stripCd drops what only says "in the run workspace" at the start of a
+// command: "cd <workspace>;" or "&&", and "VAR=<workspace>;" with a
+// following "cd $VAR". Later $VAR uses stay as written.
 func (b *bridge) stripCd(cmd string) string {
-	if b.o.Cwd == "" {
+	ws := b.o.Cwd
+	if ws == "" {
 		return cmd
 	}
-	for _, sep := range []string{";", " &&"} {
-		if p := "cd " + b.o.Cwd + sep; strings.HasPrefix(cmd, p) {
-			return strings.TrimSpace(cmd[len(p):])
+	cmd = strings.TrimSpace(cmd)
+	vars := []string{ws, "'" + ws + "'", `"` + ws + `"`}
+	for {
+		before := cmd
+		if m := wsVarRE.FindStringSubmatch(cmd); m != nil {
+			val := strings.Trim(m[2], `"'`)
+			if val == ws || val == ws+"/" {
+				vars = append(vars, "$"+m[1], "${"+m[1]+"}", `"$`+m[1]+`"`)
+				cmd = strings.TrimSpace(cmd[len(m[0]):])
+			}
+		}
+		for _, v := range vars {
+			for _, sep := range []string{";", " &&"} {
+				if p := "cd " + v + sep; strings.HasPrefix(cmd, p) {
+					cmd = strings.TrimSpace(cmd[len(p):])
+				}
+			}
+		}
+		if cmd == before {
+			return cmd
 		}
 	}
-	return cmd
 }
+
+var wsVarRE = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)=("[^"]*"|'[^']*'|[^\s;]+)\s*;\s*`)
 
 // lastLines keeps the last n non-empty lines of a tool's output, without a
 // markdown fence, each cut to 200 characters.
