@@ -649,3 +649,19 @@ func TestDetailWrapsEveryField(t *testing.T) {
 		}
 	}
 }
+
+func TestDoctorChecksEveryEngineAgent(t *testing.T) {
+	orig := engineAgents
+	defer func() { engineAgents = orig }()
+	engineAgents = func(context.Context, string) ([]engine.AgentInfo, error) {
+		return []engine.AgentInfo{{Name: "claude"}, {Name: "codex"}, {Name: "devin"}, {Name: "opencode"}}, nil
+	}
+	o := doctorOptions(context.Background(), "/catalog")
+	if got := strings.Join(o.Agents, ","); got != "claude,codex,devin,opencode" || o.DiskPath != "/catalog" {
+		t.Fatalf("doctor options: agents=%s disk=%s", got, o.DiskPath)
+	}
+	engineAgents = func(context.Context, string) ([]engine.AgentInfo, error) { return nil, errors.New("no engine") }
+	if got := doctorOptions(context.Background(), "/catalog").Agents; strings.Join(got, ",") != strings.Join(doctor.KnownAgents(), ",") {
+		t.Fatalf("fallback agents: %v", got)
+	}
+}

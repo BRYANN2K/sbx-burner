@@ -41,6 +41,21 @@ type Outcome struct {
 	Report  string
 }
 
+// engineAgents lists the runner's agents; tests replace it.
+var engineAgents = engine.Agents
+
+// doctorOptions checks the credentials of every agent the engine knows,
+// or burner's own list when the engine cannot be asked.
+func doctorOptions(ctx context.Context, root string) doctor.Options {
+	o := doctor.Options{DiskPath: root}
+	if as, err := engineAgents(ctx, root); err == nil && len(as) > 0 {
+		o.Agents = engine.AgentNames(as)
+	} else {
+		o.Agents = doctor.KnownAgents()
+	}
+	return o
+}
+
 // Min terminal size.
 const minW, minH = 60, 20
 
@@ -98,7 +113,7 @@ func initialModel(ctx context.Context, cfg Config) model {
 	if cfg.Doctor == nil {
 		root := cfg.Root
 		cfg.Doctor = func(ctx context.Context) []doctor.Result {
-			return doctor.Check(ctx, doctor.Options{DiskPath: root})
+			return doctor.Check(ctx, doctorOptions(ctx, root))
 		}
 	}
 	if cfg.Cwd == "" {
