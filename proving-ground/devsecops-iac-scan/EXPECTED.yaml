@@ -1,0 +1,21 @@
+recipe: devsecops/iac-scan
+must_find:
+  - id_hint: open-sg-ssh
+    class: open-ingress
+    where: {rule: ".*AWS.*", location: "terraform/main\\.tf.*", title: ".*(SSH|any address|0\\.0\\.0\\.0).*"}
+  - id_hint: public-bucket
+    class: public-object-store
+    where: {rule: ".*AWS.*", location: "terraform/main\\.tf.*", title: ".*(public|bucket).*", severity: "high|medium"}
+  - id_hint: privileged-container
+    class: privileged-workload
+    where: {rule: ".*KSV.*", location: "k8s/deployment\\.yaml.*"}
+  - id_hint: dockerfile-root
+    class: runs-as-root
+    where: {rule: ".*DS.*", location: ".*Dockerfile.*"}
+must_not_find:
+  - where: {title: ".*'api'.*"}
+    reason: the api security group is restricted to 10.20.0.0/16; flagging it by name is a precision miss
+  - where: {title: ".*'web'.*(privileged|root).*"}
+    reason: the web deployment is hardened (non-root, no privilege escalation); only hygiene notes may name it
+min_findings: 4
+max_findings: 12

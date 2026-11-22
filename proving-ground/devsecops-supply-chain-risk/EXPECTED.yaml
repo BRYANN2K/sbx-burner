@@ -1,0 +1,19 @@
+recipe: devsecops/supply-chain-risk
+must_find:
+  - id_hint: postinstall-hook
+    class: install-time-code-execution
+    where: {rule: "install-script", location: ".*package\\.json.*"}
+  - id_hint: floating-chalk
+    class: unpinned-dependency
+    where: {rule: "unpinned-dependency", location: ".*package\\.json.*"}
+must_hypothesize:
+  - id_hint: reqeusts-look-alike
+    class: typosquat-look-alike
+    where: {title: ".*reqeusts.*"}
+must_not_find:
+  - where: {location: ".*reqeusts.*"}
+    reason: the look-alike name resolves to a local "file:" package and is not on npm; it belongs in hypotheses, never findings
+  - where: {location: ".*semver.*"}
+    reason: semver is exactly pinned (7.6.3) and has no open advisory at that version
+min_findings: 2
+max_findings: 8

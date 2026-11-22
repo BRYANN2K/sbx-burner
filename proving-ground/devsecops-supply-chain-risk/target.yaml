@@ -1,0 +1,6 @@
+recipe: devsecops/supply-chain-risk
+summary: npm webhook forwarder with a postinstall hook, a floating dependency and a typosquat-look-alike name resolved to a local package
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-supply-chain-risk/project"]
+cost: medium

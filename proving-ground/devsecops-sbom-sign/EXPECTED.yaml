@@ -1,0 +1,27 @@
+recipe: devsecops/sbom-sign
+# A healthy build/sign/verify run reports no finding (the recipe reports only
+# defects), so recall rests on the artifacts: both SBOM formats listing the
+# two direct Go modules, a signature, and a verification that passed.
+artifacts:
+  - id_hint: cyclonedx-lists-chi
+    path: artifacts/sbom.cdx.json
+    contains: "pkg:golang/github\\.com/go-chi/chi/v5@v5\\.1\\.0"
+  - id_hint: cyclonedx-lists-client-golang
+    path: artifacts/sbom.cdx.json
+    contains: "pkg:golang/github\\.com/prometheus/client_golang@v1\\.20\\.5"
+  - id_hint: spdx-sbom
+    path: artifacts/sbom.spdx.json
+    contains: "github\\.com/go-chi/chi/v5"
+  - id_hint: cyclonedx-signature
+    path: artifacts/sbom.cdx.json.sig
+  - id_hint: signature-verified
+    path: artifacts/verify.txt
+    contains: "Verified OK"
+# Every check of the recipe's eval holds for any healthy Go project too
+# (tools ran, artifacts, no private key left, signature_verified, 0 findings).
+recipe_eval_checks: [all]
+must_not_find:
+  - where: {severity: "critical|high"}
+    reason: a healthy build/sign/verify run has no high-severity defect to report
+min_findings: 0
+max_findings: 0

@@ -1,0 +1,18 @@
+recipe: devsecops/license-compliance
+must_find:
+  - id_hint: ffmpeg-static-gpl
+    class: denied-licence-dependency
+    where: {rule: "GPL-3\\.0.*", location: ".*ffmpeg-static.*"}
+must_hypothesize:
+  - id_hint: parse-cache-control-no-licence
+    class: unknown-licence-review
+    where: {title: ".*parse-cache-control.*"}
+must_not_find:
+  - where: {location: ".*license-policy\\.yaml.*"}
+    reason: the policy file is an input to the check, not a dependency
+  - where: {location: ".*mupdf.*"}
+    reason: mupdf (AGPL-3.0-or-later) is a devDependency (dev true in the lockfile); the policy applies to shipped code only, so it is a lead at most
+  - where: {location: ".*parse-cache-control.*"}
+    reason: no licence declared; the policy says unknown -> review, so it is a hypothesis, not a finding
+min_findings: 1
+max_findings: 1

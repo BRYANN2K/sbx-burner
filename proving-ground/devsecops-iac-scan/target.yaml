@@ -1,0 +1,6 @@
+recipe: devsecops/iac-scan
+summary: Terraform, Kubernetes and Dockerfile configs with a public bucket, an open SG, a privileged container and root-by-default, plus hardened decoys
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-iac-scan/project"]
+cost: small
