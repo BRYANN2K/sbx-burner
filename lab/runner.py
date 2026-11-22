@@ -1688,6 +1688,18 @@ def parse_on_ask(value: str | None, yes: bool) -> dict[str, Any]:
     return {"mode": "timeout", "seconds": seconds}
 
 
+def _ignore_closed_pipe(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap an output function so OSError (BrokenPipeError…) is dropped."""
+
+    def call(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except OSError:
+            return None
+
+    return call
+
+
 def _events_writer(plan: Plan, events: str | None) -> events_mod.EventWriter:
     """Open the --events target; it must live in the run dir, never the workspace."""
     if not events:
@@ -1753,7 +1765,10 @@ def execute_plan(
     for value in plan.app_env_values:
         seeds.add(value)
     writer.seeds = seeds
-    emit = writer.emit
+    # The reader of the event stream or the log (burner) may be gone, e.g.
+    # after a forced quit. A broken pipe must never stop the teardown.
+    emit = _ignore_closed_pipe(writer.emit)
+    log = _ignore_closed_pipe(log)
     ask_bridge = ask_mod.AskBridge(plan.workspace, run_dir, on_ask=parse_on_ask(on_ask, yes), answers=answers, emit=emit, log=log)
     started = _dt.datetime.now().astimezone().isoformat(timespec="seconds")
     transcript: list[dict[str, Any]] = []

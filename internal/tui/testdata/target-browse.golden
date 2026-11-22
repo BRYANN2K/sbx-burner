@@ -1,0 +1,40 @@
+devsecops › secrets-scan                                                                             step ▰▰▱▱▱  target
+
+  Where is your target?  Local folder or files
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Folder or files to test                                                                                              │
+│                                                                                                                      │
+│ /tmp/burner-tui-golden/                                                                                              │
+│   ..                                                                                                                 │
+│ ❯ repo/                                                                                                              │
+│   src/                                                                                                               │
+│   notes.txt                                                                                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter open  │  ← parent  │  H hidden  │  space select  │  . this folder  │  esc back

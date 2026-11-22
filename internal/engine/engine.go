@@ -176,6 +176,14 @@ func SandboxName(runID string) string {
 	return strings.TrimRight(base, "-") + "-" + parts[1]
 }
 
+// ExecInterruptible runs the engine without a terminal. Cancelling ctx
+// interrupts it (SIGINT), so the runner's teardown still destroys the
+// sandbox. Used by the full-screen TUI, where the terminal is in raw mode
+// and Ctrl+C reaches burner only.
+func ExecInterruptible(ctx context.Context, root string, args []string, out, errw io.Writer) (int, error) {
+	return run(ctx, root, args, nil, out, errw)
+}
+
 func run(ctx context.Context, root string, args []string, in io.Reader, out, errw io.Writer) (int, error) {
 	py, err := Python()
 	if err != nil {

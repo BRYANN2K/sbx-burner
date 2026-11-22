@@ -1,0 +1,40 @@
+devsecops › secrets-scan                                                                              step ▰▰▰▱▱  agent
+
+  Where is your target?  Local folder or files
+  Folder or files to test  /tmp/burner-tui-golden/repo
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Agent                                                                                                                │
+│                                                                                                                      │
+│   Claude Code                   no credential · sbx secret set anthropic                                             │
+│ ❯ Codex                         credential stored                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter select  │  esc back  │  ctrl+c quit

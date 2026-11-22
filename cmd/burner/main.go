@@ -162,15 +162,26 @@ func interactive(ctx context.Context, catalogFlag string, stderr io.Writer) int 
 	for _, p := range problems {
 		fmt.Fprintln(stderr, "warning:", p)
 	}
-	checks := doctor.Check(ctx, doctor.Options{DiskPath: root})
-	code, err := tui.Run(ctx, root, recipes, checks)
+	out, err := tui.Run(ctx, tui.Config{Root: root, Recipes: recipes, Version: version})
 	if errors.Is(err, tui.ErrAborted) {
-		return code
+		return exitOK
 	}
 	if err != nil {
 		return fail(stderr, exitFailed, err)
 	}
-	return code
+	switch out.Action {
+	case "update":
+		return cmdUpdate(ctx, nil, os.Stdout, stderr)
+	case "left-while-stopping":
+		fmt.Fprintln(stderr, "burner: you left while the runner was destroying the sandbox. It keeps going in the background; check with: sbx ls (remove a leftover with: sbx rm --force <name>)")
+	}
+	if out.Report != "" {
+		fmt.Fprintln(stderr, "report: "+out.Report)
+	}
+	if out.Command != "" {
+		fmt.Fprintln(stderr, "same run without the menu: "+out.Command)
+	}
+	return out.Code
 }
 
 func cmdDoctor(ctx context.Context, args []string, stdout io.Writer) int {
