@@ -174,3 +174,20 @@ def test_risky_technique_needs_the_explicit_list():
 
     with pytest.raises(scope.ScopeError, match="list it under techniques.risky"):
         _load(mutate)
+
+
+def test_paths_only_target_needs_a_local_host_for_host_risky_techniques():
+    def mutate(data):
+        data["targets"] = [{"name": "src", "paths": ["/home/agent/target"]}]
+        data["network"]["deny"] = []
+        data["techniques"]["allowed"] = ["recon", "brute-force"]
+        data["techniques"]["risky"] = ["brute-force"]
+
+    with pytest.raises(scope.ScopeError, match="unless the target is local to the sandbox"):
+        _load(mutate)
+
+    def with_host(data):
+        mutate(data)
+        data["targets"].append({"name": "local", "hosts": ["localhost:8000"]})
+
+    assert "brute-force" in _load(with_host).techniques_allowed
