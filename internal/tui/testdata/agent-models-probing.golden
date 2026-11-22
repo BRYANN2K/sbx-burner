@@ -1,0 +1,40 @@
+devsecops/secrets-scan · /tmp/burner-tui-golden · codex      target › agent › mode › model › permissions › notes › plan
+
+  Where is your target?  Local folder or files
+  Folder or files to test  This folder (/tmp/burner-tui-golden)
+  Agent  Codex
+  Mode  ACP
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Model                                                                                                                │
+│                                                                                                                      │
+│ ❯ Agent default                 default                                                                              │
+│                                                                                                                      │
+│ ⠋ asking codex for its models… (first time ~1 min)                                                                   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter select  │  esc back  │  ctrl+c quit

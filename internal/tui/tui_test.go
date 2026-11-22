@@ -65,6 +65,10 @@ type fakeEngine struct {
 	saved      map[string]any
 	saveTo     string
 	saveForce  bool
+
+	probed   ModelList
+	probeErr string
+	probes   []string
 }
 
 func (f *fakeEngine) ScopeNew(_ context.Context, o engine.RunOptions, ref string, dry bool) (ScopeResult, error) {
@@ -91,6 +95,13 @@ func (f *fakeEngine) Agents(context.Context) ([]string, error) {
 }
 func (f *fakeEngine) Models(context.Context, string) (ModelList, error) {
 	return f.models, nil
+}
+func (f *fakeEngine) ProbeModels(_ context.Context, agent string) (ModelList, error) {
+	f.probes = append(f.probes, agent)
+	if f.probeErr != "" {
+		return ModelList{Error: f.probeErr}, errors.New(f.probeErr)
+	}
+	return f.probed, nil
 }
 func (f *fakeEngine) Plan(_ context.Context, o engine.RunOptions) (string, int, error) {
 	return f.plan, f.planErr, nil
@@ -1348,7 +1359,7 @@ func TestSetupWalksEveryStep(t *testing.T) {
 	home := filepath.Join(goldenTree, "home") // fixed: the path shows on screen
 	os.RemoveAll(home)
 	t.Setenv("BURNER_HOME", home)
-	eng := &fakeEngine{models: ModelList{Current: "gpt-6.2-sol", Values: []Model{{"gpt-6-luna", "6 Luna"}, {"gpt-6.2-sol", "6.2 Sol"}}}}
+	eng := &fakeEngine{models: ModelList{Known: true, Current: "gpt-6.2-sol", Values: []Model{{"gpt-6-luna", "6 Luna"}, {"gpt-6.2-sol", "6.2 Sol"}}}}
 	m := testModel(t, eng)
 	m.setup, m.scr = newSetup(Prefs{}), scrSetup
 	m.cfg.Official = true

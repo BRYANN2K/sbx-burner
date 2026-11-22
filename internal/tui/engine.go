@@ -26,6 +26,8 @@ type ModelList struct {
 	Current string  `json:"current"`
 	Values  []Model `json:"values"`
 	Known   bool    `json:"known"`
+	Version string  `json:"version"`
+	Error   string  `json:"error"` // the probe's one-line failure
 }
 
 // Model is one model the agent offers.
@@ -43,8 +45,11 @@ type Engine interface {
 	AgentTUIs(ctx context.Context) (map[string][]string, error)
 	// ACPAgents lists the agents burner can drive over ACP.
 	ACPAgents(ctx context.Context) ([]string, error)
-	// Models lists the models an ACP agent offers.
+	// Models lists the models an ACP agent offers, from the cache.
 	Models(ctx context.Context, agent string) (ModelList, error)
+	// ProbeModels asks the agent in a throwaway sandbox (about a minute)
+	// and caches the list.
+	ProbeModels(ctx context.Context, agent string) (ModelList, error)
 	// Plan runs the engine's dry run and returns its output.
 	Plan(ctx context.Context, o engine.RunOptions) (string, int, error)
 	// Run executes the recipe with the event stream. Cancelling ctx
@@ -131,6 +136,39 @@ func (e realEngine) Models(ctx context.Context, agent string) (ModelList, error)
 	}
 	v.Current = sanitize.Line(v.Current, 120)
 	return v, err
+}
+
+func (e realEngine) ProbeModels(ctx context.Context, agent string) (ModelList, error) {
+	var v ModelList
+	self, err := os.Executable()
+	if err != nil {
+		return v, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, self, "--catalog", e.root, "models", "--agent", agent, "--refresh", "--json")
+	// Interrupt, never kill: the engine's teardown destroys the sandbox.
+	cmd.Cancel = func() error { return cmd.Process.Signal(os.Interrupt) }
+	cmd.WaitDelay = 3 * time.Minute
+	out, runErr := cmd.Output()
+	if len(out) > 1<<20 {
+		return v, errors.New("output too large")
+	}
+	if err := json.Unmarshal(out, &v); err != nil {
+		if runErr != nil {
+			return v, runErr
+		}
+		return v, err
+	}
+	for i := range v.Values {
+		v.Values[i].Value = sanitize.Line(v.Values[i].Value, 120)
+		v.Values[i].Name = sanitize.Line(v.Values[i].Name, 120)
+	}
+	v.Current, v.Version, v.Error = sanitize.Line(v.Current, 120), sanitize.Line(v.Version, 64), sanitize.Line(v.Error, 300)
+	if v.Error != "" {
+		return v, errors.New(v.Error)
+	}
+	return v, nil
 }
 
 func (e realEngine) Plan(ctx context.Context, o engine.RunOptions) (string, int, error) {
