@@ -1,0 +1,31 @@
+schema_version: "1"
+name: triage-and-report
+category: foundation
+# A scope file is optional: with one, the runner also demotes findings whose
+# target host is out of scope, matching what the agent does in triage.
+scope: optional
+
+variants:
+  linux:
+    status: beta
+    kit: kits/lab-tools
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  timeout_minutes: 15
+  # required: a directory with candidates.jsonl and its proof files.
+  target: required
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    # The triage itself is offline; nothing is allowed while the agent runs.
+    allow: []
+    # Opened for the tools step only; closed before the agent starts.
+    # Debian packages, only when jq or python3 are missing.
+    install_allow:
+      - deb.debian.org:80
+      - security.debian.org:80
