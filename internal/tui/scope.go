@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
-	"github.com/BRYANN2K/sbx-burner/internal/sanitize"
 )
 
 // ScopeResult is what `lab scope new --json` and `lab scope FILE --json`
@@ -137,11 +135,6 @@ type scopeMsg struct {
 	err  error
 }
 
-type editedMsg struct {
-	path string
-	err  error
-}
-
 // startLoad runs what a loading question waits for.
 func (m model) startLoad() tea.Cmd {
 	f := m.flow
@@ -151,117 +144,17 @@ func (m model) startLoad() tea.Cmd {
 	switch f.q.loader {
 	case "models":
 		return m.loadModels()
-	case "scope-dry", "scope-create":
+	case "scope-dry":
 		key := f.q.loadKey
 		if f.inflight[key] {
 			return nil
 		}
 		f.inflight[key] = true
-		ctx, eng, o, ref, dry := m.ctx, m.eng, f.q.loadOpts, f.q.loadRef, f.q.loader == "scope-dry"
-		kind := "create"
-		if dry {
-			kind = "dry"
-		}
+		ctx, eng, o := m.ctx, m.eng, f.q.loadOpts
 		return func() tea.Msg {
-			r, err := eng.ScopeNew(ctx, o, ref, dry)
-			return scopeMsg{key: key, kind: kind, res: r, err: err}
+			r, err := eng.ScopeNew(ctx, o, "", true)
+			return scopeMsg{key: key, kind: "dry", res: r, err: err}
 		}
 	}
 	return nil
-}
-
-func (m model) checkScope(path, key string) tea.Cmd {
-	ctx, eng := m.ctx, m.eng
-	return func() tea.Msg {
-		r, err := eng.ScopeCheck(ctx, path)
-		return scopeMsg{key: key, kind: "check", res: r, err: err}
-	}
-}
-
-// editScope opens the scope in $VISUAL / $EDITOR (vi by default).
-func editScope(path string) tea.Cmd {
-	ed := os.Getenv("VISUAL")
-	if ed == "" {
-		ed = os.Getenv("EDITOR")
-	}
-	if ed == "" {
-		ed = "vi"
-	}
-	parts := strings.Fields(ed)
-	cmd := exec.Command(parts[0], append(parts[1:], path)...)
-	return tea.ExecProcess(cmd, func(err error) tea.Msg { return editedMsg{path: path, err: err} })
-}
-
-// previewLines renders the scope to create or reuse: authorization,
-// targets, valid, network, techniques, then what is left to fix.
-func previewLines(r ScopeResult, w int) []string {
-	s := r.Scope
-	str := func(v any) string { return sanitize.Line(fmt.Sprint(v), 300) }
-	list := func(v any) string {
-		xs, _ := v.([]any)
-		var out []string
-		for _, x := range xs {
-			out = append(out, str(x))
-		}
-		if len(out) == 0 {
-			return "none"
-		}
-		return strings.Join(out, ", ")
-	}
-	get := func(m any, k string) any {
-		mm, _ := m.(map[string]any)
-		return mm[k]
-	}
-	kv := func(k, v string) []string {
-		var out []string
-		for i, l := range wrap(v, max(10, w-14)) {
-			key := ""
-			if i == 0 {
-				key = k
-			}
-			out = append(out, sDim.Render(fmt.Sprintf("%-14s", key))+sText.Render(l))
-		}
-		return out
-	}
-	var lines []string
-	auth := str(get(s["authorization"], "type"))
-	if ref := get(s["authorization"], "reference"); ref != nil {
-		auth += " · " + str(ref)
-	}
-	lines = append(lines, kv("authorization", auth)...)
-	if o := s["owner"]; o != nil {
-		lines = append(lines, kv("owner", str(o)+" · owner is not an authorization")...)
-	}
-	targets, _ := s["targets"].([]any)
-	for i, t := range targets {
-		label := ""
-		if i == 0 {
-			label = "targets"
-		}
-		v := str(get(t, "name"))
-		if h := get(t, "hosts"); h != nil {
-			v += ": " + list(h)
-		}
-		if p := get(t, "paths"); p != nil {
-			v += ": " + list(p)
-		}
-		lines = append(lines, kv(label, v)...)
-	}
-	lines = append(lines, kv("valid", str(get(s["valid"], "not_before"))+" to "+str(get(s["valid"], "not_after")))...)
-	lines = append(lines, kv("network", str(get(s["network"], "mode"))+" · allow "+list(get(s["network"], "allow"))+" · deny "+list(get(s["network"], "deny")))...)
-	lines = append(lines, kv("techniques", list(get(s["techniques"], "allowed")))...)
-	lines = append(lines, kv("forbidden", list(get(s["techniques"], "forbidden")))...)
-	lines = append(lines, kv("file", tildify(r.Path))...)
-	for _, n := range r.Notes {
-		lines = append(lines, "", sDim.Render(sanitize.Line(n, 300)))
-	}
-	if len(r.Errors) > 0 {
-		lines = append(lines, "")
-		for _, e := range r.Errors {
-			for _, l := range wrap("to fix: "+sanitize.Line(e, 500), w) {
-				lines = append(lines, sAmber.Render(l))
-			}
-		}
-	}
-	return lines
 }

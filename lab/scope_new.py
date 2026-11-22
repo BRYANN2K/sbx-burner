@@ -123,6 +123,12 @@ def generate(
     reference: str | None = None,
     days: int = 30,
     today: _dt.date | None = None,
+    name: str | None = None,
+    extra_hosts: list[str] | None = None,
+    out_of_scope: list[str] | None = None,
+    techniques: list[str] | None = None,
+    risky: list[str] | None = None,
+    network_mode: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Return the scope document and notes on what was kept from the example."""
     example = recipe.path / "scope.example.yaml"
@@ -180,7 +186,77 @@ def generate(
     host_part = _slug(all_hosts[0]) if all_hosts else "local"
     data["id"] = f"{_slug(recipe.name)}-{host_part}"[:63].strip("-")
     data["schema_version"] = "1"
+    apply_choices(data, name=name, hosts=extra_hosts, out_of_scope=out_of_scope, techniques=techniques, risky=risky, network=network_mode)
     return data, notes
+
+
+def apply_choices(
+    data: dict[str, Any],
+    *,
+    name: str | None = None,
+    hosts: list[str] | None = None,
+    out_of_scope: list[str] | None = None,
+    techniques: list[str] | None = None,
+    risky: list[str] | None = None,
+    network: str | None = None,
+) -> None:
+    """The scope form's choices: name, extra target hosts, out-of-scope
+    hosts, the techniques kept on, risky techniques taken on explicitly, and
+    the network mode (strict, or additive shown as "standard")."""
+    if name:
+        data["id"] = _slug(name)[:63].strip("-") or data["id"]
+    if hosts:
+        targets = data.setdefault("targets", [])
+        first = next((t for t in targets if t.get("hosts") is not None), None)
+        if first is None:
+            first = {"name": "target", "hosts": []}
+            targets.insert(0, first)
+        for h in hosts:
+            if h not in first["hosts"]:
+                first["hosts"].append(h)
+    net = data.setdefault("network", {})
+    if out_of_scope:
+        net["deny"] = list(dict.fromkeys([*(net.get("deny") or []), *out_of_scope]))
+    if network:
+        if network not in ("strict", "additive", "standard"):
+            raise ScopeNewError("--network must be strict or standard")
+        net["mode"] = "additive" if network == "standard" else network
+    tech = data.setdefault("techniques", {"allowed": []})
+    allowed = list(tech.get("allowed") or [])
+    forbidden = list(tech.get("forbidden") or [])
+    if techniques is not None:
+        dropped = [t for t in allowed if t not in techniques]
+        allowed = list(techniques)
+        forbidden += [t for t in dropped if t not in forbidden]
+    taken = []
+    for t in risky or []:
+        if t.lower() not in scope_mod.RISKY:
+            raise ScopeNewError(f"{t}: not a risky technique ({', '.join(scope_mod.RISKY)})")
+        taken.append(t)
+        if t not in allowed:
+            allowed.append(t)
+        forbidden = [f for f in forbidden if f != t]
+    tech["allowed"], tech["forbidden"] = allowed, forbidden
+    if taken:
+        tech["risky"] = list(dict.fromkeys([*(tech.get("risky") or []), *taken]))
+
+
+def named_path(data: dict[str, Any]) -> Path:
+    """~/.burner/scopes/<id>.yaml (the form's Save)."""
+    return scopes_dir() / f"{_slug(data.get('id', 'scope')) or 'scope'}.yaml"
+
+
+def save(path: Path, text: str, *, overwrite: bool) -> None:
+    """Write 0600; with overwrite, replace the file atomically."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if not overwrite:
+        write(path, text)
+        return
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(tmp, path)
 
 
 def todos(data: Any) -> list[str]:
@@ -234,9 +310,12 @@ def dump(data: Any, indent: int = 0) -> str:
     return "\n".join(lines)
 
 
-def render(recipe: Recipe, data: dict[str, Any]) -> str:
+def render(recipe: Recipe | None, data: dict[str, Any]) -> str:
+    origin = "Scope written by burner."
+    if recipe is not None:
+        origin = f"Scope for {recipe.id}, written by `lab scope new` from the recipe's scope.example.yaml."
     head = [
-        f"# Scope for {recipe.id}, written by `lab scope new` from the recipe's scope.example.yaml.",
+        f"# {origin}",
         f"# Edit every {TODO} value: `lab scope <this file>` refuses the file until none is left.",
         "",
     ]

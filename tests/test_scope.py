@@ -72,7 +72,9 @@ def _set(path, value):
         (_set(["targets", 0, "hosts"], []), "needs 'hosts' or 'paths'"),
         (_set(["targets"], []), "at least 1"),
         (_set(["authorization"], {"type": "written"}), "needs a 'reference'"),
-        (_set(["techniques", "allowed"], ["dos"]), "never allowed"),
+        (_set(["techniques", "allowed"], ["ddos"]), "list it under techniques.risky"),
+        (_set(["techniques", "allowed"], ["dos"]), "list it under techniques.risky"),
+        (_set(["techniques", "allowed"], ["phishing"]), "list it under techniques.risky"),
         (_set(["valid", "not_after"], "2028-01-01"), "longer than one year"),
         (_set(["valid", "not_after"], "2025-01-01"), "before not_before"),
         (_set(["network", "allow"], ["*.com"]), "whole top-level domain"),
@@ -123,3 +125,52 @@ def test_load_missing_and_json(tmp_path):
     path = tmp_path / "scope.json"
     path.write_text(json.dumps(miniyaml.loads(SCOPE_OK)), encoding="utf-8")
     assert scope.load(path, today=TODAY).id == "unit-lab"
+
+
+def _risky(tech, hosts, auth=None):
+    def mutate(data):
+        data["targets"] = [{"name": "t", "hosts": hosts}]
+        data["network"]["deny"] = []
+        if auth:
+            data["authorization"] = auth
+        data["techniques"]["allowed"] = ["recon", tech]
+        data["techniques"]["risky"] = [tech]
+
+    return mutate
+
+
+WRITTEN = {"type": "written", "reference": "SOW-42"}
+
+
+@pytest.mark.parametrize("tech", scope.RISKY)
+def test_own_lab_network_target_refuses_every_risky_technique(tech):
+    with pytest.raises(scope.ScopeError, match="needs written authorization"):
+        _load(_risky(tech, ["10.0.5.7:80"]))
+
+
+@pytest.mark.parametrize("tech", scope.RISKY_HOST)
+def test_sandbox_local_target_allows_host_risky_techniques(tech):
+    s = _load(_risky(tech, ["localhost:3000", "127.0.0.1:8080", "::1"]))
+    assert tech in s.techniques_allowed and tech in s.techniques_risky and tech not in s.techniques_forbidden
+
+
+@pytest.mark.parametrize("tech", scope.RISKY_PEOPLE)
+def test_people_techniques_need_written_even_on_localhost(tech):
+    with pytest.raises(scope.ScopeError, match=r"needs written authorization \(type 'written'"):
+        _load(_risky(tech, ["localhost:3000"]))
+
+
+@pytest.mark.parametrize("tech", scope.RISKY)
+def test_written_authorization_allows_every_risky_technique(tech):
+    s = _load(_risky(tech, ["10.0.5.7:80"], WRITTEN))
+    assert tech in s.techniques_allowed and tech not in s.techniques_forbidden
+    assert set(scope.RISKY) - {tech} <= set(s.techniques_forbidden)
+
+
+def test_risky_technique_needs_the_explicit_list():
+    def mutate(data):
+        data["authorization"] = WRITTEN
+        data["techniques"]["allowed"] = ["recon", "dos"]
+
+    with pytest.raises(scope.ScopeError, match="list it under techniques.risky"):
+        _load(mutate)

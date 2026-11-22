@@ -33,7 +33,7 @@ const (
 	qInput
 	qBrowse
 	qNotes
-	qPreview
+	qForm // the scope form, on its own screen
 )
 
 type option struct {
@@ -53,7 +53,7 @@ type question struct {
 	dirs, files bool
 	types       []string
 	loading     string // shown with a spinner instead of the question
-	loader      string // what startLoad runs: models | scope-dry | scope-create
+	loader      string // what startLoad runs: models | scope-dry
 	loadKey     string
 	loadOpts    engine.RunOptions
 	loadRef     string
@@ -82,9 +82,6 @@ type flowModel struct {
 
 	scopeDry    *ScopeResult // scope new --dry-run for scopeDryKey
 	scopeDryKey string
-	scopeRes    *ScopeResult // the created scope for scopeResKey
-	scopeResKey string
-	scopeBusy   bool // checking the scope after an edit
 	inflight    map[string]bool
 
 	models        ModelList
@@ -421,7 +418,7 @@ func (f *flowModel) scopeStep(w *walker, o engine.RunOptions) (string, bool) {
 	var opts []option
 	hint := ""
 	if f.scopeDry.Error == "" {
-		opts = append(opts, option{label: "Create from my target", value: "create", note: summaryLine(f.scopeDry.Summary)})
+		opts = append(opts, option{label: "Build the scope", value: "build", note: summaryLine(f.scopeDry.Summary)})
 	} else {
 		hint = "cannot create one: " + sanitize.Line(f.scopeDry.Error, 200)
 	}
@@ -435,22 +432,8 @@ func (f *flowModel) scopeStep(w *walker, o engine.RunOptions) (string, bool) {
 		return "", false
 	}
 	switch how {
-	case "create":
-		ref := ""
-		if f.scopeDry.Summary.Auth == "written" {
-			ref, ok = w.ask(question{section: "scope", title: "Written authorization", kind: qInput,
-				hint:        "Link or id of the written authorization for " + strings.Join(f.scopeDry.Summary.Hosts, ", ") + ".",
-				placeholder: "https://… or a contract id", validate: nonEmpty})
-			if !ok {
-				return "", false
-			}
-		}
-		ckey := key + "\x00" + ref
-		if f.scopeRes == nil || f.scopeResKey != ckey {
-			w.ask(question{section: "scope", title: "Scope", loader: "scope-create", loadKey: "create\x00" + ckey, loadOpts: o, loadRef: ref, loading: "writing the scope…"})
-			return "", false
-		}
-		return w.ask(question{section: "scope", title: "Scope preview", kind: qPreview})
+	case "build":
+		return w.ask(question{section: "scope", title: "Scope", kind: qForm})
 	case "saved":
 		var so []option
 		for _, p := range saved {
@@ -644,24 +627,9 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch mm.kind {
 		case "dry":
 			f.scopeDry, f.scopeDryKey = &res, strings.TrimPrefix(mm.key, "dry\x00")
-		case "create":
-			f.scopeRes, f.scopeResKey = &res, strings.TrimPrefix(mm.key, "create\x00")
-		case "check":
-			f.scopeBusy = false
-			if f.scopeRes != nil && f.scopeResKey == mm.key {
-				res.Notes = f.scopeRes.Notes
-				f.scopeRes = &res
-			}
-			return m, nil
 		}
 		f.advance()
 		return m, tea.Batch(f.focusCmd(), m.startLoad())
-	case editedMsg:
-		if f.scopeRes != nil && f.scopeRes.Path == mm.path {
-			f.scopeBusy = true
-			return m, m.checkScope(mm.path, f.scopeResKey)
-		}
-		return m, nil
 	}
 	if mm, ok := msg.(modelsMsg); ok {
 		if mm.agent == f.modelsFor {
@@ -732,24 +700,6 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.input, cmd = f.input.Update(msg)
 		f.err = ""
 		return m, cmd
-	case qPreview:
-		switch k.String() {
-		case "enter":
-			if f.scopeBusy || f.scopeRes == nil {
-				return m, nil
-			}
-			if !f.scopeRes.Valid {
-				f.err = "fix what is listed first: e opens the file"
-				return m, nil
-			}
-			f.record(f.scopeRes.Path, f.scopeRes.Path)
-		case "e":
-			if f.scopeRes != nil && f.scopeRes.Path != "" && !f.scopeBusy {
-				return m, editScope(f.scopeRes.Path)
-			}
-		case "q":
-			return m, tea.Quit
-		}
 	case qBrowse:
 		var p string
 		var picked bool
@@ -792,6 +742,13 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.notes, cmd = f.notes.Update(msg)
 		return m, cmd
 	}
+	return m.afterAnswer()
+}
+
+// afterAnswer moves on once a question is answered: the plan when the flow
+// is complete, a loader, the scope form, or the next question.
+func (m model) afterAnswer() (tea.Model, tea.Cmd) {
+	f := m.flow
 	if f.q == nil {
 		m.plan = newPlan(f.opts)
 		m.scr = scrPlan
@@ -799,6 +756,11 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	if f.q.loading != "" {
 		return m, m.startLoad()
+	}
+	if f.q.kind == qForm && f.scopeDry != nil {
+		m.form = newScopeForm(f.scopeDry.Scope, catalog.DisplayCategory(f.r)+"/"+f.r.Name, "", m.cfg.Now())
+		m.scr = scrScopeForm
+		return m, nil
 	}
 	return m, f.focusCmd()
 }
@@ -882,14 +844,6 @@ func (m model) viewFlow() string {
 	case q.kind == qNotes:
 		f.notes.SetWidth(inner - 2)
 		body = append(body, f.notes.View())
-	case q.kind == qPreview && f.scopeRes != nil:
-		body = append(body, previewLines(*f.scopeRes, inner-2)...)
-		if f.scopeBusy {
-			body = append(body, "", sAmber.Render(m.spin())+" "+sDim.Render("checking the scope"))
-		}
-		if f.err != "" {
-			body = append(body, "", sAmber.Render(f.err))
-		}
 	}
 	b.WriteString(box(w, strings.Join(body, "\n")) + "\n")
 
@@ -904,8 +858,6 @@ func (m model) viewFlow() string {
 		b.WriteString(hints(append(keys, "esc", "back")...))
 	case q.kind == qNotes:
 		b.WriteString(hints("enter", "continue", "opt+enter", "newline", "esc", "back"))
-	case q.kind == qPreview:
-		b.WriteString(hints("enter", "use", "e", "edit in $EDITOR", "esc", "back"))
 	case q.kind == qInput:
 		b.WriteString(hints("enter", "continue", "esc", "back", "ctrl+c", "quit"))
 	default:

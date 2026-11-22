@@ -55,6 +55,8 @@ type Engine interface {
 	// ScopeNew writes (or with dryRun only shows) a scope for the recipe
 	// and target in o: `lab scope new --json`.
 	ScopeNew(ctx context.Context, o engine.RunOptions, reference string, dryRun bool) (ScopeResult, error)
+	// ScopeSave validates and writes a scope document: `lab scope save`.
+	ScopeSave(ctx context.Context, doc map[string]any, out string, force bool) (ScopeResult, error)
 	// ScopeCheck validates a scope file: `lab scope FILE --json`.
 	ScopeCheck(ctx context.Context, path string) (ScopeResult, error)
 }

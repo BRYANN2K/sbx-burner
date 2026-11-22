@@ -153,3 +153,65 @@ def test_invalid_scope_is_not_written(tmp_path, monkeypatch, capsys):
     # --dry-run still shows it.
     assert cli.main([*args, "--dry-run"]) == runner.EXIT_PREFLIGHT
     assert json.loads(capsys.readouterr().out)["scope"]["targets"][0]["hosts"] == ["bad_host.acme.dev:443"]
+
+
+def test_form_choices(tmp_path):
+    data, _ = scope_new.generate(
+        _recipe("pentest/webapp-blackbox"),
+        target_port="3000",
+        owner="o",
+        today=TODAY,
+        name="Shop App",
+        extra_hosts=["localhost:3001"],
+        out_of_scope=["localhost:9000"],
+        techniques=["recon", "auth-testing"],
+        risky=["brute-force", "dos"],
+        network_mode="standard",
+    )
+    assert data["id"] == "shop-app"
+    assert data["targets"][0]["hosts"] == ["localhost:3000", "localhost:3001"]
+    assert data["network"] == {**data["network"], "deny": ["localhost:9000"], "mode": "additive"}
+    tech = data["techniques"]
+    assert tech["allowed"] == ["recon", "auth-testing", "brute-force", "dos"] and tech["risky"] == ["brute-force", "dos"]
+    assert "dos" not in tech["forbidden"] and "brute-force" not in tech["forbidden"]
+    path = tmp_path / "s.yaml"
+    path.write_text(scope_new.render(_recipe("pentest/webapp-blackbox"), data), encoding="utf-8")
+    scope = scope_mod.load(path, today=TODAY)
+    assert "dos" in scope.techniques_allowed and "dos" not in scope.techniques_forbidden
+
+
+def test_form_risky_takes_every_listed_technique_and_refuses_unknown_ones():
+    data, _ = scope_new.generate(_recipe("pentest/webapp-blackbox"), target_port="3000", risky=["ransomware", "phishing"], today=TODAY)
+    assert data["techniques"]["risky"] == ["ransomware", "phishing"]
+    with pytest.raises(scope_new.ScopeNewError, match="not a risky technique"):
+        scope_new.generate(_recipe("pentest/webapp-blackbox"), target_port="3000", risky=["recon"], today=TODAY)
+
+
+def test_scope_save_writes_named_file_and_overwrites_only_with_force(tmp_path, monkeypatch, capsys):
+    import io
+
+    monkeypatch.setenv("BURNER_HOME", str(tmp_path))
+    data, _ = scope_new.generate(_recipe("pentest/api-greybox"), target_port="3000", owner="o", name="shop")
+    doc = json.dumps(data)
+    monkeypatch.setattr("sys.stdin", io.StringIO(doc))
+    assert cli.main(["scope", "save", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    target = tmp_path / "scopes" / "shop.yaml"
+    assert out["written"] and out["path"] == str(target)
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+    monkeypatch.setattr("sys.stdin", io.StringIO(doc))
+    assert cli.main(["scope", "save", "--json"]) == runner.EXIT_REFUSED
+    assert "exists" in json.loads(capsys.readouterr().out)["errors"][0]
+    data["authorization"] = {"type": "written"}
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(data)))
+    assert cli.main(["scope", "save", "--force", "--json"]) == runner.EXIT_REFUSED  # written without a reference
+    data["authorization"] = {"type": "own-lab"}
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(data)))
+    assert cli.main(["scope", "save", "--force", "--json"]) == 0
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+
+
+def test_cli_name_names_the_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("BURNER_HOME", str(tmp_path))
+    assert cli.main(["scope", "new", "pentest/api-greybox", "--target-port", "3000", "--owner", "o", "--name", "Shop", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["path"] == str(tmp_path / "scopes" / "shop.yaml")
