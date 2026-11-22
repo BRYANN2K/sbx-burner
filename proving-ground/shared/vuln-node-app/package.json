@@ -1,0 +1,17 @@
+{
+  "name": "corner-shop-api",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Tiny demo shop API used as the proving-ground target for the pentest web recipes.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "4.21.2"
+  }
+}

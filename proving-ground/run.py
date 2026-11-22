@@ -62,6 +62,8 @@ GENERIC_EVAL_CHECKS = frozenset(
     {"evidence_present", "evidence_schema", "evidence_recipe", "tool_ran", "artifact_exists", "artifact_absent", "no_demotions"}
 )
 # Very rough model-token cost of one real run, for the --real estimate.
+# Note prefix for a folder whose every entry is in runs_pending.
+PENDING = "PENDING"
 COST_HINT = {"small": "(~50k tokens)", "medium": "(~200k tokens)", "large": "(~600k tokens)"}
 
 
@@ -286,6 +288,33 @@ def _write_summary(date: str, rows: list[tuple[str, dict[str, Any]]]) -> Path:
     return path
 
 
+# Target directories handed to the agent must not carry the answers.
+_ANSWER_FILES = ("EXPECTED.yaml", "target.yaml")
+_ANSWER_MARKERS = ("Planted issues", "must NOT be reported", "must_find", "must_not_find")
+_PATH_FLAGS = ("--target", "--target-app")
+
+
+def _answer_leaks(entry_args: list[str]) -> list[str]:
+    """Paths given to the agent (--target, --target-app) that hold answer material."""
+    leaks: list[str] = []
+    for i, arg in enumerate(entry_args[:-1]):
+        if arg not in _PATH_FLAGS:
+            continue
+        path = Path(entry_args[i + 1])
+        path = path if path.is_absolute() else ROOT / path
+        if not path.exists():
+            continue
+        files = [path] if path.is_file() else [p for p in path.rglob("*") if p.is_file() and "node_modules" not in p.parts]
+        for f in files:
+            if f.name in _ANSWER_FILES:
+                leaks.append(str(f.relative_to(ROOT) if f.is_relative_to(ROOT) else f))
+            elif f.suffix.lower() in (".md", ".txt", ".rst"):
+                text = f.read_text(encoding="utf-8", errors="replace")
+                if any(m in text for m in _ANSWER_MARKERS):
+                    leaks.append(str(f.relative_to(ROOT) if f.is_relative_to(ROOT) else f))
+    return leaks
+
+
 def _check_folder(folder: Path, args: argparse.Namespace) -> tuple[bool, str]:
     """Validate one folder and lab-dry-run its plans. Returns (ok, note)."""
     target, err = _load_yaml(folder / "target.yaml")
@@ -314,6 +343,12 @@ def _check_folder(folder: Path, args: argparse.Namespace) -> tuple[bool, str]:
         return False, f"kinds not in recipe run.targets: {sorted(set(bad))}"
     if not (target.get("runs") or target.get("runs_pending")):
         return False, "no runs or runs_pending entries"
+    if not target.get("runs"):
+        return True, f"{PENDING}: {len(target['runs_pending'])} runs_pending entries, nothing to run yet"
+    for entry in target.get("runs") or []:
+        leaks = _answer_leaks(entry["args"])
+        if leaks:
+            return False, f"kind {entry['kind']} hands the agent answer material: {', '.join(sorted(leaks)[:5])}"
     placeholders = False
     if "build" in target:
         if _build_allowed_offline(target):
@@ -378,6 +413,10 @@ def _real_folder(folder: Path, args: argparse.Namespace) -> dict[str, Any]:
     eval_failures: list[str] = []
     eval_notes: list[str] = []
     for entry in target.get("runs") or []:
+        leaks = _answer_leaks(entry["args"])
+        if leaks:
+            where = ", ".join(sorted(leaks)[:5])
+            return {"recipe": recipe, "error": f"refused: kind {entry['kind']} hands the agent answer material: {where}", "ok": False}
         proc = _run(_real_argv(args.runner, recipe, entry, folder, args.agent), cwd=ROOT)
         report = _find_report(proc.stdout, since)
         if proc.returncode != 0 or report is None:
@@ -430,7 +469,8 @@ def main(argv: list[str] | None = None) -> int:
         for folder in folders:
             good, note = _check_folder(folder, args)
             ok = ok and good
-            print(f"{'OK' if good else 'FAIL'} {folder.name}: {note}")
+            label = "FAIL" if not good else ("PENDING" if note.startswith(PENDING) else "OK")
+            print(f"{label} {folder.name}: {note.removeprefix(PENDING + ': ')}")
         if args.json:
             print(json.dumps({"mode": "dry-run", "ok": ok}))
         return 0 if ok else 1
@@ -452,6 +492,9 @@ def main(argv: list[str] | None = None) -> int:
     rows: list[tuple[str, dict[str, Any]]] = []
     worst = 0
     for folder in folders:
+        if not miniyaml.loads((folder / "target.yaml").read_text()).get("runs"):
+            print(f"PENDING {folder.name}: only runs_pending entries, not run")
+            continue
         verdict = _real_folder(folder, args)
         recipe = verdict["recipe"]
         if "error" in verdict:

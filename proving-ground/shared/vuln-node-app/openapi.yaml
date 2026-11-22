@@ -1,0 +1,95 @@
+openapi: 3.0.3
+info:
+  title: corner-shop-api
+  version: 1.2.0
+  description: Public shop API contract.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses:
+        "200": {description: ok}
+  /api/register:
+    post:
+      summary: Create a shopper account (gets its own basket)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string}
+                name: {type: string}
+                password: {type: string, minLength: 8}
+      responses:
+        "201": {description: account id, session token and basket id}
+        "400": {description: invalid input}
+        "409": {description: email already registered}
+  /api/login:
+    post:
+      summary: Log in with email (or username) and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                email: {type: string}
+                username: {type: string, description: alias of email}
+                password: {type: string}
+      responses:
+        "200": {description: session token and basket id}
+        "401": {description: invalid email or password}
+  /api/products:
+    get:
+      summary: Product list
+      responses:
+        "200": {description: array of products}
+  /api/products/{id}:
+    get:
+      summary: One product
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: product}
+        "404": {description: not found}
+  /api/profile:
+    get:
+      summary: The caller's own profile
+      security: [{bearer: []}]
+      responses:
+        "200": {description: profile}
+        "401": {description: unauthenticated}
+  /api/baskets/{id}:
+    get:
+      summary: A basket by id
+      security: [{bearer: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: basket}
+        "401": {description: unauthenticated}
+        "404": {description: not found}
+  /search:
+    get:
+      summary: HTML search
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+      responses:
+        "200": {description: results page}
+  /echo:
+    get:
+      summary: HTML echo (escaped)
+      parameters:
+        - {name: msg, in: query, schema: {type: string}}
+      responses:
+        "200": {description: echo page}
+components:
+  securitySchemes:
+    bearer: {type: http, scheme: bearer}

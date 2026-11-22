@@ -134,7 +134,22 @@ runs_pending:
     _mkrecipe(tmp_path, "devsecops/demo-sast", "  targets: [path]\n")
     monkeypatch.setattr(run, "ROOT", tmp_path)
     ok, note = run._check_folder(folder, run.argparse.Namespace(agent=None))
-    assert ok and "pending" in note
+    assert ok and note.startswith(run.PENDING)
+
+
+def test_main_lists_pending_only_folder(tmp_path, monkeypatch, capsys):
+    target = """\
+recipe: devsecops/demo-sast
+runs_pending:
+  - kind: app
+    args: ["--target-app", "npm start"]
+"""
+    folder = _mkfolder(tmp_path, target=target)
+    _mkrecipe(tmp_path, "devsecops/demo-sast", "  targets: [path]\n")
+    monkeypatch.setattr(run, "ROOT", tmp_path)
+    monkeypatch.setattr(run, "PG", folder.parent)
+    assert run.main(["--dry-run"]) == 0
+    assert f"PENDING {folder.name}:" in capsys.readouterr().out
 
 
 # -- scoring ----------------------------------------------------------------
@@ -391,3 +406,31 @@ def test_real_asks_before_running(tmp_path, monkeypatch, capsys):
     assert run.main(["--real", "--runner", "lab"]) == 1
     out = capsys.readouterr().out
     assert "cost estimate" in out and "~50k tokens" in out
+
+
+def test_answer_leaks_flags_expected_and_answer_readmes(tmp_path, monkeypatch):
+    monkeypatch.setattr(run, "ROOT", tmp_path)
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "server.js").write_text("console.log(1)\n")
+    (app / "package.json").write_text("{}\n")
+    assert run._answer_leaks(["--target-app", "app"]) == []
+    (app / "README.md").write_text("# shop\n\n## Planted issues\n- IDOR\n")
+    assert run._answer_leaks(["--target-app", "app"]) == ["app/README.md"]
+    (app / "README.md").write_text("# shop\n")
+    (app / "EXPECTED.yaml").write_text("recipe: x\n")
+    assert run._answer_leaks(["--target", "app"]) == ["app/EXPECTED.yaml"]
+    assert run._answer_leaks(["--target-image", "app"]) == [], "only path flags are checked"
+    nm = app / "node_modules" / "pkg"
+    nm.mkdir(parents=True)
+    (nm / "README.md").write_text("must_find in a dependency readme is not ours\n")
+    assert run._answer_leaks(["--target", "app"]) == ["app/EXPECTED.yaml"]
+
+
+def test_no_committed_target_hands_out_answers():
+    """Every run in the repo's proving-ground passes the leak guard."""
+    for folder in run._folders(None):
+        target, err = run._load_yaml(folder / "target.yaml")
+        assert not err, err
+        for entry in target.get("runs") or []:
+            assert run._answer_leaks(entry["args"]) == [], (folder.name, entry)
