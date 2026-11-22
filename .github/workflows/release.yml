@@ -23,6 +23,10 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
       - name: third-party notices
+        # go-licenses must run on the same Go as the module's toolchain line,
+        # or it cannot read the standard library's module info.
+        env:
+          GOTOOLCHAIN: go1.26.11
         run: |
           go run github.com/google/go-licenses@latest report ./cmd/burner > THIRD_PARTY_NOTICES.csv
       - uses: goreleaser/goreleaser-action@v6
