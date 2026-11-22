@@ -59,7 +59,7 @@ A pinned version, Homebrew (planned) and manual download with `cosign verify-blo
 Store a credential for your agent. It stays on the host. The sandbox only sees a placeholder.
 
 ```sh
-sbx secret set anthropic        # Claude Code
+sbx run claude ~/some-folder    # Claude Code: sign in with your plan, then quit
 sbx secret set openai --oauth   # Codex
 ```
 

@@ -40,8 +40,8 @@ Source: <https://docs.docker.com/ai/sandboxes/install/>.
 Credentials live on the host. A proxy injects them into requests. The VM never sees the real value.
 
 ```sh
-sbx secret set anthropic          # Claude Code, API key
-sbx secret set openai --oauth     # Codex, ChatGPT login
+sbx run claude ~/some-folder      # Claude Code: sign in with your plan, then quit
+sbx run codex ~/some-folder       # Codex: sign in with your ChatGPT plan, then quit
 sbx secret set openai             # Codex, API key
 ```
 

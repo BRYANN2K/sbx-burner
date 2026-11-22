@@ -6,7 +6,7 @@ devsecops/secrets-scan · /tmp/burner-tui-golden/repo · codex                  
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ Agent                                                                                                                │
 │                                                                                                                      │
-│   Claude Code                   no credential · sbx secret set anthropic                                             │
+│   Claude Code                   no credential · sbx run claude <folder>   (sign in with your plan, then quit)        │
 │ ❯ Codex                         credential stored                                                                    │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 

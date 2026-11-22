@@ -16,7 +16,7 @@
                     │                                                                              │
                     │  ╭────────────────────────────────────────────────────────────────────────╮  │
                     │  │ Connect Claude                                                         │  │
-                    │  │ $ sbx secret set anthropic                                             │  │
+                    │  │ $ sbx run claude /home/tester/burner-sample                            │  │
                     │  │                                                                        │  │
                     │  │  enter connect    s skip                                               │  │
                     │  ╰────────────────────────────────────────────────────────────────────────╯  │

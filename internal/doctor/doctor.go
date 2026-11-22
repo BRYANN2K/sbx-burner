@@ -49,10 +49,13 @@ func res(id, title string, l Level, detail, fix string) Result {
 // Agent credentials: sbx secret service per agent. Keep in sync with
 // lab/sbx.py AGENTS; agents not listed here are not offered by burner yet.
 var AgentServices = map[string]struct{ Service, Fix string }{
-	"claude": {"anthropic", "sbx secret set anthropic"},
-	"codex":  {"openai", "sbx secret set openai --oauth"},
-	"devin":  {"devin", "sbx run devin <folder>   (sign in once)"},
-	"cursor": {"cursor", "sbx secret set cursor --oauth"},
+	// Subscriptions sign in inside the agent itself: `sbx run` opens the
+	// agent in a sandbox, the user signs in with their plan there, and sbx
+	// keeps the OAuth credential on the host.
+	"claude": {"anthropic", "sbx run claude <folder>   (sign in with your plan, then quit)"},
+	"codex":  {"openai", "sbx run codex <folder>   (sign in with your plan, then quit)"},
+	"devin":  {"devin", "sbx run devin <folder>   (sign in, then quit)"},
+	"cursor": {"cursor", "sbx run cursor <folder>   (sign in with your plan, then quit)"},
 	// OpenCode keeps its providers in its own config; burner checks the
 	// stored OpenAI credential it uses through sbx.
 	"opencode": {"openai", "sbx run opencode <folder>   (set the providers in OpenCode)"},

@@ -75,7 +75,7 @@ func TestEmptySecretListIsAWarningWithFix(t *testing.T) {
 		}),
 	})
 	for _, r := range res {
-		if r.ID == "agent-claude" && (r.Level != Warn || r.Fix != "sbx secret set anthropic") {
+		if r.ID == "agent-claude" && (r.Level != Warn || !strings.HasPrefix(r.Fix, "sbx run claude")) {
 			t.Fatalf("got %+v", r)
 		}
 	}
