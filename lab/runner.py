@@ -1039,6 +1039,11 @@ def build_plan(
         )
     elif acp:
         plan.acp = True
+        acp_env = dict(agent_env)
+        if model and agent.acp_model_unlisted.startswith("env:"):
+            # The adapter merges this into the session config at start, so a
+            # model outside the list it offers runs too.
+            acp_env[agent.acp_model_unlisted[4:]] = json.dumps({"model": model}, separators=(",", ":"))
         bridge = [
             os.environ.get("BURNER_ACP_BRIDGE") or "burner",
             "acp-bridge",
@@ -1052,7 +1057,7 @@ def build_plan(
             bridge.append(f"--model={model}")
         plan.agent_step = Step(
             "agent",
-            [*bridge, "--", *sbx.exec_(sandbox, list(agent.acp), workdir=workspace, env=agent_env, interactive=True)],
+            [*bridge, "--", *sbx.exec_(sandbox, list(agent.acp), workdir=workspace, env=acp_env, interactive=True)],
             f"drive {agent.name} over ACP (burner acp-bridge; permissions: "
             + ("auto-allow, logged" if permission == "auto" else "ask the operator")
             + (f"; model {model}" if model else "")

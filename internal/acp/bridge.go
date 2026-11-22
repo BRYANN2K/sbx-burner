@@ -25,6 +25,11 @@ type Profile struct {
 	ModeOption string
 	FullTrust  string // --permission auto
 	AskFirst   string // --permission ask
+	// Unlisted says how a --model outside the offered list reaches the
+	// agent (lab/sbx.py acp_model_unlisted): "config_option" sends it with
+	// session/set_config_option anyway, "env" means the runner set it in
+	// the adapter's environment at start, "" refuses it.
+	Unlisted string
 }
 
 // Profiles lists the agents whose ACP path is wired and tested in sbx.
@@ -33,13 +38,13 @@ var Profiles = map[string]Profile{
 	// Verified 2026-11-22 against @agentclientprotocol/codex-acp 2.9.0 in
 	// the sbx 0.54 codex kit: mode values read-only | workspace-write |
 	// agent (auto review) | agent-full-access.
-	"codex": {ModeOption: "mode", FullTrust: "agent-full-access", AskFirst: "agent"},
+	"codex": {ModeOption: "mode", FullTrust: "agent-full-access", AskFirst: "agent", Unlisted: "env"},
 	// Verified 2026-11-22 against @agentclientprotocol/claude-agent-acp
 	// 0.109.1 (session-mode.js buildAvailableModes): mode values default
 	// (Manual) | acceptEdits | plan | auto | bypassPermissions. The last is
 	// offered only when the process is not root or IS_SANDBOX is set —
 	// both hold inside sbx.
-	"claude": {ModeOption: "mode", FullTrust: "bypassPermissions", AskFirst: "default"},
+	"claude": {ModeOption: "mode", FullTrust: "bypassPermissions", AskFirst: "default", Unlisted: "config_option"},
 	// Verified 2026-11-22 against cursor-agent 2026.11.22 (`cursor-agent
 	// acp`) in the sbx 0.54 cursor kit: mode values agent | plan | ask.
 	// "agent" is the only mode with tool access; "plan" is read-only — the
@@ -345,6 +350,14 @@ func (b *bridge) pickModel(ctx context.Context) error {
 			return fmt.Errorf("--model %s: the agent offers no model choice", b.o.Model)
 		}
 		if !hasValue(opt, b.o.Model) {
+			switch Profiles[b.o.Agent].Unlisted {
+			case "config_option":
+				b.log("model %s is not in %s's list; sending it as is", b.o.Model, b.o.Agent)
+				return b.client.SetUnlisted(ctx, opt.ID, b.o.Model)
+			case "env":
+				b.log("model %s set in %s's session config at start", b.o.Model, b.o.Agent)
+				return nil
+			}
 			ids := make([]string, 0, len(opt.Values))
 			for _, v := range opt.Values {
 				ids = append(ids, v.Value)

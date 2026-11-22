@@ -20,6 +20,9 @@ type Prefs struct {
 	Permission string `yaml:"permission,omitempty"` // auto | ask
 	Keep       bool   `yaml:"keep,omitempty"`
 	RunsDir    string `yaml:"runs_dir,omitempty"`
+	// CustomModels are model ids typed in "Other model…", per agent, so
+	// they are offered again.
+	CustomModels map[string][]string `yaml:"custom_models,omitempty"`
 }
 
 func prefsPath() string { return filepath.Join(catalog.Home(), "config.yaml") }

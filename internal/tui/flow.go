@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/BRYANN2K/sbx-burner/internal/acp"
 	"github.com/BRYANN2K/sbx-burner/internal/appdetect"
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
@@ -325,16 +327,7 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 			return
 		}
 		ml := f.models
-		def := "default"
-		if ml.Current != "" {
-			def = ml.Current
-		}
-		mo := []option{{label: "Agent default", value: "", note: def}}
-		for _, md := range ml.Values {
-			if md.Value != "" {
-				mo = append(mo, option{label: md.Value, value: md.Value, note: md.Name})
-			}
-		}
+		mo := modelOptions(ml, f.prefs.CustomModels[o.Agent])
 		q := question{section: "model", title: "Model", kind: qSelect, options: mo, cursor: optIndex(mo, f.prefs.Model)}
 		if f.modelsProbing {
 			q.wait = "asking " + o.Agent + " for its models… (first time ~1 min)"
@@ -344,6 +337,15 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		mdl, ok := w.ask(q)
 		if !ok {
 			return
+		}
+		if mdl == otherModel {
+			agent, interactive := o.Agent, o.Interactive
+			mdl, ok = w.ask(question{section: "model", title: "Model id", kind: qInput, placeholder: "e.g. claude-mythos-5-2",
+				validate: func(s string) error { return checkModelID(agent, strings.TrimSpace(s), interactive, ml) }})
+			if !ok {
+				return
+			}
+			mdl = strings.TrimSpace(mdl)
 		}
 		o.Model = mdl
 	}
@@ -854,6 +856,9 @@ func (m model) afterAnswer() (tea.Model, tea.Cmd) {
 		if m.prefs.Keep {
 			f.opts.Keep = true
 		}
+		if f.modelsFor == f.opts.Agent {
+			m.rememberModel(f.opts.Agent, f.opts.Model, f.models)
+		}
 		m.plan = newPlan(f.opts)
 		m.scr = scrPlan
 		return m, m.plan.start(m)
@@ -1075,4 +1080,84 @@ func (f *flowModel) check(id string) (doctor.Result, bool) {
 		}
 	}
 	return doctor.Result{}, false
+}
+
+// otherModel is the "Other model…" row: it asks for a model id.
+const otherModel = "\x00other"
+
+var modelIDRE = regexp.MustCompile(`^[A-Za-z0-9._:/-]{1,80}$`)
+
+// modelOptions is the Model question: one default row (the adapter's own
+// "default" is the same choice), the offered models, the ids typed before
+// for this agent, then "Other model…".
+func modelOptions(ml ModelList, custom []string) []option {
+	note := ""
+	if ml.Current != "" && ml.Current != "default" {
+		note = ml.Current
+	}
+	mo := []option{{label: "default (recommended)", value: "", note: note}}
+	seen := map[string]bool{"": true, "default": true}
+	for _, md := range ml.Values {
+		if !seen[md.Value] {
+			seen[md.Value] = true
+			mo = append(mo, option{label: md.Value, value: md.Value, note: md.Name})
+		}
+	}
+	for _, c := range custom {
+		if !seen[c] && modelIDRE.MatchString(c) {
+			seen[c] = true
+			mo = append(mo, option{label: c, value: c, note: "custom"})
+		}
+	}
+	return append(mo, option{label: "Other model…", value: otherModel, note: "type a model id"})
+}
+
+// tuiModelAgents take --model in their own TUI (lab/sbx.py tui_model_flag).
+var tuiModelAgents = map[string]bool{"claude": true, "codex": true}
+
+// checkModelID accepts an id the agent can run: any valid id for an agent
+// whose adapter (or TUI) takes ids outside its list, else only listed ones.
+func checkModelID(agent, id string, interactive bool, ml ModelList) error {
+	if !modelIDRE.MatchString(id) {
+		return errors.New("a model id: letters, digits and . _ : / - only, up to 80")
+	}
+	if interactive {
+		if !tuiModelAgents[agent] {
+			return fmt.Errorf("%s's own TUI takes no model from burner", agent)
+		}
+		return nil
+	}
+	for _, v := range ml.Values {
+		if v.Value == id {
+			return nil
+		}
+	}
+	if acp.Profiles[agent].Unlisted == "" {
+		return fmt.Errorf("%s runs only the models it lists over ACP; pick one from the list", agent)
+	}
+	return nil
+}
+
+// rememberModel keeps a typed model id for the agent in the preferences.
+func (m *model) rememberModel(agent, id string, listed ModelList) {
+	if id == "" || !modelIDRE.MatchString(id) {
+		return
+	}
+	for _, v := range listed.Values {
+		if v.Value == id {
+			return
+		}
+	}
+	p, _ := LoadPrefs()
+	if p.CustomModels == nil {
+		p.CustomModels = map[string][]string{}
+	}
+	ids := appendUniq(p.CustomModels[agent], id)
+	if len(ids) > 8 {
+		ids = ids[len(ids)-8:]
+	}
+	p.CustomModels[agent] = ids
+	if SavePrefs(p) == nil {
+		m.prefs.CustomModels = p.CustomModels
+	}
 }

@@ -41,6 +41,11 @@ class Agent:
     acp: tuple[str, ...] = ()
     acp_install: str = ""
     acp_install_hosts: tuple[str, ...] = ()
+    # How --model reaches the ACP adapter when the id is not in the list it
+    # offers: "config_option" (session/set_config_option takes any id),
+    # "env:NAME" (NAME={"model": id} merged into the session config at
+    # start), or "" (only the offered ids).
+    acp_model_unlisted: str = ""
     # Interactive (--interactive): the agent's own TUI, started with the task
     # prompt as its first message; tui_model_flag passes --model to it.
     # TODO(verify): every CLI takes a positional first prompt in TUI mode.
@@ -107,6 +112,10 @@ AGENTS: dict[str, Agent] = {
             'node --version; npm ls -g --prefix "$HOME/.local" --all --json'
         ),
         acp_install_hosts=("deb.debian.org:80", "security.debian.org:80", "registry.npmjs.org:443"),
+        # claude-agent-acp 0.109.1 (session-config-options.js configOptionValue):
+        # on a new session a model value outside the picker is passed to
+        # Claude Code as it is ("unlisted"), which refuses an id it cannot run.
+        acp_model_unlisted="config_option",
     ),
     "codex": Agent(
         name="codex",
@@ -144,6 +153,9 @@ AGENTS: dict[str, Agent] = {
             'node --version; npm ls -g --prefix "$HOME/.local" --all --json'
         ),
         acp_install_hosts=("deb.debian.org:80", "security.debian.org:80", "registry.npmjs.org:443"),
+        # codex-acp 2.9.0 README "Runtime options": CODEX_CONFIG is a JSON
+        # object merged into the Codex session config.
+        acp_model_unlisted="env:CODEX_CONFIG",
     ),
     "cursor": Agent(
         name="cursor",

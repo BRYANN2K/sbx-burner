@@ -136,7 +136,9 @@ func runFake(t *testing.T, o BridgeOptions, answer func(id, q string) *string) (
 	dir := t.TempDir()
 	pr, pw := io.Pipe()
 	rs := &runnerSide{answers: pw, answer: answer}
-	o.Agent = "codex"
+	if o.Agent == "" {
+		o.Agent = "codex"
+	}
 	o.Cwd = "/work"
 	o.Prompt = "Read AGENTS.md"
 	o.Transcript = filepath.Join(dir, "acp-transcript.raw.jsonl")
@@ -195,7 +197,8 @@ func TestBridgeAutoTrustUnattended(t *testing.T) {
 }
 
 func TestBridgeUnknownModelIsRefusedWithTheList(t *testing.T) {
-	rs, _, code := runFake(t, BridgeOptions{Permission: "auto", Model: "gpt-9", Unattended: true}, func(string, string) *string { return nil })
+	// cursor runs only the ids it offers (codex takes others through CODEX_CONFIG).
+	rs, _, code := runFake(t, BridgeOptions{Agent: "cursor", Permission: "auto", Model: "gpt-9", Unattended: true}, func(string, string) *string { return nil })
 	if code == 0 {
 		t.Fatal("unknown model accepted")
 	}
@@ -330,5 +333,27 @@ func TestAskModeNoAnswerRejectsOnceNeverAlways(t *testing.T) {
 	id, ok = b.Permission(Permission{Title: "t", Options: []Option{{ID: "a", Name: "Allow", Kind: "allow_once"}, {ID: "no", Name: "No", Kind: "reject_once"}}})
 	if !ok || id != "no" {
 		t.Fatalf("got %q %v, want reject_once", id, ok)
+	}
+}
+
+func TestBridgeUnlistedModel(t *testing.T) {
+	never := func(string, string) *string { return nil }
+	// claude: the adapter takes any id over session/set_config_option.
+	_, dir, code := runFake(t, BridgeOptions{Agent: "claude", Permission: "auto", Model: "claude-mythos-5-2", Unattended: true}, never)
+	raw, _ := os.ReadFile(filepath.Join(dir, "acp-transcript.raw.jsonl"))
+	if code != 0 || !strings.Contains(string(raw), "set_config_option") || !strings.Contains(string(raw), "claude-mythos-5-2") {
+		t.Fatalf("claude unlisted: exit %d", code)
+	}
+	// codex: the runner put it in CODEX_CONFIG; the bridge sends nothing.
+	_, dir, code = runFake(t, BridgeOptions{Agent: "codex", Permission: "auto", Model: "gpt-7-custom", Unattended: true}, never)
+	raw, _ = os.ReadFile(filepath.Join(dir, "acp-transcript.raw.jsonl"))
+	if code != 0 || strings.Contains(string(raw), "gpt-7-custom") {
+		t.Fatalf("codex unlisted: exit %d", code)
+	}
+	// cursor: only the offered ids.
+	rs, _, code := runFake(t, BridgeOptions{Agent: "cursor", Permission: "auto", Model: "gpt-7-custom", Unattended: true}, never)
+	logs := rs.of("log")
+	if code == 0 || len(logs) == 0 || !strings.Contains(logs[len(logs)-1]["text"].(string), "is not offered by cursor") {
+		t.Fatalf("cursor unlisted accepted: exit %d", code)
 	}
 }

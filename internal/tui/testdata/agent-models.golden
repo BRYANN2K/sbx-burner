@@ -8,11 +8,11 @@ devsecops/secrets-scan · /tmp/burner-tui-golden · codex      target › agent 
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ Model                                                                                                                │
 │                                                                                                                      │
-│ ❯ Agent default                 gpt-6.2-sol                                                                          │
+│ ❯ default (recommended)         gpt-6.2-sol                                                                          │
 │   gpt-6.2-sol                   6.2 Sol                                                                              │
 │   gpt-6-luna                    6 Luna                                                                               │
+│   Other model…                  type a model id                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
 
 
 

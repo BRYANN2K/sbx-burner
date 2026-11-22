@@ -553,6 +553,20 @@ func (c *Client) SetOption(ctx context.Context, id, value string) error {
 	return fmt.Errorf("the agent has no option %q", id)
 }
 
+// SetUnlisted sends a value the option does not list, for an agent whose
+// adapter documents that it passes such ids on (claude-agent-acp's model).
+// The agent still refuses an id it cannot run.
+func (c *Client) SetUnlisted(ctx context.Context, id, value string) error {
+	for _, o := range c.Options {
+		if o.ID == id {
+			ctx, cancel := context.WithTimeout(ctx, CallTimeout)
+			defer cancel()
+			return c.call(ctx, "session/set_config_option", map[string]any{"sessionId": c.sessionID, "configId": id, "value": value}, nil)
+		}
+	}
+	return fmt.Errorf("the agent has no option %q", id)
+}
+
 // Prompt sends one user turn (task, notes, or an answer) and waits for the
 // turn to end. It returns the stop reason.
 func (c *Client) Prompt(ctx context.Context, text string) (string, error) {

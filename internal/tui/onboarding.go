@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -58,9 +59,10 @@ type setupModel struct {
 	prefs     Prefs
 	models    ModelList
 	modelsFor string
-	probing   bool            // asking the agent in a throwaway sandbox
-	modelsErr string          // the probe's failure
-	probed    map[string]bool // agents already probed
+	probing   bool             // asking the agent in a throwaway sandbox
+	modelsErr string           // the probe's failure
+	probed    map[string]bool  // agents already probed
+	other     *textinput.Model // "Other model…" input on the model field
 	loading   bool
 	busy      bool
 	note      string
@@ -463,6 +465,36 @@ func (m model) keySetupPrefs(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return opts[(i+dir+len(opts))%len(opts)]
 	}
 	dir := 0
+	if s.other != nil {
+		switch key {
+		case "esc":
+			s.other = nil
+		case "enter":
+			id := strings.TrimSpace(s.other.Value())
+			if err := checkModelID(p.Agent, id, p.Mode == "interactive", s.models); err != nil {
+				s.err = err.Error()
+				return m, nil
+			}
+			p.Model, s.other = id, nil
+			if p.CustomModels == nil {
+				p.CustomModels = map[string][]string{}
+			}
+			p.CustomModels[p.Agent] = appendUniq(p.CustomModels[p.Agent], id)
+		default:
+			var cmd tea.Cmd
+			*s.other, cmd = s.other.Update(k)
+			return m, cmd
+		}
+		return m, nil
+	}
+	if key == "o" && field == "model" {
+		ti := textinput.New()
+		ti.Prompt = "❯ "
+		ti.Placeholder = "e.g. claude-mythos-5-2"
+		ti.CharLimit = 80
+		s.other = &ti
+		return m, s.other.Focus()
+	}
 	switch key {
 	case "tab", "down":
 		s.field = (s.field + 1) % len(prefFields)
@@ -500,11 +532,7 @@ func (m model) keySetupPrefs(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "model":
 		if dir != 0 {
-			vals := []string{""}
-			for _, v := range s.models.Values {
-				vals = append(vals, v.Value)
-			}
-			p.Model = cycle(vals, p.Model, dir)
+			p.Model = cycle(setupModelValues(s.models, p.CustomModels[p.Agent], p.Model), p.Model, dir)
 		}
 	case "mode":
 		if dir != 0 {
@@ -730,10 +758,7 @@ func (m model) viewSetup() string {
 		}
 		L = append(L, label("agent", "Default agent")+strings.Join(ag, " "), "")
 		var ms []string
-		vals := []string{""}
-		for _, v := range s.models.Values {
-			vals = append(vals, v.Value)
-		}
+		vals := setupModelValues(s.models, p.CustomModels[p.Agent], p.Model)
 		for _, v := range vals {
 			name := v
 			if name == "" {
@@ -770,7 +795,11 @@ func (m model) viewSetup() string {
 		case len(s.models.Values) == 0:
 			mline += "  " + sDim.Render("full list after the first run")
 		}
-		L = append(L, label("model", "Model")+mline, "")
+		L = append(L, label("model", "Model")+mline)
+		if s.other != nil {
+			L = append(L, strings.Repeat(" ", 18)+s.other.View())
+		}
+		L = append(L, "")
 		L = append(L, label("mode", "Mode")+chip("ACP", p.Mode == "acp")+" "+chip("Interactive", p.Mode == "interactive"), "")
 		L = append(L, label("permission", "Permissions")+chip("auto", p.Permission == "auto")+" "+chip("ask me", p.Permission == "ask"), "")
 		L = append(L, label("keep", "After the run")+chip("burn", !p.Keep)+" "+chip("keep", p.Keep), "")
@@ -780,6 +809,12 @@ func (m model) viewSetup() string {
 		}
 		L = append(L, label("runs", "Runs folder")+" "+sText.Render(p.RunsDir)+cursor, "", sDim.Render("  saved to  ")+sSoft.Render(tildify(prefsPath())))
 		keys = []string{"tab", "next field", "←→", "choose", "n", "next", "esc", "back"}
+		if prefFields[s.field] == "model" {
+			keys = []string{"tab", "next field", "←→", "choose", "o", "other model", "n", "next", "esc", "back"}
+		}
+		if s.other != nil {
+			keys = []string{"enter", "use this model", "esc", "cancel"}
+		}
 	case setupFirstRun:
 		p := s.prefs
 		agent := p.Agent
@@ -964,4 +999,30 @@ func (m model) setupRunDone() {
 	if l.done == nil {
 		s.result = fmt.Sprintf("secrets-scan · stopped · exit %d", l.exit)
 	}
+}
+
+// setupModelValues are the model chips: default (the adapter's own
+// "default" is the same choice), the offered models, the ids typed before
+// for this agent, and the current one.
+func setupModelValues(ml ModelList, custom []string, current string) []string {
+	vals := []string{""}
+	seen := map[string]bool{"": true, "default": true}
+	add := func(v string) {
+		if !seen[v] {
+			seen[v] = true
+			vals = append(vals, v)
+		}
+	}
+	for _, v := range ml.Values {
+		add(v.Value)
+	}
+	for _, c := range custom {
+		if modelIDRE.MatchString(c) {
+			add(c)
+		}
+	}
+	if modelIDRE.MatchString(current) {
+		add(current)
+	}
+	return vals
 }
