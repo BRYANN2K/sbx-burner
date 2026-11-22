@@ -1353,9 +1353,8 @@ func TestSetupWalksEveryStep(t *testing.T) {
 	m.cfg.Official = true
 	m.checks = setupChecks()
 	m.acpAgents = []string{"codex"}
-	golden(t, "setup-welcome", m)
-	m = press(t, m, "enter")
-	golden(t, "setup-machine", m)
+	golden(t, "setup-machine", m) // setup opens on the machine step
+
 	if _, cmd := m.Update(keyMsg("enter")); cmd == nil {
 		t.Fatal("enter did not run sbx policy init")
 	}

@@ -1,25 +1,25 @@
 Setup                                                            machine › agents › approvals › preferences › first run
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│   Default agent                                                                                                      │
-│      claude   codex   cursor   devin   opencode                                                                      │
-│                                                                                                                      │
-│ ❯ Model                                                                                                              │
-│      gpt-6-luna   2 models                                                                                           │
-│                                                                                                                      │
-│   Mode                                                                                                               │
-│      ACP   Interactive                                                                                               │
-│                                                                                                                      │
-│   Permissions                                                                                                        │
-│      auto   ask me                                                                                                   │
-│                                                                                                                      │
-│   After the run                                                                                                      │
-│      burn   keep                                                                                                     │
-│                                                                                                                      │
-│   Runs folder                                                                                                        │
-│     ~/.burner/runs                                                                                                   │
-│                                                                                                                      │
-│ SAVED TO  /tmp/burner-tui-golden/home/config.yaml                                                                    │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+    Default agent    claude   codex   cursor   devin   opencode
+
+  ❯ Model            default   gpt-6-luna   gpt-6.2-sol
+
+    Mode             ACP   Interactive
+
+    Permissions      auto   ask me
+
+    After the run    burn   keep
+
+    Runs folder      ~/.burner/runs
+
+    saved to  /tmp/burner-tui-golden/home/config.yaml
+
+
+
+
+
+
+
 
 
 

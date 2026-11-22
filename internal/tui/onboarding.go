@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
@@ -29,6 +31,8 @@ const (
 	setupFirstRun
 	setupDone
 )
+
+var sbxVersionRE = regexp.MustCompile(`v[0-9]+\.[0-9]+\.[0-9]+`)
 
 var setupSteps = []string{"machine", "agents", "approvals", "preferences", "first run"}
 
@@ -86,7 +90,7 @@ func newSetup(p Prefs) *setupModel {
 	if p.RunsDir == "" {
 		p.RunsDir = "~/.burner/runs"
 	}
-	return &setupModel{prefs: p}
+	return &setupModel{step: setupMachine, prefs: p}
 }
 
 func (m model) check(id string) (doctor.Result, bool) {
@@ -430,38 +434,18 @@ func (m model) viewSetup() string {
 	s := m.setup
 	w := m.w
 	var b strings.Builder
-	if s.step == setupWelcome {
-		logo := m.logoLines()
-		lines := []string{}
-		for i, l := range logo {
-			row := sAmber.Render(l)
-			switch i {
-			case 3:
-				row += "   " + sBold.Render("burner") + "  " + sDim.Render(m.cfg.Version)
-			case 5:
-				row += "   " + sSoft.Render("Run coding agents on your projects")
-			case 6:
-				row += "   " + sSoft.Render("inside Docker Sandboxes.")
-			}
-			lines = append(lines, row)
-		}
-		b.WriteString("\n" + box(w, strings.Join(lines, "\n")) + "\n")
-		b.WriteString(hints("enter", "set up", "q", "quit"))
-		return b.String()
-	}
 	cur := ""
 	if s.step-1 < len(setupSteps) && s.step >= 1 {
 		cur = setupSteps[s.step-1]
 	}
 	right := trail(setupSteps, cur)
-	title := "Setup"
 	if s.step == setupDone {
-		title, right = "Setup", sSoft.Render("ready")
+		right = sSoft.Render("ready")
 	}
 	if m.checking || s.busy || s.loading {
 		right = sAmber.Render(m.spin()) + " " + right
 	}
-	b.WriteString(header(w, sBold.Render(title), right) + "\n")
+	b.WriteString(header(w, sBold.Render("Setup"), right) + "\n\n")
 	mark := func(l doctor.Level) string {
 		switch l {
 		case doctor.OK:
@@ -471,58 +455,119 @@ func (m model) viewSetup() string {
 		}
 		return sAmber.Render("!")
 	}
-	row := func(sel_ bool, m_, name, detail string) string {
-		line := fmt.Sprintf("%s  %-30s %s", m_, name, detail)
-		if sel_ {
-			return sel(w-6, line)
+	// row is one line of the mock's 4-column grid: mark, name, value, key.
+	row := func(selected bool, mk, name, value, key string) string {
+		line := fmt.Sprintf("%s  %-24s %s", mk, name, value)
+		if key != "" {
+			line += "  " + sDim.Render(key)
+		}
+		if selected {
+			return sel(w-4, line)
 		}
 		return line
+	}
+	cardW := w - 4
+	if cardW > 84 {
+		cardW = 84
+	}
+	card := func(lines ...string) string { return box(cardW, strings.Join(lines, "\n")) }
+	btn := func(k, v string, primary bool) string {
+		t := " " + k + " " + v + " "
+		if primary {
+			return sSel.Render(t)
+		}
+		return sDim.Render(t)
 	}
 	var L []string
 	var keys []string
 	switch s.step {
 	case setupMachine:
+		names := map[string]string{"sbx": "sbx", "runtime": "Container runtime", "buildx": "Docker buildx", "policy": "Global network policy", "disk": "Free disk", "git-login": "GitHub login"}
 		for _, id := range []string{"sbx", "runtime", "buildx", "policy", "disk", "git-login"} {
-			if c, ok := m.check(id); ok {
-				L = append(L, row(false, mark(c.Level), c.Title, sDim.Render(c.Detail)))
+			c, ok := m.check(id)
+			if !ok {
+				continue
 			}
+			v := c.Detail
+			if id == "sbx" && c.Level == doctor.OK {
+				if f := sbxVersionRE.FindString(v); f != "" {
+					v = f
+				}
+			}
+			vs := sDim.Render(v)
+			if c.Level != doctor.OK {
+				vs = sSoft.Render(v)
+			}
+			L = append(L, row(id == "policy" && c.Level != doctor.OK, mark(c.Level), names[id], vs, ""))
 		}
 		keys = []string{"n", "next"}
 		if c, ok := m.check("policy"); ok && c.Level != doctor.OK {
-			L = append(L, "", sBold.Render("Global network policy"), "  "+sText.Render("$ "+doctor.PolicyInitCommand), "  "+sAmber.Render("changes the global sbx policy: every sbx sandbox on this Mac, not only burner's"))
+			L = append(L, "", card(sBold.Render("Global network policy"), sSoft.Render("$ "+doctor.PolicyInitCommand),
+				sAmber.Render("applies to every sbx sandbox on this Mac, not only burner's"), "",
+				btn("enter", "run", true)+"  "+btn("s", "skip", false)))
 			keys = []string{"enter", "run the command", "s", "skip", "n", "next"}
 		}
 	case setupAgents:
 		for i, a := range setupAgentsList {
 			c, ok := m.check("agent-" + a)
-			mk, detail := sAmber.Render("!"), "not checked"
+			mk, v, key := sAmber.Render("!"), "not checked", ""
 			if ok {
-				mk, detail = mark(c.Level), c.Detail
+				mk = mark(c.Level)
+				v = c.Detail
+				if c.Level == doctor.OK {
+					v = doctor.AgentServices[a].Service
+				}
 			}
-			L = append(L, row(i == s.cursor, mk, setupAgentName[a], sDim.Render(detail)))
+			if why, blocked := doctor.Blocked[a]; blocked {
+				mk, v = sAmber.Render("!"), why
+			}
+			if a == "opencode" {
+				v, key = "providers set in OpenCode", "o"
+			}
+			vs := sDim.Render(v)
+			if ok && c.Level != doctor.OK {
+				vs = sSoft.Render(v)
+			}
+			L = append(L, row(i == s.cursor, mk, setupAgentName[a], vs, key))
 		}
 		a := setupAgentsList[s.cursor]
-		if a == "opencode" {
-			L = append(L, "", sBold.Render("Configure OpenCode"), "  "+sText.Render("$ sbx run opencode "+tildify(sampleDir())))
+		c, ok := m.check("agent-" + a)
+		keys = []string{"↑↓", "move", "s", "skip", "n", "next", "esc", "back"}
+		switch _, blocked := doctor.Blocked[a]; {
+		case a == "opencode":
+			L = append(L, "", card(sBold.Render("Configure OpenCode"), sSoft.Render("$ sbx run opencode "+tildify(sampleDir())), "",
+				btn("o", "open OpenCode", true)+"  "+btn("s", "skip", false)))
 			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
-		} else if why, blocked := doctor.Blocked[a]; blocked {
-			L = append(L, "", sAmber.Render(setupAgentName[a]+": "+why))
-			keys = []string{"↑↓", "move", "s", "skip", "n", "next", "esc", "back"}
-		} else {
+		case blocked:
+		case !ok || c.Level != doctor.OK:
 			if argv := connectCommand(a); len(argv) > 0 {
-				L = append(L, "", sBold.Render("Connect "+setupAgentName[a]), "  "+sText.Render("$ "+tildify(strings.Join(argv, " "))))
+				L = append(L, "", card(sBold.Render("Connect "+setupAgentName[a]), sSoft.Render("$ "+tildify(strings.Join(argv, " "))), "",
+					btn("enter", "connect", true)+"  "+btn("s", "skip", false)))
+				keys = []string{"↑↓", "move", "enter", "connect", "s", "skip", "n", "next", "esc", "back"}
 			}
-			keys = []string{"↑↓", "move", "enter", "connect", "s", "skip", "n", "next", "esc", "back"}
 		}
 	case setupApprovals:
 		rows := m.setupApprovalRows()
 		for i, r := range rows {
-			L = append(L, row(i == s.cursor, mark(r.Level), r.Title, sDim.Render(r.Detail)))
+			agent := strings.TrimPrefix(r.ID, "approval-")
+			v := strings.ReplaceAll(strings.TrimPrefix(r.Detail, "needs approval: "), ", ", " · ")
+			vs := sSoft.Render(v)
+			if r.Level == doctor.OK {
+				vs = sDim.Render(v)
+			}
+			L = append(L, row(i == s.cursor, mark(r.Level), setupAgentName[agent]+" kit (kali)", vs, ""))
 		}
 		if len(rows) == 0 {
 			L = append(L, sFaint.Render("none"))
 		}
-		keys = []string{"↑↓", "move", "a", "approve in sbx", "s", "skip", "n", "next", "esc", "back"}
+		keys = []string{"↑↓", "move", "s", "skip", "n", "next", "esc", "back"}
+		if s.cursor < len(rows) && rows[s.cursor].Level != doctor.OK {
+			agent := strings.TrimPrefix(rows[s.cursor].ID, "approval-")
+			svc := map[string]string{"claude": "Anthropic", "codex": "OpenAI", "cursor": "Cursor", "devin": "Devin", "opencode": "provider"}[agent]
+			L = append(L, "", card(sBold.Render("Approve your "+svc+" login for burner's "+setupAgentName[agent]+" kit"), "",
+				btn("a", "approve in sbx", true)+"  "+btn("s", "skip", false)))
+			keys = []string{"↑↓", "move", "a", "approve", "s", "skip", "n", "next", "esc", "back"}
+		}
 	case setupPrefs:
 		p := s.prefs
 		chip := func(v string, on bool) string {
@@ -533,34 +578,61 @@ func (m model) viewSetup() string {
 		}
 		label := func(f, t string) string {
 			if prefFields[s.field] == f {
-				return sAmber.Render("❯ " + t)
+				return sAmber.Render(fmt.Sprintf("❯ %-16s", t))
 			}
-			return sDim.Render("  " + t)
+			return sDim.Render(fmt.Sprintf("  %-16s", t))
 		}
 		var ag []string
 		for _, a := range setupAgentsList {
 			ag = append(ag, chip(a, a == p.Agent))
 		}
-		L = append(L, label("agent", "Default agent"), "    "+strings.Join(ag, " "), "")
-		model := "default"
-		if p.Model != "" {
-			model = p.Model
+		L = append(L, label("agent", "Default agent")+strings.Join(ag, " "), "")
+		var ms []string
+		vals := []string{""}
+		for _, v := range s.models.Values {
+			vals = append(vals, v.Value)
 		}
-		mline := "    " + chip(model, true)
-		if s.loading {
+		for _, v := range vals {
+			name := v
+			if name == "" {
+				name = "default"
+			}
+			ms = append(ms, chip(name, v == p.Model))
+		}
+		if len(ms) > 6 {
+			// keep the line short: the current model and its neighbours
+			i := 0
+			for j, v := range vals {
+				if v == p.Model {
+					i = j
+				}
+			}
+			lo := i - 2
+			if lo < 0 {
+				lo = 0
+			}
+			hi := lo + 5
+			if hi > len(ms) {
+				hi, lo = len(ms), len(ms)-5
+			}
+			ms = append(ms[lo:hi:hi], sDim.Render(fmt.Sprintf(" %d models", len(vals)-1)))
+		}
+		mline := strings.Join(ms, " ")
+		switch {
+		case s.loading:
 			mline += "  " + sAmber.Render(m.spin()) + " " + sDim.Render("asking "+p.Agent+" for its models…")
-		} else if len(s.models.Values) > 0 {
-			mline += "  " + sDim.Render(fmt.Sprintf("%d models", len(s.models.Values)))
+		case len(s.models.Values) == 0:
+			mline += "  " + sDim.Render("full list after the first run")
 		}
-		L = append(L, label("model", "Model"), mline, "")
-		L = append(L, label("mode", "Mode"), "    "+chip("ACP", p.Mode == "acp")+" "+chip("Interactive", p.Mode == "interactive"), "")
-		L = append(L, label("permission", "Permissions"), "    "+chip("auto", p.Permission == "auto")+" "+chip("ask me", p.Permission == "ask"), "")
-		L = append(L, label("keep", "After the run"), "    "+chip("burn", !p.Keep)+" "+chip("keep", p.Keep), "")
+		L = append(L, label("model", "Model")+mline, "")
+		L = append(L, label("mode", "Mode")+chip("ACP", p.Mode == "acp")+" "+chip("Interactive", p.Mode == "interactive"), "")
+		L = append(L, label("permission", "Permissions")+chip("auto", p.Permission == "auto")+" "+chip("ask me", p.Permission == "ask"), "")
+		L = append(L, label("keep", "After the run")+chip("burn", !p.Keep)+" "+chip("keep", p.Keep), "")
 		cursor := ""
 		if prefFields[s.field] == "runs" {
 			cursor = sAmber.Render("▌")
 		}
-		L = append(L, label("runs", "Runs folder"), "    "+sText.Render(p.RunsDir)+cursor, "", sDim.Render("SAVED TO  ")+sSoft.Render(tildify(prefsPath())))
+		L = append(L, label("runs", "Runs folder")+" "+sText.Render(p.RunsDir)+cursor, "", sDim.Render("  saved to  ")+sSoft.Render(tildify(prefsPath())))
 		keys = []string{"tab", "next field", "←→", "choose", "n", "next", "esc", "back"}
 	case setupFirstRun:
 		p := s.prefs
@@ -573,21 +645,27 @@ func (m model) viewSetup() string {
 		if r, ok := m.recipeByID("devsecops/secrets-scan"); ok {
 			t = r.Time
 		}
-		L = append(L, sBold.Render("Try it on a sample project"), "",
-			sDim.Render("project   ")+sText.Render(tildify(filepath.Join(sampleDir(), "leaky-repo"))),
-			sDim.Render("recipe    ")+sText.Render("devsecops/secrets-scan"),
-			sDim.Render("agent     ")+sText.Render(agent))
+		body := []string{sBold.Render("Try it on a sample project"), "",
+			sDim.Render("project   ") + sText.Render(tildify(filepath.Join(sampleDir(), "leaky-repo"))),
+			sDim.Render("recipe    ") + sText.Render("devsecops/secrets-scan"),
+			sDim.Render("agent     ") + sText.Render(agent)}
 		if t != "" {
-			L = append(L, sDim.Render("time      ")+sText.Render("~"+t))
+			body = append(body, sDim.Render("time      ")+sText.Render("~"+t))
 		}
 		keys = []string{"enter", "copy and run", "s", "skip, finish", "esc", "back"}
-		if !m.cfg.Official {
-			L = append(L, "", sAmber.Render("the sample comes from the official catalog; this catalog is "+tildify(m.cfg.Root)))
+		if m.cfg.Official {
+			body = append(body, "", btn("enter", "copy + run", true)+"  "+btn("s", "skip", false))
+		} else {
+			body = append(body, "", sAmber.Render("the sample comes from the official catalog; this catalog is "+tildify(m.cfg.Root)))
 			keys = []string{"s", "finish", "esc", "back"}
 		}
+		L = append(L, card(body...))
 	case setupDone:
 		mc, _ := m.check("sbx")
 		machine := mc.Detail
+		if f := sbxVersionRE.FindString(mc.Detail); f != "" {
+			machine = "sbx " + f
+		}
 		if rt, ok := m.check("runtime"); ok {
 			machine += " · " + rt.Detail
 		}
@@ -602,7 +680,7 @@ func (m model) viewSetup() string {
 		}
 		appr := "all approved"
 		if need := doctor.ApprovalsNeeded(m.checks); len(need) > 0 {
-			appr = strings.Join(need, ", ") + " kit skipped"
+			appr = strings.Join(need, ", ") + " skipped"
 		}
 		p := s.prefs
 		keep := "burn"
@@ -629,18 +707,24 @@ func (m model) viewSetup() string {
 			}
 		}
 		L = append(L,
-			row(false, machineMark, "Machine", sDim.Render(machine)),
-			row(false, sDim.Render("✓"), "Agents", sDim.Render(fmt.Sprintf("%d connected", n))),
-			row(false, apprMark, "Approvals", sDim.Render(appr)),
-			row(false, sDim.Render("✓"), "Preferences", sDim.Render(prefs)),
-			row(false, sDim.Render("✓"), "First run", sDim.Render(first)),
-			"", sDim.Render("burner setup to run it again"))
+			row(false, machineMark, "Machine", sDim.Render(machine), ""),
+			row(false, sDim.Render("✓"), "Agents", sDim.Render(fmt.Sprintf("%d connected", n)), ""),
+			row(false, apprMark, "Approvals", sDim.Render(appr), ""),
+			row(false, sDim.Render("✓"), "Preferences", sDim.Render(prefs), ""),
+			row(false, sDim.Render("✓"), "First run", sDim.Render(first), ""),
+			"", btn("enter", "open burner", true))
 		keys = []string{"enter", "open burner"}
 	}
 	if s.err != "" {
 		L = append(L, "", sAmber.Render(s.err))
 	}
-	b.WriteString(box(w, strings.Join(L, "\n")) + "\n")
+	body := strings.Join(L, "\n")
+	pad := lipgloss.NewStyle().Padding(0, 2).Render(body)
+	used := lipgloss.Height(pad) + 4
+	if m.h > used {
+		pad += strings.Repeat("\n", m.h-used)
+	}
+	b.WriteString(pad + "\n")
 	b.WriteString(hints(keys...))
 	return b.String()
 }
