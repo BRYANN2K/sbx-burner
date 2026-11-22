@@ -1,0 +1,8 @@
+{
+  "name": "PyYAML",
+  "author": "Kirill Simonov",
+  "repository": "https://pyyaml.org/",
+  "latest": "6.0.4",
+  "wheel": true,
+  "install_scripts": "wheel installs run no code; an sdist-only package may run setup.py at build time"
+}

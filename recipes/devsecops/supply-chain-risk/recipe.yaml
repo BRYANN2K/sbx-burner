@@ -1,0 +1,43 @@
+schema_version: "1"
+name: supply-chain-risk
+category: devsecops
+# The recipe only contacts public registries and APIs for tool installs and
+# read-only metadata: no scope file is needed.
+scope: none
+
+variants:
+  linux:
+    status: beta
+    kit: kits/devsecops
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  timeout_minutes: 20
+  target: required
+  # path: a local folder, mounted read-only at /home/agent/target.
+  # repo: a git repository cloned on the host with the user's own git login
+  # (full history kept, .git/config scrubbed), then mounted like a path.
+  targets: [path, repo]
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    # Hosts the agent needs while it works: package registries for metadata,
+    # the OSV API for advisories, and the GitHub API plus codeload for
+    # Scorecard (its tarball fetch 302-redirects to codeload.github.com).
+    allow:
+      - api.github.com:443
+      - codeload.github.com:443
+      - pypi.org:443
+      - registry.npmjs.org:443
+      - api.osv.dev:443
+    # Opened for the tools step only; closed before the agent starts.
+    install_allow:
+      - github.com:443
+      - release-assets.githubusercontent.com:443
+      - objects.githubusercontent.com:443
+      - deb.debian.org:80
+      - security.debian.org:80

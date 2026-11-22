@@ -1,0 +1,15 @@
+{
+  "name": "express",
+  "created": "2010-12-29T19:38:25.450Z",
+  "modified": "2026-11-07T17:35:30.254Z",
+  "latest": "5.3.0",
+  "maintainers": [
+    "wesleytodd",
+    "jonchurch",
+    "ctcpip",
+    "ulisesgascon",
+    "sheplu"
+  ],
+  "repository": "git+https://github.com/expressjs/express.git",
+  "install_scripts": []
+}
