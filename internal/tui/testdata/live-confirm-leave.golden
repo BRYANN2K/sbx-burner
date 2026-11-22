@@ -1,8 +1,8 @@
 secrets-scan · codex · headless                                                     ⠋ stopping, destroying the sandbox…
 ╭─────────────────────────────┬───────────────────────────────────────────────────────┬────────────────────────────────╮
-│ STEPS                       │ codex                                                 │ FINDINGS                       │
-│ ✓ create                    │ I'm applying the secrets-triage skill as required     │ ◆ aws-credential-a5c… critical │
-│ ✓ policy-close              │ by the repository instructions.                       │                                │
+│ STEPS                       │ ▎ codex                                               │ FINDINGS                       │
+│ ✓ create                    │ ▎ I'm applying the secrets-triage skill as required   │ ◆ aws-credential-a5c… critical │
+│ ✓ policy-close              │ ▎ by the repository instructions.                     │                                │
 │ – agent                     │                                                       │ NETWORK                        │
 │                             │ › gitleaks git --redact --report-format json          │ ⊘ ab.chatgpt.com:443   blocked │
 │                             │ ◆ aws-credential-a5c1cc1  critical  AWS access key …  │                                │

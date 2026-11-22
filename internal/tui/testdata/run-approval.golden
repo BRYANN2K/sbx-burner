@@ -5,13 +5,13 @@ webapp-blackbox · codex · default · ACP                                      
 │                             │ │                                                  │  │                                │
 │                             │ │   auth.openai.com                                │  │ NETWORK                        │
 │                             │ │   chatgpt.com                                    │  │                                │
-│                             │ │                                                  │  │ PERMISSIONS                    │
-│                             │ │ a approve in sbx   esc cancel                    │  │ auto-allowed        0 · logged │
-│                             │ ╰──────────────────────────────────────────────────╯  │ asked you                    0 │
+│                             │ │                                                  │  │ ACTIVITY                       │
+│                             │ │ a approve in sbx   esc cancel                    │  │ actions             0 · 0 done │
+│                             │ ╰──────────────────────────────────────────────────╯  │ failed                       0 │
 │                             │                                                       │                                │
-│                             │                                                       │                                │
-│                             │                                                       │                                │
-│                             │                                                       │                                │
+│                             │                                                       │ PERMISSIONS                    │
+│                             │                                                       │ auto-allowed        0 · logged │
+│                             │                                                       │ asked you                    0 │
 │                             │                                                       │                                │
 │                             │                                                       │                                │
 │                             │                                                       │                                │

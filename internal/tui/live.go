@@ -28,6 +28,7 @@ type liveModel struct {
 
 	log     []entry2
 	stepAt  map[string]int
+	actAt   map[string]int // tool call id -> its action line in log
 	asks    []events.Event
 	cursor  int
 	typing  bool
@@ -79,6 +80,9 @@ type entry2 struct {
 	errLine string // a failed step's last error line
 	queued  bool   // a "you" message waiting for the turn boundary
 
+	output []string // an action's last output lines
+	open   bool     // an action shows its output
+
 	cache  []string // rendered lines for cacheW
 	cacheW int
 }
@@ -98,7 +102,7 @@ type answerSentMsg struct {
 type noteSentMsg struct{ err error }
 
 func newLive(o engine.RunOptions, now time.Time) *liveModel {
-	l := &liveModel{opts: o, runsDir: o.RunsDir, started: now, cursor: -1, sc: scroller{follow: true}, stepAt: map[string]int{}, finds: map[string]string{}, stderr: &tail{max: 200}}
+	l := &liveModel{opts: o, runsDir: o.RunsDir, started: now, cursor: -1, sc: scroller{follow: true}, stepAt: map[string]int{}, actAt: map[string]int{}, finds: map[string]string{}, stderr: &tail{max: 200}}
 	ti := textinput.New()
 	ti.Prompt = "❯ "
 	ti.Placeholder = "type an answer"
@@ -168,6 +172,27 @@ func (l *liveModel) add(e events.Event) {
 	if e.Type == "ask" && strings.HasPrefix(e.AskID, "acp-perm-") {
 		l.asked++
 	}
+	// An ACP tool call is one action line: later events with the same id
+	// update it (spinner -> done) or bring its output.
+	if e.Type == "agent.tool" && e.ID != "" {
+		if l.actAt == nil {
+			l.actAt = map[string]int{}
+		}
+		i, ok := l.actAt[e.ID]
+		switch {
+		case e.Tool == "output":
+			if ok {
+				l.log[i].output = strings.Split(e.Summary, "\n")
+				l.log[i].cache = nil
+			}
+		case ok:
+			l.log[i].ev, l.log[i].cache = e, nil
+		default:
+			l.actAt[e.ID] = len(l.log)
+			l.log = append(l.log, entry2{kind: "action", ev: e})
+		}
+		return
+	}
 	// Agents report a tool call when it starts and when it ends.
 	if e.Type == "agent.tool" && len(l.log) > 0 {
 		last := l.log[len(l.log)-1]
@@ -234,6 +259,13 @@ func (l *liveModel) trim() {
 			delete(l.stepAt, k)
 		} else {
 			l.stepAt[k] = i - n
+		}
+	}
+	for k, i := range l.actAt {
+		if i < n {
+			delete(l.actAt, k)
+		} else {
+			l.actAt[k] = i - n
 		}
 	}
 }
@@ -609,14 +641,21 @@ func (l *liveModel) render(m model, w int) []string {
 	}
 	for i := range l.log {
 		e := &l.log[i]
-		dynamic := e.kind == "step" && e.ev.Status == "start"
+		dynamic := (e.kind == "step" && e.ev.Status == "start") || (e.kind == "action" && !actionDone(e.ev))
 		if !dynamic && e.cache != nil && e.cacheW == w {
+			if e.kind == "agent.message" && len(out) > 0 && out[len(out)-1] != "" {
+				out = append(out, "")
+			}
 			out = append(out, e.cache...)
 			continue
 		}
 		lines := l.renderEntry(m, *e, w)
 		if !dynamic {
 			e.cache, e.cacheW = lines, w
+		}
+		// The agent's text stands apart from the actions above it.
+		if e.kind == "agent.message" && len(out) > 0 && out[len(out)-1] != "" {
+			out = append(out, "")
 		}
 		out = append(out, lines...)
 	}
@@ -655,11 +694,35 @@ func (l *liveModel) renderEntry(m model, e entry2, w int) []string {
 			if who == "" {
 				who = l.opts.Agent
 			}
-			out = append(out, sDim.Render(who))
-			for _, t := range wrap(ev.Text, w-2) {
-				out = append(out, sSoft.Render(t))
+			bar := sBlue.Render("▎") + " "
+			out = append(out, bar+sDim.Render(who))
+			for _, t := range wrap(ev.Text, w-3) {
+				out = append(out, bar+sSoft.Render(t))
 			}
 			out = append(out, "")
+		case "action":
+			mark := sAmber.Render(m.spin())
+			switch ev.Status {
+			case "completed":
+				mark = sDim.Render("✓")
+			case "failed":
+				mark = sAmber.Render("✗")
+			}
+			out = append(out, mark+" "+sText.Render(truncate(ev.Summary, w-2)))
+			if ev.Detail != "" {
+				if e.open {
+					for _, t := range wrap("$ "+ev.Detail, w-2) {
+						out = append(out, "  "+sFaint.Render(t))
+					}
+				} else {
+					out = append(out, "  "+sFaint.Render(truncate("$ "+ev.Detail, w-2)))
+				}
+			}
+			if e.open {
+				for _, o := range e.output {
+					out = append(out, "  "+sFaint.Render("│ ")+sDim.Render(truncate(o, w-4)))
+				}
+			}
 		case "you":
 			head := sDim.Render("you")
 			if e.queued {
@@ -840,4 +903,60 @@ func (t *tail) lines() []string {
 		out = out[len(out)-15:]
 	}
 	return out
+}
+
+func actionDone(e events.Event) bool { return e.Status == "completed" || e.Status == "failed" }
+
+// toggleAction opens or closes the latest action (the newest with output,
+// else the newest).
+func (l *liveModel) toggleAction() {
+	pick := -1
+	for i := len(l.log) - 1; i >= 0; i-- {
+		if l.log[i].kind != "action" {
+			continue
+		}
+		if pick < 0 {
+			pick = i
+		}
+		if len(l.log[i].output) > 0 {
+			pick = i
+			break
+		}
+	}
+	if pick >= 0 {
+		l.log[pick].open = !l.log[pick].open
+		l.log[pick].cache = nil
+	}
+}
+
+// toggleAll opens every action, or closes them all when all are open.
+func (l *liveModel) toggleAll() {
+	open := false
+	for _, e := range l.log {
+		if e.kind == "action" && !e.open {
+			open = true
+		}
+	}
+	for i := range l.log {
+		if l.log[i].kind == "action" {
+			l.log[i].open, l.log[i].cache = open, nil
+		}
+	}
+}
+
+// activity counts the actions: all, done, failed.
+func (l *liveModel) activity() (n, done, failed int) {
+	for _, e := range l.log {
+		if e.kind != "action" {
+			continue
+		}
+		n++
+		switch e.ev.Status {
+		case "completed":
+			done++
+		case "failed":
+			failed++
+		}
+	}
+	return
 }
