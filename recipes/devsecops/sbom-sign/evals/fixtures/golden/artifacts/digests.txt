@@ -1,0 +1,4 @@
+95d345572ceeac56612d6aa3c9477afbf33dc83980af5da268389c5298ba385c  sbom.cdx.json
+cea29de8ded1bcc0655862173a60fc1f01cab1995aaaeff051a4114a5267e1a9  sbom.spdx.json
+064cee8d91078a5aab059e1a3a3d87a02f232b64996e910a99d525cc0dda06f4  sbom.cdx.json.sig
+e7415880ddd22becc8dfc9c611e51cc9e40f180c9fc0e510be066feb0d8ac72a  cosign.pub
