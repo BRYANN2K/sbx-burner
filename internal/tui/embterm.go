@@ -16,7 +16,7 @@ import (
 // Every command burner runs for the user (sbx prompts, sign-ins, the
 // approval, an agent's own TUI) runs inside burner, in an embedded terminal
 // panel: burner never leaves the screen, and whatever the command asks is
-// answered here, in its own interface.
+// answered here, in its own interface. ctrl+q (or ctrl+]) stops it.
 
 type embTerm struct {
 	title   string
@@ -172,7 +172,7 @@ func (t *embTerm) view(w, h int) string {
 		lines[y] = strings.TrimRight(sb.String(), " ")
 	}
 	t.vt.Unlock()
-	right := sDim.Render("ctrl+] stop")
+	right := sDim.Render("ctrl+q stop")
 	if t.ended {
 		right = sSoft.Render("done") + sDim.Render(" · enter close")
 		if t.exitErr != nil {
@@ -233,7 +233,7 @@ func (m model) updateTerm(msg tea.Msg) (model, tea.Cmd, bool) {
 			}
 			return m, nil, true
 		}
-		if msg.String() == "ctrl+]" {
+		if k := msg.String(); k == "ctrl+q" || k == "ctrl+]" {
 			t.stop()
 			return m, nil, true
 		}

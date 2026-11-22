@@ -61,7 +61,7 @@ AGENTS: dict[str, Agent] = {
     "claude": Agent(
         name="claude",
         secret_service="anthropic",
-        setup_commands=("sbx secret set anthropic",),
+        setup_commands=("sbx run claude <folder>   # sign in with your plan, then quit",),
         # Documented headless form (ai/sandboxes/workflows/automation):
         #   sbx exec ci-task -- claude --dangerously-skip-permissions -p "..."
         # TODO(verify): `--output-format stream-json --verbose` feeds the live
@@ -109,7 +109,7 @@ AGENTS: dict[str, Agent] = {
     "codex": Agent(
         name="codex",
         secret_service="openai",
-        setup_commands=("sbx secret set openai --oauth", "sbx secret set openai"),
+        setup_commands=("sbx run codex <folder>   # sign in with your ChatGPT plan, then quit",),
         # TODO(verify): the sbx docs show Codex with a prompt only in the
         # interactive form (`sbx run ... -- --dangerously-bypass-approvals-and-sandbox "..."`).
         # `codex exec` is Codex's own non-interactive subcommand; the
@@ -144,7 +144,7 @@ AGENTS: dict[str, Agent] = {
     "cursor": Agent(
         name="cursor",
         secret_service="cursor",
-        setup_commands=("sbx secret set cursor --oauth", "sbx secret set cursor"),
+        setup_commands=("sbx run cursor <folder>   # sign in with your plan, then quit",),
         # sbx's own session config is `cursor-agent -p --trust <prompt>`.
         headless=("cursor-agent", "-p", "--trust"),
         hosts=("api2.cursor.sh:443", "api3.cursor.sh:443", "repo42.cursor.sh:443", "cursor.com:443"),
@@ -165,7 +165,7 @@ AGENTS: dict[str, Agent] = {
         # OpenAI OAuth binding works; Anthropic OAuth is not passed through —
         # Anthropic needs an API key.
         secret_service="openai",
-        setup_commands=("sbx secret set openai --oauth", "sbx secret set openai", "sbx secret set anthropic"),
+        setup_commands=("sbx run opencode <folder>   # set the providers in OpenCode",),
         # Verified by Bryan (2026-11-22): `opencode run -m openai/gpt-6-luna`.
         headless=("opencode", "run"),
         hosts=("api.openai.com:443", "auth.openai.com:443", "chatgpt.com:443", "api.anthropic.com:443"),
