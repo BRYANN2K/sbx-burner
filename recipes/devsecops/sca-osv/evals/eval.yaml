@@ -1,0 +1,34 @@
+# python -m lab eval devsecops/sca-osv                  # golden fixture (CI)
+# python -m lab eval devsecops/sca-osv --run runs/<id>  # after a run on evals/make-target.sh
+# The golden artifacts are trimmed from a real osv-scanner 2.7.0 run
+# (--data-source native --no-resolve) on the make-target.sh output.
+description: >-
+  Against the planted requirements.txt, the agent reports the pinned
+  requests version's advisory groups as findings with GHSA or CVE rule
+  ids, keeps the raw and SARIF reports as artifacts, and demotes nothing.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: osv-scanner
+  - type: artifact_exists
+    path: artifacts/osv.json
+  - type: artifact_exists
+    path: artifacts/osv.sarif
+  - type: artifact_contains
+    path: artifacts/osv.sarif
+    pattern: '"version": ?"2\.1\.0"'
+  - type: min_findings
+    count: 1
+    where: {tool: osv-scanner, rule: "(GHSA|CVE)-.*"}
+  - type: min_findings
+    count: 1
+    where: {rule: "GHSA-j8r2-6x86-q33q"}
+  - type: min_findings
+    count: 1
+    where: {location: "requirements\\.txt:requests@2\\.25\\.0"}
+  # Grouped reporting yields ~4 findings today; a run that reports one
+  # finding per raw vulnerability entry (8) fails this bound.
+  - type: max_findings
+    count: 7
+    where: {location: "requirements\\.txt:requests@2\\.25\\.0"}
+  - type: no_demotions
