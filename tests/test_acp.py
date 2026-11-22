@@ -400,3 +400,19 @@ def test_a_hung_destroy_is_bounded_and_leaves_a_hint(make_recipe, repo, tmp_path
     runner.execute_plan(plan, execute=fake, log=logs.append, yes=True)
     assert seen["timeout"] == runner.TEARDOWN_TIMEOUT
     assert any(f"sbx rm --force {plan.sandbox}" in line for line in logs)
+
+
+def test_codex_model_goes_into_the_adapter_session_config(make_recipe, repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("BURNER_ACP_BRIDGE", "/opt/burner")
+    plan = _plan(make_recipe(), repo, tmp_path, agent_name="codex", acp=True, model="gpt-7-custom")
+    agent = plan.agent_step.argv
+    assert "--env" in agent and 'CODEX_CONFIG={"model":"gpt-7-custom"}' in agent
+    assert "--model=gpt-7-custom" in agent
+
+
+def test_claude_model_goes_through_set_config_option_only(make_recipe, repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("BURNER_ACP_BRIDGE", "/opt/burner")
+    plan = _plan(make_recipe(), repo, tmp_path, agent_name="claude", acp=True, model="claude-mythos-5-2")
+    agent = plan.agent_step.argv
+    assert "--model=claude-mythos-5-2" in agent
+    assert not any(a.startswith("CODEX_CONFIG") or a.startswith("ANTHROPIC_MODEL") for a in agent)
