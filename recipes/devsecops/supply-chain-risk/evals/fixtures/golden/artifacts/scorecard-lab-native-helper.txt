@@ -1,0 +1,1 @@
+Error: fetchGitRepositoryFromPackageManagers: internal error: failed to parse npm package json: json: cannot unmarshal string into Go value of type cmd.npmResult

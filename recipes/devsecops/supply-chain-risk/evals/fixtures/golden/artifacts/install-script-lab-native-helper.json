@@ -1,0 +1,7 @@
+{
+  "name": "lab-native-helper",
+  "version": "0.0.3",
+  "scripts": {
+    "postinstall": "node scripts/setup.js"
+  }
+}

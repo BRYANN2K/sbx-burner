@@ -1,0 +1,215 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/supply-chain-risk",
+  "summary": "Audited 4 dependencies of supply-demo (3 npm, 1 PyPI). Three proven risks: lab-native-helper executes a postinstall script, all npm version specs float and there is no lockfile, and PyYAML 5.3.1 carries CVE-2020-14343 with a fix in 5.4. Two leads stay hypotheses: expresss is a look-alike of express with an abandoned placeholder release, and lab-native-helper has no public npm package.",
+  "tools_run": [
+    {
+      "name": "jq",
+      "version": "1.7.1",
+      "command": "jq -r '.dependencies // {} | to_entries[] | \"\\(.key) \\(.value)\"' /home/agent/target/package.json > evidence/artifacts/deps.txt",
+      "exit_code": 0,
+      "output": "artifacts/deps.txt"
+    },
+    {
+      "name": "find",
+      "command": "find /home/agent/target -name node_modules -prune -o -type f \\( -name 'package.json' -o -name 'requirements*.txt' \\) -print",
+      "exit_code": 0,
+      "output": "artifacts/manifests.txt"
+    },
+    {
+      "name": "curl",
+      "command": "curl -fsSL https://registry.npmjs.org/express | jq '{name, created: .time.created, modified: .time.modified, latest: .\"dist-tags\".latest, maintainers: [.maintainers[]?.name], repository: .repository.url, install_scripts: [.versions[.\"dist-tags\".latest].scripts | keys? // [] | .[] | select(. == \"preinstall\" or . == \"install\" or . == \"postinstall\")]}'",
+      "exit_code": 0,
+      "output": "artifacts/registry-express.json"
+    },
+    {
+      "name": "curl",
+      "command": "curl -fsSL https://registry.npmjs.org/expresss | jq '{name, created: .time.created, modified: .time.modified, latest: .\"dist-tags\".latest, maintainers: [.maintainers[]?.name], repository: .repository.url, install_scripts: [.versions[.\"dist-tags\".latest].scripts | keys? // [] | .[] | select(. == \"preinstall\" or . == \"install\" or . == \"postinstall\")]}'",
+      "exit_code": 0,
+      "output": "artifacts/registry-expresss.json"
+    },
+    {
+      "name": "curl",
+      "command": "curl -fsSL https://registry.npmjs.org/lab-native-helper",
+      "exit_code": 22,
+      "output": "artifacts/registry-lab-native-helper.txt"
+    },
+    {
+      "name": "curl",
+      "command": "curl -fsSL https://pypi.org/pypi/PyYAML/json | jq '{name: .info.name, author: .info.author, repository: (.info.project_urls.Source // .info.home_page), latest: .info.version, wheel: ([.releases[.info.version][]?.packagetype] | contains([\"bdist_wheel\"])), install_scripts: \"wheel installs run no code; an sdist-only package may run setup.py at build time\"}'",
+      "exit_code": 0,
+      "output": "artifacts/registry-pyyaml.json"
+    },
+    {
+      "name": "scorecard",
+      "version": "5.7.0",
+      "command": "scorecard --npm=express --format=json --show-details -o evidence/artifacts/scorecard-express.json",
+      "exit_code": 0,
+      "output": "artifacts/scorecard-express.json"
+    },
+    {
+      "name": "scorecard",
+      "version": "5.7.0",
+      "command": "scorecard --npm=expresss --format=json -o evidence/artifacts/scorecard-expresss.json",
+      "exit_code": 1,
+      "output": "artifacts/scorecard-expresss.txt"
+    },
+    {
+      "name": "scorecard",
+      "version": "5.7.0",
+      "command": "scorecard --npm=lab-native-helper --format=json -o evidence/artifacts/scorecard-lab-native-helper.json",
+      "exit_code": 1,
+      "output": "artifacts/scorecard-lab-native-helper.txt"
+    },
+    {
+      "name": "scorecard",
+      "version": "5.7.0",
+      "command": "scorecard --pypi=PyYAML --format=json --show-details -o evidence/artifacts/scorecard-pyyaml.json",
+      "exit_code": 0,
+      "output": "artifacts/scorecard-pyyaml.json"
+    },
+    {
+      "name": "osv-scanner",
+      "version": "2.7.0",
+      "command": "osv-scanner scan source -r /home/agent/target --no-resolve --format json --output-file evidence/artifacts/osv.json",
+      "exit_code": 1,
+      "output": "artifacts/osv.json"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SCR-001",
+      "title": "lab-native-helper executes a script at install time",
+      "severity": "medium",
+      "cwe": "CWE-829",
+      "target": "supply-demo",
+      "location": "node_modules/lab-native-helper/package.json:scripts.postinstall",
+      "tool": "manifest-review",
+      "rule": "install-script",
+      "description": "The vendored package.json of lab-native-helper 0.0.3 declares scripts.postinstall = 'node scripts/setup.js'. npm runs it on every install. The published name does not exist on the npm registry (HTTP 404), so the script's origin cannot be checked against a public package.",
+      "proof": {
+        "poc": "jq '{name, version, scripts}' /home/agent/target/node_modules/lab-native-helper/package.json",
+        "artifacts": [
+          "artifacts/install-script-lab-native-helper.json",
+          "artifacts/registry-lab-native-helper.txt"
+        ]
+      },
+      "remediation": "Vendor the package deliberately or replace it with a published alternative; audit scripts/setup.js; then pin the version and commit a lockfile."
+    },
+    {
+      "id": "SCR-002",
+      "title": "All dependency specs float and no lockfile exists",
+      "severity": "low",
+      "cwe": "CWE-1104",
+      "target": "supply-demo",
+      "location": "package.json:dependencies",
+      "tool": "manifest-review",
+      "rule": "unpinned-dependency",
+      "description": "package.json pins nothing: express is the range ^4.19.2, expresss is the tag 'latest' and lab-native-helper is '*'. No package-lock.json, yarn.lock or pnpm-lock.yaml exists, so two installs of the same manifest can resolve to different code.",
+      "proof": {
+        "poc": "jq -r '.dependencies' /home/agent/target/package.json && find /home/agent/target -name 'package-lock.json' -o -name 'yarn.lock' -o -name 'pnpm-lock.yaml' | wc -l",
+        "artifacts": [
+          "artifacts/deps.txt",
+          "artifacts/manifests.txt"
+        ]
+      },
+      "remediation": "Pin exact versions and generate and commit a lockfile (npm install --package-lock-only), then enable a dependency update tool with review."
+    },
+    {
+      "id": "SCR-003",
+      "title": "PyYAML 5.3.1 is affected by CVE-2020-14343",
+      "severity": "critical",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 9.8
+      },
+      "cwe": "CWE-20",
+      "target": "supply-demo",
+      "location": "python/requirements.txt:PyYAML==5.3.1",
+      "tool": "osv-scanner",
+      "rule": "GHSA-8q59-q68h-6hv4",
+      "description": "requirements.txt pins PyYAML 5.3.1, which is affected by CVE-2020-14343 / GHSA-8q59-q68h-6hv4: full_load() on untrusted YAML can execute code through the python/object/new constructor. The fix is released in PyYAML 5.4.",
+      "proof": {
+        "poc": "osv-scanner scan source -r /home/agent/target --format json && jq '.results[].packages[] | select(.package.name==\"pyyaml\") | .vulnerabilities[].id' evidence/artifacts/osv.json",
+        "artifacts": [
+          "artifacts/osv.json"
+        ]
+      },
+      "remediation": "Upgrade PyYAML to >=5.4 (current release 6.0.x); if an old pin is required, never call full_load on untrusted input."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H-001",
+      "title": "expresss: possible look-alike of express",
+      "rationale": "The name is one inserted character away from express, the package holds a single placeholder release 0.0.0 published by one maintainer, declares no repository, and has been dormant since 2022-06-17. Registry data proves none of this is hostile; it could be an abandoned experiment.",
+      "next_step": "Review the 0.0.0 tarball contents and the maintainer's other packages; check download counts. Remove the dependency if nothing needs it."
+    },
+    {
+      "id": "H-002",
+      "title": "lab-native-helper has no public package",
+      "rationale": "The npm registry answers HTTP 404 for the name, so the code vendored in node_modules cannot be traced to a public package, a repository or a maintainer. It may be a private or renamed internal package.",
+      "next_step": "Ask the project owner where lab-native-helper comes from and which registry or repository serves it."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/manifests.txt",
+      "description": "Dependency manifests found in the target"
+    },
+    {
+      "path": "artifacts/deps.txt",
+      "description": "Flat dependency inventory: ecosystem, name, version spec"
+    },
+    {
+      "path": "artifacts/registry-express.json",
+      "description": "npm registry metadata extract for express"
+    },
+    {
+      "path": "artifacts/registry-expresss.json",
+      "description": "npm registry metadata extract for expresss"
+    },
+    {
+      "path": "artifacts/registry-lab-native-helper.txt",
+      "description": "npm registry HTTP status for lab-native-helper (404)"
+    },
+    {
+      "path": "artifacts/registry-pyyaml.json",
+      "description": "PyPI registry metadata extract for PyYAML"
+    },
+    {
+      "path": "artifacts/install-script-lab-native-helper.json",
+      "description": "Vendored package.json scripts block of lab-native-helper"
+    },
+    {
+      "path": "artifacts/scorecard-express.json",
+      "description": "OpenSSF Scorecard JSON for github.com/expressjs/express"
+    },
+    {
+      "path": "artifacts/scorecard-pyyaml.json",
+      "description": "OpenSSF Scorecard JSON for github.com/yaml/pyyaml"
+    },
+    {
+      "path": "artifacts/scorecard-expresss.txt",
+      "description": "scorecard error for expresss: no source repository"
+    },
+    {
+      "path": "artifacts/scorecard-lab-native-helper.txt",
+      "description": "scorecard error for lab-native-helper: package not found"
+    },
+    {
+      "path": "artifacts/osv.json",
+      "description": "osv-scanner results for the target"
+    },
+    {
+      "path": "artifacts/risk-table.md",
+      "description": "Per-dependency risk table"
+    }
+  ],
+  "metrics": {
+    "dependencies": 4,
+    "install_scripts": 1,
+    "unpinned": 3,
+    "advisories": 1
+  }
+}

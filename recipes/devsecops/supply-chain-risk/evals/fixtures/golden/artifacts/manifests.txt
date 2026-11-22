@@ -1,0 +1,2 @@
+/home/agent/target/package.json
+/home/agent/target/python/requirements.txt

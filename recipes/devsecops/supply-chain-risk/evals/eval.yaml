@@ -1,0 +1,36 @@
+# Checks that a run of this recipe produced its evidence.
+#   python -m lab eval devsecops/supply-chain-risk                 # golden fixture (CI)
+#   python -m lab eval devsecops/supply-chain-risk --run runs/<id> # a real run on evals/make-target.sh
+description: >-
+  Against the planted project, the agent proves the postinstall script, the
+  floating version specs and the known PyYAML advisory, keeps the look-alike
+  name and the unpublished package as hypotheses, and writes the risk table.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: scorecard
+  - type: tool_ran
+    name: osv-scanner
+  - type: min_findings
+    count: 1
+    where: {rule: install-script}
+  - type: min_findings
+    count: 1
+    where: {rule: unpinned-dependency}
+  - type: min_findings
+    count: 1
+    where: {tool: osv-scanner, severity: critical}
+  - type: min_hypotheses
+    count: 1
+    where: {title: ".*expresss.*"}
+  # The look-alike stays a lead, never a finding.
+  - type: max_findings
+    count: 0
+    where: {title: ".*expresss.*"}
+  - type: max_findings
+    count: 3
+  - type: artifact_exists
+    path: artifacts/risk-table.md
+  - type: artifact_exists
+    path: artifacts/scorecard-*.json
+  - type: no_demotions
