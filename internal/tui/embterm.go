@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -31,6 +32,8 @@ type embTerm struct {
 	once    sync.Once
 	ended   bool
 	exitErr error
+	watch   func() bool // closes the panel when it reports true (e.g. the sign-in is stored)
+	lastEsc time.Time
 }
 
 // openTermMsg asks the model to open an embedded terminal for argv.
@@ -38,9 +41,31 @@ type openTermMsg struct {
 	title string
 	argv  []string
 	done  func(error) tea.Msg
+	watch func() bool
 }
 
 type termOutMsg struct{ t *embTerm }
+
+type termWatchMsg struct {
+	t  *embTerm
+	ok bool
+}
+
+func (t *embTerm) poll() tea.Cmd {
+	if t.watch == nil {
+		return nil
+	}
+	return tea.Tick(2*time.Second, func(time.Time) tea.Msg { return termWatchMsg{t, t.watch()} })
+}
+
+// termWatchCmd is termCmd with a watcher: the panel closes by itself as soon
+// as watch reports true, for example once sbx has stored a sign-in.
+func termWatchCmd(title string, argv []string, watch func() bool, done func(error) tea.Msg) tea.Cmd {
+	if len(argv) == 0 {
+		return nil
+	}
+	return func() tea.Msg { return openTermMsg{title: title, argv: argv, done: done, watch: watch} }
+}
 
 type termExitMsg struct {
 	t   *embTerm
@@ -76,11 +101,11 @@ func startTerm(o openTermMsg, w, h int) (*embTerm, tea.Cmd, error) {
 	}
 	t := &embTerm{
 		title: o.title, cmd: c, ptmx: ptmx, vt: vt10x.New(vt10x.WithSize(cols, rows)),
-		cols: cols, rows: rows, done: o.done,
+		cols: cols, rows: rows, done: o.done, watch: o.watch,
 		update: make(chan struct{}, 1), exited: make(chan error, 1),
 	}
 	go t.pump()
-	return t, t.wait(), nil
+	return t, tea.Batch(t.wait(), t.poll()), nil
 }
 
 // pump copies the command's output into the emulator.
@@ -172,7 +197,7 @@ func (t *embTerm) view(w, h int) string {
 		lines[y] = strings.TrimRight(sb.String(), " ")
 	}
 	t.vt.Unlock()
-	right := sDim.Render("ctrl+q stop")
+	right := sDim.Render("esc esc close")
 	if t.ended {
 		right = sSoft.Render("done") + sDim.Render(" · enter close")
 		if t.exitErr != nil {
@@ -218,6 +243,20 @@ func (m model) updateTerm(msg tea.Msg) (model, tea.Cmd, bool) {
 		t.ended, t.exitErr = true, msg.err
 		t.stop()
 		return m, nil, true
+	case termWatchMsg:
+		if msg.t != t || t.ended {
+			return m, nil, true
+		}
+		if msg.ok {
+			t.stop()
+			m.term = nil
+			if t.done != nil {
+				d := t.done
+				return m, func() tea.Msg { return d(nil) }, true
+			}
+			return m, nil, true
+		}
+		return m, t.poll(), true
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
 		t.resize(m.w, m.h)
@@ -232,6 +271,13 @@ func (m model) updateTerm(msg tea.Msg) (model, tea.Cmd, bool) {
 				}
 			}
 			return m, nil, true
+		}
+		if msg.String() == "esc" {
+			if time.Since(t.lastEsc) < 600*time.Millisecond {
+				t.stop()
+				return m, nil, true
+			}
+			t.lastEsc = time.Now()
 		}
 		if k := msg.String(); k == "ctrl+q" || k == "ctrl+]" {
 			t.stop()
