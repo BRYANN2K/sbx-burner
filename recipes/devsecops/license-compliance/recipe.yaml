@@ -1,0 +1,37 @@
+schema_version: "1"
+name: license-compliance
+category: devsecops
+scope: none
+
+variants:
+  linux:
+    status: beta
+    kit: kits/devsecops
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  timeout_minutes: 20
+  target: required
+  # path = the user's project folder; repo = their repository, cloned on the
+  # host and mounted like path; image = their image (host Docker, registry
+  # or docker-save tarball) loaded in the sandbox, so the SBOM covers what
+  # the image really ships.
+  targets: [path, repo, image]
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    # The SBOM and the policy check are offline; nothing is allowed while
+    # the agent runs.
+    allow: []
+    # Opened for the tools step only; closed before the agent starts.
+    install_allow:
+      - github.com:443
+      - release-assets.githubusercontent.com:443
+      - objects.githubusercontent.com:443
+      # jq and python3, when the image lacks them.
+      - deb.debian.org:80
+      - security.debian.org:80
