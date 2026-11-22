@@ -31,6 +31,11 @@ class Agent:
     context_file: str
     mixin_kit: str
     interactive_login_note: str = ""
+    # ACP (--acp): the agent's ACP server inside the sandbox, how to install
+    # it when the agent's kit lacks it, and the install-only hosts for that.
+    acp: tuple[str, ...] = ()
+    acp_install: str = ""
+    acp_install_hosts: tuple[str, ...] = ()
 
 
 # Every repo base kit (base-kali/base-ubuntu/base-remnux) grants the agent
@@ -80,6 +85,23 @@ AGENTS: dict[str, Agent] = {
         skills_dir=".agents/skills",
         context_file="AGENTS.md",
         mixin_kit="kits/agent-codex",
+        # Verified on sbx 0.54 (2026-11-22): the codex kit ships codex 0.171
+        # but no ACP server and no Node. The ACP adapter is the npm package
+        # @agentclientprotocol/codex-acp (successor of zed-industries/codex-acp,
+        # archived); it drives the kit's own codex through CODEX_PATH, so the
+        # sbx model gateway and OAuth sentinel keep working.
+        acp=("env", "CODEX_PATH=/usr/local/bin/codex", "/home/agent/.local/bin/codex-acp"),
+        acp_install=(
+            "set -euo pipefail; "
+            "command -v node >/dev/null || { sudo apt-get update -qq && "
+            "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs npm >/dev/null; }; "
+            # --ignore-scripts: verified to work without install scripts.
+            'npm install -g --ignore-scripts --prefix "$HOME/.local" --no-fund --no-audit '
+            "@agentclientprotocol/codex-acp@2.9.0; "
+            # Recorded in logs/acp-install.log: what actually got installed.
+            'node --version; npm ls -g --prefix "$HOME/.local" --all --json'
+        ),
+        acp_install_hosts=("deb.debian.org:80", "security.debian.org:80", "registry.npmjs.org:443"),
     ),
     "devin": Agent(
         name="devin",
@@ -173,9 +195,22 @@ def policy_ls(name: str) -> list[str]:
     return [SBX, "policy", "ls", name, "--json"]
 
 
-def exec_(name: str, command: list[str], *, workdir: str | None = None, env: dict[str, str] | None = None) -> list[str]:
-    """``sbx exec [flags] SANDBOX -- COMMAND``; exit status is the command's."""
+def exec_(
+    name: str,
+    command: list[str],
+    *,
+    workdir: str | None = None,
+    env: dict[str, str] | None = None,
+    interactive: bool = False,
+) -> list[str]:
+    """``sbx exec [flags] SANDBOX -- COMMAND``; exit status is the command's.
+
+    ``interactive`` adds ``-i`` (stdin kept open, no TTY) for stdio protocols
+    such as ACP.
+    """
     argv = [SBX, "exec"]
+    if interactive:
+        argv.append("-i")
     if workdir:
         argv += ["--workdir", workdir]
     for key, value in (env or {}).items():

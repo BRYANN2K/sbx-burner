@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/x/term"
 
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
 	"github.com/BRYANN2K/sbx-burner/internal/events"
@@ -37,6 +38,7 @@ type State struct {
 	Forged   []string
 	Findings map[string]events.Event
 	Done     *events.Event
+	RunID    string
 }
 
 // Run executes the engine with --events - and renders the stream.
@@ -68,6 +70,11 @@ func Run(ctx context.Context, root string, o engine.RunOptions, opts Options) (i
 }
 
 func handle(e events.Event, runsDir string, st *State, opts Options) {
+	st.mu.Lock()
+	if st.RunID == "" {
+		st.RunID = e.RunID
+	}
+	st.mu.Unlock()
 	if opts.JSON {
 		raw := fmt.Sprintf("%s\n", mustJSON(e))
 		io.WriteString(opts.Out, raw)
@@ -142,7 +149,7 @@ func Render(w io.Writer, e events.Event) {
 			fmt.Fprintln(w, "  "+l)
 		}
 	case "agent.tool":
-		fmt.Fprintf(w, "  › %s %s\n", e.Tool, e.Summary)
+		fmt.Fprintln(w, ToolLine(e.Tool, e.Summary, Width()))
 	case "finding":
 		extra := e.Severity
 		if e.CVSS != "" {
@@ -162,6 +169,33 @@ func Render(w io.Writer, e events.Event) {
 	case "done":
 		fmt.Fprintf(w, "■ done · exit %d · %s\n", e.ExitCode, e.Report)
 	}
+}
+
+// Width is the terminal width used to cut tool lines; tests replace it.
+var Width = func() int {
+	for _, f := range []*os.File{os.Stderr, os.Stdout} {
+		if w, _, err := term.GetSize(f.Fd()); err == nil && w > 20 {
+			return w
+		}
+	}
+	return 100
+}
+
+// ToolLine renders a tool call as one line: `  › <title>`. Ordinary tool
+// kinds (execute, read, edit...) are not shown; burner's own notes
+// (permission, failed) keep their label. The full text stays in the
+// transcript and the event stream.
+func ToolLine(tool, summary string, width int) string {
+	text := strings.Join(strings.Fields(summary), " ")
+	if tool == "permission" || tool == "failed" {
+		text = tool + ": " + text
+	}
+	line := "  › " + text
+	r := []rune(line)
+	if width > 8 && len(r) > width {
+		line = string(r[:width-1]) + "…"
+	}
+	return line
 }
 
 func summary(st *State, opts Options) {

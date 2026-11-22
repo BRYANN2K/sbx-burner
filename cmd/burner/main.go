@@ -14,8 +14,10 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"text/tabwriter"
 
+	"github.com/BRYANN2K/sbx-burner/internal/acp"
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
@@ -59,6 +61,8 @@ Usage:
   burner update [--check] [--install]   update recipe catalogs; check (or install) a new burner
   burner catalog add <git-url> [--name N] | list
   burner mcp                  MCP server on stdio (limits in ~/.burner/mcp.yaml)
+  burner acp agents [--json]  agents burner can drive over ACP
+  burner models --agent A [--json]   models the agent offered on its last ACP run
   burner version
 
 Run flags (targets):
@@ -74,6 +78,8 @@ Run flags (other):
   --demo  --scope FILE  --agent claude|codex|devin  --dry-run  --keep  --runs-dir DIR
   --prompt TEXT  --prompt-file FILE   notes for the agent (repeatable)
   --on-ask skip|fail|timeout=30m      when nobody answers the agent
+  --acp   drive the agent over ACP (live permissions, model choice, follow-up notes)
+      --model ID  --permission auto|ask    auto = allow inside the sandbox, every decision logged
   --yes   never prompt; fail with exit 3 when something is missing; questions are skipped
   --json  run: events as NDJSON on stdout
   --json  machine-readable output (list, show, doctor)
@@ -85,7 +91,7 @@ Global:
 `
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -125,6 +131,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdCatalog(ctx, rest, stdout, stderr)
 	case "mcp":
 		return cmdMCP(ctx, catalogFlag, stderr)
+	case "models":
+		return cmdModels(rest, stdout, stderr)
+	case "acp":
+		return cmdACP(rest, stdout, stderr)
+	case "acp-bridge":
+		return cmdACPBridge(rest, stderr)
 	case "lint", "eval", "scope":
 		root, err := catalog.FindRoot(catalogFlag)
 		if err != nil {
@@ -262,6 +274,9 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	fs.BoolVar(&o.DryRun, "dry-run", false, "")
 	fs.BoolVar(&o.Keep, "keep", false, "")
 	fs.StringVar(&o.RunsDir, "runs-dir", "", "")
+	fs.BoolVar(&o.ACP, "acp", false, "")
+	fs.StringVar(&o.Model, "model", "", "")
+	fs.StringVar(&o.Permission, "permission", "", "")
 	yes := fs.Bool("yes", false, "")
 	asJSON := fs.Bool("json", false, "")
 	if fs.Parse(reorder(args)) != nil || fs.NArg() != 1 {
@@ -309,9 +324,16 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	if *asJSON {
 		out = os.Stdout
 	}
-	code, _, err = live.Run(ctx, root, o, live.Options{Out: out, JSON: *asJSON, Ask: asker})
+	code, st, err := live.Run(ctx, root, o, live.Options{Out: out, JSON: *asJSON, Ask: asker})
+	if errors.Is(err, engine.ErrCleanupTimeout) {
+		fmt.Fprintln(stderr, leftoverHint(st))
+		return exitFailed
+	}
 	if err != nil {
 		return fail(stderr, exitFailed, err)
+	}
+	if o.ACP && st != nil && st.Done != nil && st.Done.Report != "" {
+		cacheModels(filepath.Join(filepath.Dir(st.Done.Report), acp.ModelsFile))
 	}
 	return code
 }
@@ -537,7 +559,7 @@ func absPaths(cmd string, args []string) []string {
 func reorder(args []string) []string {
 	var flags, pos []string
 	valueFlags := map[string]bool{"--prompt": true, "--prompt-file": true, "--on-ask": true, "--name": true, "--scope": true, "--agent": true, "--target": true, "--target-image": true, "--target-port": true, "--target-url": true, "--runs-dir": true,
-		"--target-repo": true, "--target-app": true, "--app-install": true, "--app-cmd": true, "--app-port": true, "--app-health": true, "--app-env": true}
+		"--target-repo": true, "--target-app": true, "--app-install": true, "--app-cmd": true, "--app-port": true, "--app-health": true, "--app-env": true, "--model": true, "--permission": true}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if strings.HasPrefix(a, "-") {
@@ -574,4 +596,17 @@ func extractFlag(args []string, name string) (string, []string) {
 func fail(stderr io.Writer, code int, err error) int {
 	fmt.Fprintln(stderr, "burner:", err)
 	return code
+}
+
+// leftoverHint tells the user how to remove a sandbox the engine could not
+// destroy before it was stopped.
+func leftoverHint(st *live.State) string {
+	name := ""
+	if st != nil {
+		name = engine.SandboxName(st.RunID)
+	}
+	if name == "" {
+		return "burner: the run was stopped before its cleanup finished; a sandbox may remain: sbx ls, then sbx rm --force <name>"
+	}
+	return fmt.Sprintf("burner: the run was stopped before its cleanup finished; the sandbox may remain: sbx ls, then sbx rm --force %s", name)
 }

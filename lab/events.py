@@ -32,8 +32,13 @@ _FIELD_LIMITS = {
     "tool": 256,
     "report": sanitize.TEXT_LIMIT,
 }
-# Fields that may carry secrets pasted by the agent: redact before emit.
-_REDACT_FIELDS = {"text", "summary"}
+# Fields that may carry secrets the agent saw: redact before emit (patterns,
+# plus the run's seen secrets and their fragments when seeds are set).
+# The operator's own answer (answer.value) is never rewritten.
+_REDACT_FIELDS = {"text", "summary", "tool", "question", "detail", "title"}
+# Agent-authored event types: seeds harvested from the agent's own files
+# apply only here, never to runner records (steps, blocked hosts, done).
+_AGENT_TYPES = {"agent.message", "agent.tool", "ask", "finding"}
 
 
 class EventWriter:
@@ -42,6 +47,7 @@ class EventWriter:
     def __init__(self, target: Path | str, run_id: str, stream: TextIO | None = None) -> None:
         self.run_id = run_id
         self.seq = 0
+        self.seeds: evidence_mod.Seeds | None = None
         self._lock = threading.Lock()
         self._own = stream is None and str(target) != "-"
         if stream is not None:
@@ -62,12 +68,14 @@ class EventWriter:
                 "ts": _dt.datetime.now(_dt.UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
                 "run_id": self.run_id,
             }
+            agent = type_ in _AGENT_TYPES
             for key, value in fields.items():
                 if key == "choices" and isinstance(value, list):
+                    value = [evidence_mod.redact(str(c), seeds=self.seeds, agent=agent)[0] for c in value]
                     event[key] = sanitize.clean_choices(value)
                 elif isinstance(value, str):
                     if key in _REDACT_FIELDS:
-                        value, _ = evidence_mod.redact(value)
+                        value, _ = evidence_mod.redact(value, seeds=self.seeds, agent=agent)
                     event[key] = sanitize.clean_text(value, _FIELD_LIMITS.get(key, sanitize.TEXT_LIMIT))
                 else:
                     event[key] = value

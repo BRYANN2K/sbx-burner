@@ -11,6 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
 )
 
 // RunOptions mirrors `python -m lab run` flags.
@@ -38,6 +41,9 @@ type RunOptions struct {
 	DryRun      bool
 	Keep        bool
 	RunsDir     string
+	ACP         bool   // drive the agent over ACP (burner acp-bridge)
+	Model       string // ACP model id offered by the agent
+	Permission  string // ACP permissions: auto | ask
 }
 
 // Args builds the engine argv for a run (without the python prefix).
@@ -70,6 +76,11 @@ func (o RunOptions) Args() []string {
 	}
 	add("--events", o.Events)
 	add("--on-ask", o.OnAsk)
+	if o.ACP {
+		args = append(args, "--acp")
+	}
+	add("--model", o.Model)
+	add("--permission", o.Permission)
 	if o.Submodules {
 		args = append(args, "--with-submodules")
 	}
@@ -133,15 +144,60 @@ func ExecTo(ctx context.Context, root string, args []string, w io.Writer) (int, 
 	return run(ctx, root, args, nil, w, w)
 }
 
+// CleanupTimeout bounds the engine's teardown after an interrupt.
+var CleanupTimeout = 3 * time.Minute
+
+// ErrCleanupTimeout: the engine was killed after CleanupTimeout, so its
+// teardown may not have destroyed the sandbox.
+var ErrCleanupTimeout = errors.New("the engine did not finish its cleanup in time and was stopped")
+
+func killedAfterWait(cmd *exec.Cmd, err error) bool {
+	if errors.Is(err, exec.ErrWaitDelay) {
+		return true
+	}
+	if cmd.ProcessState == nil {
+		return false
+	}
+	ws, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	return ok && ws.Signaled() && ws.Signal() == syscall.SIGKILL
+}
+
+// SandboxName is the sandbox the runner creates for a run id
+// (YYYYMMDD-HHMMSS-recipe -> lab-recipe-HHMMSS).
+func SandboxName(runID string) string {
+	parts := strings.SplitN(runID, "-", 3)
+	if len(parts) != 3 || len(parts[1]) != 6 {
+		return ""
+	}
+	base := "lab-" + parts[2]
+	if len(base) > 48 {
+		base = base[:48]
+	}
+	return strings.TrimRight(base, "-") + "-" + parts[1]
+}
+
 func run(ctx context.Context, root string, args []string, in io.Reader, out, errw io.Writer) (int, error) {
 	py, err := Python()
 	if err != nil {
 		return 2, err
 	}
 	cmd := exec.CommandContext(ctx, py, append([]string{"-I", "-c", bootstrap, root}, args...)...)
+	// Ctrl+C or SIGTERM on burner: interrupt the engine like a terminal
+	// would (KeyboardInterrupt runs its teardown, which destroys the
+	// sandbox), then wait. SIGKILL only if it is still running after
+	// CleanupTimeout.
+	cmd.Cancel = func() error { return cmd.Process.Signal(os.Interrupt) }
+	cmd.WaitDelay = CleanupTimeout
 	cmd.Dir = root
+	// The runner starts burner's ACP bridge (burner run --acp) by this path.
+	if self, err := os.Executable(); err == nil {
+		cmd.Env = append(os.Environ(), "BURNER_ACP_BRIDGE="+self)
+	}
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, errw
 	err = cmd.Run()
+	if ctx.Err() != nil && killedAfterWait(cmd, err) {
+		return 1, ErrCleanupTimeout
+	}
 	var exit *exec.ExitError
 	if errors.As(err, &exit) {
 		return exit.ExitCode(), nil
