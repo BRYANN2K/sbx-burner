@@ -1,0 +1,85 @@
+diff --git a/README.md b/README.md
+index 092276c..5a4e40c 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,3 @@
+ # report service
++
++New: /reports/search?owner=&q= and /exports?name=.
+diff --git a/app/db.py b/app/db.py
+index fc15888..2fd9ea4 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -8,3 +8,8 @@ def connect(path="reports.db"):
+ def reports_for(conn, owner):
+     cur = conn.execute("SELECT id, title FROM reports WHERE owner = ?", (owner,))
+     return cur.fetchall()
++
++
++def search_reports(conn, owner, term):
++    query = "SELECT id, title FROM reports WHERE owner = '%s' AND title LIKE '%%%s%%'" % (owner, term)
++    return conn.execute(query).fetchall()
+diff --git a/app/export.py b/app/export.py
+new file mode 100644
+index 0000000..65375f7
+--- /dev/null
++++ b/app/export.py
+@@ -0,0 +1,19 @@
++import hashlib
++import os
++import subprocess
++
++EXPORT_DIR = "/srv/exports"
++
++
++def read_export(name):
++    path = os.path.join(EXPORT_DIR, name)
++    with open(path, "rb") as fh:
++        return fh.read()
++
++
++def cache_key(owner, term):
++    return hashlib.md5(f"{owner}:{term}".encode()).hexdigest()
++
++
++def build_revision():
++    return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+diff --git a/app/server.py b/app/server.py
+index d1db374..dd2cf98 100644
+--- a/app/server.py
++++ b/app/server.py
+@@ -1,7 +1,7 @@
+ from http.server import BaseHTTPRequestHandler
+ from urllib.parse import parse_qs, urlparse
+ 
+-from app import db
++from app import db, export
+ 
+ 
+ class Handler(BaseHTTPRequestHandler):
+@@ -12,6 +12,14 @@ class Handler(BaseHTTPRequestHandler):
+             owner = params.get("owner", [""])[0]
+             rows = db.reports_for(db.connect(), owner)
+             self.reply(200, repr(rows))
++        elif url.path == "/reports/search":
++            owner = params.get("owner", [""])[0]
++            term = params.get("q", [""])[0]
++            rows = db.search_reports(db.connect(), owner, term)
++            self.reply(200, repr(rows))
++        elif url.path == "/exports":
++            name = params.get("name", [""])[0]
++            self.reply(200, export.read_export(name).decode(errors="replace"))
+         else:
+             self.reply(404, "not found")
+ 
+diff --git a/tests/test_export.py b/tests/test_export.py
+new file mode 100644
+index 0000000..67ecc06
+--- /dev/null
++++ b/tests/test_export.py
+@@ -0,0 +1,5 @@
++from app import export
++
++
++def test_cache_key_is_stable():
++    assert export.cache_key("alice", "q3") == export.cache_key("alice", "q3")

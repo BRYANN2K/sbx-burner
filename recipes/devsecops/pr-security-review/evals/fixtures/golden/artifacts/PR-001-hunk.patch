@@ -1,0 +1,13 @@
+diff --git a/app/db.py b/app/db.py
+index fc15888..2fd9ea4 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -8,3 +8,8 @@ def connect(path="reports.db"):
+ def reports_for(conn, owner):
+     cur = conn.execute("SELECT id, title FROM reports WHERE owner = ?", (owner,))
+     return cur.fetchall()
++
++
++def search_reports(conn, owner, term):
++    query = "SELECT id, title FROM reports WHERE owner = '%s' AND title LIKE '%%%s%%'" % (owner, term)
++    return conn.execute(query).fetchall()

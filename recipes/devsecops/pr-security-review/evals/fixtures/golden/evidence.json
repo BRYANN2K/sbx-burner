@@ -1,0 +1,111 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/pr-security-review",
+  "summary": "Reviewed git diff main...HEAD of pr-demo (branch feature/report-export, 1 commit, 5 files, 40 lines added). The change introduces two vulnerabilities: SQL injection in the new report search, and path traversal in the new export download. Two items were excluded: MD5 used for a cache key and a subprocess call with a fixed argument list. One lead is kept as a hypothesis. Pre-existing, not part of this review: /reports trusts the owner parameter. Nothing was executed; exploit scenarios are written from reading the code.",
+  "tools_run": [
+    {
+      "name": "git",
+      "version": "2.55.0",
+      "command": "git -C /home/agent/target -c safe.directory=/home/agent/target diff --no-color main...HEAD",
+      "exit_code": 0,
+      "output": "artifacts/diff.patch"
+    },
+    {
+      "name": "git",
+      "version": "2.55.0",
+      "command": "git -C /home/agent/target -c safe.directory=/home/agent/target diff --numstat main...HEAD",
+      "exit_code": 0,
+      "output": "artifacts/changed-files.txt"
+    },
+    {
+      "name": "git",
+      "version": "2.55.0",
+      "command": "git -C /home/agent/target -c safe.directory=/home/agent/target log --oneline main..HEAD",
+      "exit_code": 0,
+      "output": "artifacts/commits.txt"
+    }
+  ],
+  "findings": [
+    {
+      "id": "PR-001",
+      "title": "SQL injection in search_reports through the owner and q parameters",
+      "severity": "high",
+      "cwe": "CWE-89",
+      "target": "pr-demo",
+      "location": "app/db.py:14",
+      "tool": "manual-review",
+      "rule": "sql-injection",
+      "description": "Source: app/server.py:16-17 reads owner and q from the query string. Path: both go unchanged to db.search_reports (app/server.py:18). Sink: app/db.py:14 builds the SQL text with % formatting and app/db.py:15 executes it. Nothing escapes or binds the values, unlike reports_for a few lines above, which uses a placeholder.",
+      "proof": {
+        "poc": "Not executed. Request: GET /reports/search?owner=alice&q=x%25'%20UNION%20SELECT%20name,%20sql%20FROM%20sqlite_master%20-- . The q value closes the LIKE string, so the statement becomes ... LIKE '%x%' UNION SELECT name, sql FROM sqlite_master --%' and the response lists every table and its schema. The same shape reads any table, for any owner.",
+        "artifacts": [
+          "artifacts/PR-001-hunk.patch"
+        ]
+      },
+      "remediation": "Bind the values: conn.execute(\"SELECT id, title FROM reports WHERE owner = ? AND title LIKE ?\", (owner, f\"%{term}%\")).",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/89.html"
+      ]
+    },
+    {
+      "id": "PR-002",
+      "title": "Path traversal in read_export lets a client read any file the service can read",
+      "severity": "high",
+      "cwe": "CWE-22",
+      "target": "pr-demo",
+      "location": "app/export.py:9",
+      "tool": "manual-review",
+      "rule": "path-traversal",
+      "description": "Source: app/server.py:21 reads name from the query string. Path: it goes unchanged to export.read_export (app/server.py:22). Sink: app/export.py:9 joins it to EXPORT_DIR and app/export.py:10 opens the result. os.path.join keeps '..' segments and drops EXPORT_DIR entirely when name is absolute, and the path is never resolved and compared with the export directory.",
+      "proof": {
+        "poc": "Not executed. Request: GET /exports?name=../../etc/passwd opens /srv/exports/../../etc/passwd, which is /etc/passwd, and returns it in the response body. GET /exports?name=/etc/passwd does the same, because an absolute second argument replaces the first in os.path.join.",
+        "artifacts": [
+          "artifacts/PR-002-hunk.patch"
+        ]
+      },
+      "remediation": "Resolve and check the prefix: path = os.path.realpath(os.path.join(EXPORT_DIR, name)); reject unless path.startswith(os.path.realpath(EXPORT_DIR) + os.sep). Better: accept an export id and look the file name up server-side.",
+      "references": [
+        "https://cwe.mitre.org/data/definitions/22.html"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H-001",
+      "title": "New routes /reports/search and /exports have no authentication check",
+      "rationale": "The handler adds two routes with no credential check. The existing /reports route has none either, so authentication may be enforced by a proxy or gateway that is not in this repository. The source of trust cannot be read from the diff.",
+      "next_step": "Ask how /reports is protected in production. If nothing sits in front of the service, PR-002 becomes unauthenticated file read (critical)."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/diff.patch",
+      "description": "Reviewed diff: git diff main...HEAD"
+    },
+    {
+      "path": "artifacts/changed-files.txt",
+      "description": "git diff --numstat main...HEAD"
+    },
+    {
+      "path": "artifacts/commits.txt",
+      "description": "git log --oneline main..HEAD"
+    },
+    {
+      "path": "artifacts/PR-001-hunk.patch",
+      "description": "Hunk that adds search_reports (app/db.py)"
+    },
+    {
+      "path": "artifacts/PR-002-hunk.patch",
+      "description": "Hunks that add read_export and its route (app/export.py, app/server.py)"
+    },
+    {
+      "path": "artifacts/review.md",
+      "description": "Review note: files covered, verdicts, exclusions"
+    }
+  ],
+  "metrics": {
+    "files_changed": 5,
+    "lines_added": 40,
+    "excluded": 2
+  }
+}

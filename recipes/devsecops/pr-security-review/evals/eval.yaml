@@ -1,0 +1,31 @@
+# python -m lab eval devsecops/pr-security-review                  # golden fixture (CI)
+# python -m lab eval devsecops/pr-security-review --run runs/<id>  # after a run on evals/make-target.sh
+# The golden diff artifacts are the real git output for the make-target.sh
+# repository (commit ids differ on every build).
+description: >-
+  Against the planted branch, the agent reports the SQL injection and the path
+  traversal with a saved hunk each, and reports nothing for the MD5 cache key,
+  the fixed-argument subprocess call, the test file or missing rate limits.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: git
+  - type: artifact_contains
+    path: artifacts/diff.patch
+    pattern: "(?m)^diff --git a/app/db\\.py b/app/db\\.py$"
+  - type: artifact_exists
+    path: artifacts/*-hunk.patch
+  - type: artifact_exists
+    path: artifacts/review.md
+  - type: min_findings
+    count: 1
+    where: {cwe: "CWE-89", location: "app/db\\.py:1[45]", severity: "high|critical"}
+  - type: min_findings
+    count: 1
+    where: {cwe: "CWE-22", location: "app/export\\.py:(9|10)"}
+  - type: max_findings
+    count: 0
+    where: {title: "(?i).*(md5|subprocess|rate.?limit|denial).*"}
+  - type: max_findings
+    count: 2
+  - type: no_demotions
