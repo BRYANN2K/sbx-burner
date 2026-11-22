@@ -1,0 +1,47 @@
+# Checks that a run of this recipe produced its evidence.
+#   python -m lab eval devsecops/gate                 # golden fixture (CI)
+#   python -m lab eval devsecops/gate --run runs/<id> # a real run
+description: >-
+  On the make-target fixture (leaked token, vulnerable minimist, shell=True,
+  privileged k8s container, GPL component) every scanner ran, the reports
+  merged into gate.sarif, and the policy failed the gate.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: gitleaks
+  - type: tool_ran
+    name: osv-scanner
+  - type: tool_ran
+    name: semgrep
+  - type: tool_ran
+    name: trivy
+  - type: tool_ran
+    name: syft
+  - type: artifact_exists
+    path: artifacts/gate.sarif
+  - type: artifact_exists
+    path: artifacts/pr-summary.md
+  - type: artifact_exists
+    path: artifacts/gitleaks.json
+  - type: artifact_exists
+    path: artifacts/osv.json
+  - type: artifact_exists
+    path: artifacts/semgrep.json
+  - type: artifact_exists
+    path: artifacts/trivy-config.json
+  - type: artifact_exists
+    path: artifacts/sbom.cdx.json
+  - type: artifact_contains
+    path: artifacts/gate-result.json
+    pattern: 8dc1c9d4ca213ba4955c4e11298cf6996ddac57f7e57524c84579548d25c7cca
+  - type: metric
+    name: gate_passed
+    equals: false
+  - type: min_findings
+    count: 1
+  - type: min_findings
+    count: 1
+    where: {rule: "gate-blocked:secrets"}
+  - type: min_findings
+    count: 1
+    where: {rule: "gate-blocked:sca"}

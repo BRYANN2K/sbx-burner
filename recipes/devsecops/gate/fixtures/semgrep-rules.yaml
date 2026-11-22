@@ -1,0 +1,17 @@
+# Minimal local rules for the gate's SAST check. The gate runs them so the
+# check needs no semgrep.dev registry access; a project adds its own rules.
+rules:
+  - id: python.subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: subprocess called with shell=True on a value that may hold user input
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+    metadata:
+      cwe: CWE-78
+  - id: python.flask-debug-true
+    languages: [python]
+    severity: WARNING
+    message: Flask app runs with debug=True
+    pattern: $APP.run(..., debug=True, ...)
+    metadata:
+      cwe: CWE-489

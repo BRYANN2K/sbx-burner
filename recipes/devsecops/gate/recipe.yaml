@@ -1,0 +1,44 @@
+schema_version: "1"
+name: gate
+category: devsecops
+# Scanning is local; the only egress is tool downloads and scan-data hosts.
+scope: none
+
+variants:
+  linux:
+    status: beta
+    kit: kits/devsecops
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  timeout_minutes: 45
+  # required: the codebase under review is mounted read-only at /home/agent/target.
+  target: required
+  # path: a local folder, mounted read-only at /home/agent/target.
+  # repo: a git repository cloned on the host with the user's own git login
+  # (full history kept, .git/config scrubbed), then mounted like a path.
+  targets: [path, repo]
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    allow:
+      # osv-scanner queries the OSV API at run time.
+      - api.osv.dev:443
+    # Opened for the tools step only; closed before the agent starts.
+    install_allow:
+      # pipx installs semgrep from PyPI.
+      - pypi.org:443
+      - files.pythonhosted.org:443
+      # install.sh prefetches the trivy vulnerability DB, Java index and
+      # checks bundle so scans run with --skip-db-update / --skip-check-update.
+      # Defaults from trivy 0.76.2 --help; pkg-containers is the GHCR blob
+      # redirect.
+      # TODO(verify): the image-scan path is unexercised by the eval fixture
+      # (no Dockerfile); confirm no further host is needed on a real run.
+      - mirror.gcr.io:443
+      - ghcr.io:443
+      - pkg-containers.githubusercontent.com:443
