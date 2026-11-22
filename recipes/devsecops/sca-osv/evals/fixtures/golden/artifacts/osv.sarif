@@ -1,0 +1,199 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "osv-scanner",
+          "version": "2.7.0",
+          "informationUri": "https://github.com/google/osv-scanner",
+          "rules": [
+            {
+              "id": "CVE-2024-47081",
+              "name": "CVE-2024-47081",
+              "shortDescription": {
+                "markdown": "CVE-2024-47081: Requests vulnerable to .netrc credentials leak via malicious URLs",
+                "text": "CVE-2024-47081: Requests vulnerable to .netrc credentials leak via malicious URLs"
+              },
+              "properties": {
+                "security-severity": "5.3"
+              }
+            },
+            {
+              "id": "CVE-2024-35195",
+              "name": "CVE-2024-35195",
+              "shortDescription": {
+                "markdown": "CVE-2024-35195: Requests `Session` object does not verify requests after making first request with verify=False",
+                "text": "CVE-2024-35195: Requests `Session` object does not verify requests after making first request with verify=False"
+              },
+              "properties": {
+                "security-severity": "5.6"
+              }
+            },
+            {
+              "id": "CVE-2026-25645",
+              "name": "CVE-2026-25645",
+              "shortDescription": {
+                "markdown": "CVE-2026-25645: Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+                "text": "CVE-2026-25645: Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function"
+              },
+              "properties": {
+                "security-severity": "5.5"
+              }
+            },
+            {
+              "id": "CVE-2023-32681",
+              "name": "CVE-2023-32681",
+              "shortDescription": {
+                "markdown": "CVE-2023-32681: Unintended leak of Proxy-Authorization header in requests",
+                "text": "CVE-2023-32681: Unintended leak of Proxy-Authorization header in requests"
+              },
+              "properties": {
+                "security-severity": "6.1"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2024-47081",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2024-47081' (also known as 'PYSEC-2026-1872', 'GHSA-9hjg-9r4m-mvj7')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-35195",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2024-35195' (also known as 'PYSEC-2026-1873', 'GHSA-9wx4-h78v-vm56')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-25645",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2026-25645' (also known as 'PYSEC-2026-2275', 'GHSA-gc5v-m9x4-r6x2')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2023-32681",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2023-32681' (also known as 'PYSEC-2023-74', 'GHSA-j8r2-6x86-q33q')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2023-32681",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2023-32681' (also known as 'PYSEC-2023-74', 'GHSA-j8r2-6x86-q33q')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-47081",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2024-47081' (also known as 'PYSEC-2026-1872', 'GHSA-9hjg-9r4m-mvj7')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-35195",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2024-35195' (also known as 'PYSEC-2026-1873', 'GHSA-9wx4-h78v-vm56')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-25645",
+          "level": "warning",
+          "message": {
+            "text": "Package 'requests@2.25.0' is vulnerable to 'CVE-2026-25645' (also known as 'PYSEC-2026-2275', 'GHSA-gc5v-m9x4-r6x2')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///home/agent/target/requirements.txt"
+                },
+                "region": null
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

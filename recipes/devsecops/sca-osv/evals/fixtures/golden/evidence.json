@@ -1,0 +1,130 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/sca-osv",
+  "summary": "Scanned osv-demo (requirements.txt, 1 pinned package) with osv-scanner 2.7.1 against api.osv.dev. requests 2.25.0 matches four advisory groups: a Proxy-Authorization leak, a .netrc credentials leak, TLS verification left off after verify=False, and an insecure temp-file reuse. All fixed by upgrading to requests 2.33.0.",
+  "tools_run": [
+    {
+      "name": "osv-scanner",
+      "version": "2.7.0",
+      "command": "osv-scanner scan source -r --data-source native --no-resolve --format json --output-file evidence/artifacts/osv.json .",
+      "exit_code": 1,
+      "output": "artifacts/osv.json"
+    },
+    {
+      "name": "osv-scanner",
+      "version": "2.7.0",
+      "command": "osv-scanner scan source -r --data-source native --no-resolve --format sarif --output-file evidence/artifacts/osv.sarif .",
+      "exit_code": 1,
+      "output": "artifacts/osv.sarif"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SCA-001",
+      "title": "requests 2.25.0 leaks Proxy-Authorization headers (GHSA-j8r2-6x86-q33q)",
+      "severity": "medium",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N",
+        "score": 6.1
+      },
+      "target": "osv-demo",
+      "location": "requirements.txt:requests@2.25.0",
+      "tool": "osv-scanner",
+      "rule": "GHSA-j8r2-6x86-q33q",
+      "description": "requests 2.25.0 is vulnerable to CVE-2023-32681 (alias PYSEC-2023-74). During HTTPS requests sent over an HTTP proxy, the Proxy-Authorization header can leak to the destination server on redirect, exposing proxy credentials. Affected from 2.3.0, fixed in 2.31.0.",
+      "proof": {
+        "poc": "jq '.results[].packages[] | select(.package.name==\"requests\") | .groups[] | select(.ids[] == \"GHSA-j8r2-6x86-q33q\")' evidence/artifacts/osv.json",
+        "artifacts": [
+          "artifacts/osv.json"
+        ]
+      },
+      "remediation": "Upgrade requests to >= 2.31.0.",
+      "references": [
+        "https://osv.dev/GHSA-j8r2-6x86-q33q"
+      ]
+    },
+    {
+      "id": "SCA-002",
+      "title": "requests 2.25.0 leaks .netrc credentials via malicious URLs (GHSA-9hjg-9r4m-mvj7)",
+      "severity": "medium",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N",
+        "score": 5.3
+      },
+      "target": "osv-demo",
+      "location": "requirements.txt:requests@2.25.0",
+      "tool": "osv-scanner",
+      "rule": "GHSA-9hjg-9r4m-mvj7",
+      "description": "requests 2.25.0 is vulnerable to CVE-2024-47081 (alias PYSEC-2026-1872). A URL parsing issue can leak .netrc credentials to third parties when requests follows a maliciously crafted URL. Fixed in 2.32.4.",
+      "proof": {
+        "poc": "jq '.results[].packages[] | select(.package.name==\"requests\") | .groups[] | select(.ids[] == \"GHSA-9hjg-9r4m-mvj7\")' evidence/artifacts/osv.json",
+        "artifacts": [
+          "artifacts/osv.json"
+        ]
+      },
+      "remediation": "Upgrade requests to >= 2.32.4.",
+      "references": [
+        "https://osv.dev/GHSA-9hjg-9r4m-mvj7"
+      ]
+    },
+    {
+      "id": "SCA-003",
+      "title": "requests Session keeps TLS verification off after a first request with verify=False (GHSA-9wx4-h78v-vm56)",
+      "severity": "medium",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:H/I:H/A:N",
+        "score": 5.6
+      },
+      "target": "osv-demo",
+      "location": "requirements.txt:requests@2.25.0",
+      "tool": "osv-scanner",
+      "rule": "GHSA-9wx4-h78v-vm56",
+      "description": "requests 2.25.0 is vulnerable to CVE-2024-35195 (alias PYSEC-2026-1873). If the first request to an origin on a Session uses verify=False, certificate verification can stay disabled for later requests to that origin even when verify=True is set. Fixed in 2.32.0.",
+      "proof": {
+        "poc": "jq '.results[].packages[] | select(.package.name==\"requests\") | .groups[] | select(.ids[] == \"GHSA-9wx4-h78v-vm56\")' evidence/artifacts/osv.json",
+        "artifacts": [
+          "artifacts/osv.json"
+        ]
+      },
+      "remediation": "Upgrade requests to >= 2.32.0.",
+      "references": [
+        "https://osv.dev/GHSA-9wx4-h78v-vm56"
+      ]
+    },
+    {
+      "id": "SCA-004",
+      "title": "requests extract_zipped_paths() reuses a predictable temp file (GHSA-gc5v-m9x4-r6x2)",
+      "severity": "medium",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:H/A:N",
+        "score": 4.4
+      },
+      "target": "osv-demo",
+      "location": "requirements.txt:requests@2.25.0",
+      "tool": "osv-scanner",
+      "rule": "GHSA-gc5v-m9x4-r6x2",
+      "description": "requests 2.25.0 is vulnerable to CVE-2026-25645 (alias PYSEC-2026-2275). The requests.utils.extract_zipped_paths() utility extracts zip archives to a predictable filename, which a local actor can pre-create to tamper with the extracted content. Fixed in 2.33.0.",
+      "proof": {
+        "poc": "jq '.results[].packages[] | select(.package.name==\"requests\") | .groups[] | select(.ids[] == \"GHSA-gc5v-m9x4-r6x2\")' evidence/artifacts/osv.json",
+        "artifacts": [
+          "artifacts/osv.json"
+        ]
+      },
+      "remediation": "Upgrade requests to >= 2.33.0.",
+      "references": [
+        "https://osv.dev/GHSA-gc5v-m9x4-r6x2"
+      ]
+    }
+  ],
+  "hypotheses": [],
+  "artifacts": [
+    {
+      "path": "artifacts/osv.json",
+      "description": "Raw osv-scanner report (trimmed to the fields used in triage)"
+    },
+    {
+      "path": "artifacts/osv.sarif",
+      "description": "osv-scanner report as SARIF (trimmed)"
+    }
+  ]
+}
