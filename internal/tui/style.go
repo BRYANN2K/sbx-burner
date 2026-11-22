@@ -88,12 +88,14 @@ func paintBG(view string, width int) string {
 }
 
 // hints renders the bottom key bar: pairs of key, action.
-func hints(pairs ...string) string {
+func hints(pairs ...string) string { return hintsSep("  │  ", pairs...) }
+
+func hintsSep(sep string, pairs ...string) string {
 	parts := []string{}
 	for i := 0; i+1 < len(pairs); i += 2 {
 		parts = append(parts, sSoft.Render(pairs[i])+" "+sDim.Render(pairs[i+1]))
 	}
-	return "  " + strings.Join(parts, sDim.Render("  │  "))
+	return "  " + strings.Join(parts, sDim.Render(sep))
 }
 
 // truncate cuts s to n display cells with an ellipsis.

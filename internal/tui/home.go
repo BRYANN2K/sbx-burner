@@ -13,16 +13,6 @@ import (
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
 )
 
-// logo is a braille flame (original art, not taken from another tool).
-var logo = []string{
-	"⠀⠀⠀⠀⠀⢀⣴⡇⠀⠀⡀⠀",
-	"⠀⠀⠀⢀⣴⣿⣿⣿⣄⡾⠇⠀",
-	"⠀⠀⣴⣿⡿⠛⠛⠻⣿⣿⣦⠀",
-	"⠀⢸⣿⡏⢠⣾⣷⣄⠈⣿⣿⠀",
-	"⠀⠀⠻⣷⣄⡙⠛⣋⣾⠟⠁⠀",
-	"⠀⠀⠀⠀⠉⠛⠛⠛⠉⠀⠀⠀",
-}
-
 var targetLabel = map[string]string{
 	"path": "folder", "repo": "git repo", "image": "image", "port": "port",
 	"url": "url", "app": "running project", "demo": "demo",
@@ -227,37 +217,8 @@ func (m model) viewHome() string {
 	w := m.w
 	var b strings.Builder
 
-	// Top box: logo, name, actions. Hidden on short terminals.
-	if m.h >= 34 {
-		title := []string{
-			sBold.Render("burner") + "  " + sDim.Render(m.cfg.Version),
-			sDim.Render("agent recipes for Docker Sandboxes"),
-			"",
-		}
-		actions := [][2]string{{"Run a recipe", "enter"}, {"Doctor", "d"}, {"New recipe", "n"}, {"Update", "u"}, {"Quit", "q"}}
-		inner := w - 4
-		textW := min(inner-14-3, 52)
-		for _, a := range actions {
-			pad := textW - lipgloss.Width(a[0]) - lipgloss.Width(a[1])
-			if pad < 1 {
-				pad = 1
-			}
-			title = append(title, sText.Render(a[0])+strings.Repeat(" ", pad)+sDim.Render(a[1]))
-		}
-		var rows []string
-		for i := 0; i < len(title) || i < len(logo); i++ {
-			l := strings.Repeat(" ", 12)
-			if i < len(logo) {
-				l = sAmber.Render(logo[i])
-			}
-			t := ""
-			if i < len(title) {
-				t = title[i]
-			}
-			rows = append(rows, l+"   "+t)
-		}
-		b.WriteString(box(w, strings.Join(rows, "\n")) + "\n")
-	}
+	// Top: logo, name, version, working folder. Nothing else.
+	b.WriteString(strings.Join(m.headLines(), "\n") + "\n")
 
 	// Columns.
 	bodyH := m.h - lipgloss.Height(b.String()) - 1
@@ -339,11 +300,18 @@ func (m model) viewHome() string {
 		cols = append(cols, col(detW, bodyH, m.detail(detW-4), "right"))
 	}
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, cols...) + "\n")
-	b.WriteString(m.statusLine() + "\n")
 	if h.msg != "" {
 		b.WriteString("  " + sAmber.Render(h.msg) + "\n")
 	}
-	b.WriteString(hints("↑↓", "move", "←→", "column", "/", "search", "enter", "run", "d", "doctor", "q", "quit"))
+	// Bottom: every command in one bar, then the doctor status line.
+	keys := []string{"enter", "run", "/", "search", "d", "doctor", "n", "new recipe", "u", "update", "↑↓ ←→", "move"}
+	quit := sSoft.Render("q") + " " + sDim.Render("quit") + " "
+	cmds := hints(keys...)
+	if lipgloss.Width(cmds)+lipgloss.Width(quit)+2 > w {
+		cmds = hintsSep("  ", keys...) // narrow: drop the separators, keep every command
+	}
+	b.WriteString(header(w, cmds, quit) + "\n")
+	b.WriteString(m.statusLine())
 	return b.String()
 }
 
@@ -444,10 +412,10 @@ func (m model) detail(w int) string {
 // statusLine: catalog on the left; sbx, runtime, credentials, disk on the
 // right. The spinner turns only while the doctor checks run.
 func (m model) statusLine() string {
-	left := "  " + sDim.Render(truncate(m.cfg.Root, m.w/2-4))
+	left := ""
 	var right string
 	if m.checking {
-		right = sAmber.Render(m.spin()) + sDim.Render(" checking sbx, runtime, credentials")
+		right = sAmber.Render(m.spin()) + sDim.Render(" checking sbx, runtime, disk")
 	} else {
 		right = sDim.Render(statusSummary(m.checks))
 	}
@@ -482,20 +450,6 @@ func statusSummary(checks []doctor.Result) string {
 		} else {
 			parts = append(parts, "no runtime")
 		}
-	}
-	var creds []string
-	for _, a := range []string{"codex", "claude", "devin"} {
-		if _, ok := get("agent-" + a); !ok {
-			continue
-		}
-		mark := "–"
-		if doctor.AgentReady(checks, a) {
-			mark = "✓"
-		}
-		creds = append(creds, a+" "+mark)
-	}
-	if len(creds) > 0 {
-		parts = append(parts, strings.Join(creds, " "))
 	}
 	if c, ok := get("disk"); ok {
 		parts = append(parts, c.Detail)

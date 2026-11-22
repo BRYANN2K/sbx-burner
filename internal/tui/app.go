@@ -78,6 +78,7 @@ type model struct {
 
 	w, h  int
 	frame int
+	seed  int64 // logo sparks and blinks
 	scr   screen
 
 	checks   []doctor.Result
@@ -85,6 +86,7 @@ type model struct {
 
 	agents    []string // every agent the runner can launch
 	acpAgents []string
+	last      *lastRun
 
 	home   homeModel
 	flow   *flowModel
@@ -125,7 +127,7 @@ func initialModel(ctx context.Context, cfg Config) model {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	m := model{ctx: ctx, cfg: cfg, eng: cfg.Engine, w: 120, h: 40, checking: true}
+	m := model{ctx: ctx, cfg: cfg, eng: cfg.Engine, w: 120, h: 40, checking: true, seed: cfg.Now().UnixNano()}
 	m.home = newHome(cfg.Recipes)
 	m.out.Code = 130
 	return m
@@ -138,13 +140,14 @@ func (m model) runChecks() tea.Cmd {
 
 func (m model) Init() tea.Cmd {
 	ctx, eng := m.ctx, m.eng
+	runs := m.cfg.RunsDir
 	return tea.Batch(tick(), m.runChecks(), func() tea.Msg {
 		a, _ := eng.ACPAgents(ctx)
 		return acpAgentsMsg(a)
 	}, func() tea.Msg {
 		a, _ := eng.Agents(ctx)
 		return agentsMsg(a)
-	})
+	}, func() tea.Msg { return lastRunMsg(findLastRun(runs)) })
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -155,6 +158,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.frame++
 		return m, tick()
+	case lastRunMsg:
+		m.last = msg
+		return m, nil
 	case acpAgentsMsg:
 		m.acpAgents = msg
 		return m, nil
