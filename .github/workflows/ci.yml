@@ -48,6 +48,21 @@ jobs:
       - name: every recipe prints a plan
         run: |
           set -euo pipefail
+          # Dry-run planning refuses a mixin workload whose credential binding
+          # is not approved. CI stores no secrets, so plan against a throwaway
+          # credentials.yaml generated from the kits' credential@1 needs;
+          # real runs still refuse until a human runs `burner approve`.
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/xdg"
+          mkdir -p "$XDG_CONFIG_HOME/sbx"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from lab import sbx
+
+          needs = sbx.kits_binding_needs(Path("kits"))
+          out = Path(os.environ["XDG_CONFIG_HOME"]) / "sbx" / "credentials.yaml"
+          out.write_text(sbx.binding_snippet(needs) + "\n")
+          PY
           python -m lab list | awk '$2 != "planned" {print $1}' | while read -r recipe; do
             scope="recipes/${recipe}/scope.example.yaml"
             args=(--dry-run)

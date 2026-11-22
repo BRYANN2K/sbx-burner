@@ -61,6 +61,7 @@ Usage:
                               write a scope for that recipe from the target (~/.burner/scopes)
   burner doctor [--json]
   burner answer <run-dir> <ask-id> <answer>   answer the agent from another terminal
+  burner approve --agent A    approve the agent's credential for lab kits (interactive)
   burner update [--check] [--install]   update recipe catalogs; check (or install) a new burner
   burner catalog add <git-url> [--name N] | list
   burner mcp                  MCP server on stdio (limits in ~/.burner/mcp.yaml)
@@ -128,6 +129,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdNew(catalogFlag, rest, stdout, stderr)
 	case "answer":
 		return cmdAnswer(rest, stderr)
+	case "approve":
+		return cmdApprove(ctx, catalogFlag, rest, stderr)
 	case "update":
 		return cmdUpdate(ctx, rest, stdout, stderr)
 	case "catalog":
@@ -354,6 +357,24 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	}
 	if o.ACP && st != nil && st.Done != nil && st.Done.Report != "" {
 		cacheModels(filepath.Join(filepath.Dir(st.Done.Report), acp.ModelsFile))
+	}
+	return code
+}
+
+func cmdApprove(ctx context.Context, catalogFlag string, args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("approve", flag.ContinueOnError)
+	agent := fs.String("agent", "", "")
+	if fs.Parse(args) != nil || *agent == "" {
+		fmt.Fprintln(stderr, "usage: burner approve --agent <name>")
+		return exitUsage
+	}
+	root, err := catalog.FindRoot(catalogFlag)
+	if err != nil {
+		return fail(stderr, exitNotReady, err)
+	}
+	code, err := engine.Exec(ctx, root, []string{"approve", "--agent", *agent})
+	if err != nil {
+		return fail(stderr, exitFailed, err)
 	}
 	return code
 }

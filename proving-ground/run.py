@@ -39,6 +39,7 @@ sys.path.insert(0, str(ROOT))
 
 from lab import evals as lab_evals  # noqa: E402
 from lab import jsonschema_lite, miniyaml  # noqa: E402
+from lab import sbx as lab_sbx  # noqa: E402
 from lab.evidence import redact  # noqa: E402
 from lab.recipe import RecipeError  # noqa: E402
 from lab.recipe import find as find_recipe  # noqa: E402
@@ -217,6 +218,28 @@ def _build_allowed_offline(target: dict[str, Any]) -> bool:
     return set(target.get("needs") or []) <= OFFLINE_NEEDS
 
 
+def _binding_env(tmp: Path) -> dict[str, str] | None:
+    """Throwaway ``XDG_CONFIG_HOME`` approving every kit's credential domains.
+
+    Dry-run planning refuses a mixin workload whose binding is missing from
+    credentials.yaml (it is how the TUI offers the approval prompt). In the
+    harness the approval state is irrelevant — CI stores no secrets and the
+    file only names domains — so the dry run plans against a fixture binding
+    generated from the kits. Real runs are untouched: they still refuse
+    until a human approves through ``burner approve``.
+    """
+    needs = lab_sbx.kits_binding_needs(ROOT / "kits")
+    if not needs:
+        return None
+    xdg = tmp / "xdg"
+    creds = xdg / "sbx" / "credentials.yaml"
+    creds.parent.mkdir(parents=True)
+    creds.write_text(lab_sbx.binding_snippet(needs) + "\n")
+    env = dict(os.environ)
+    env["XDG_CONFIG_HOME"] = str(xdg)
+    return env
+
+
 def _run_build(folder: Path, target: dict[str, Any]) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
     build_dir = PG / ".build" / folder.name
@@ -359,9 +382,10 @@ def _check_folder(folder: Path, args: argparse.Namespace) -> tuple[bool, str]:
             print(f"  {folder.name}: would run {target['build']} (needs: {', '.join(target.get('needs') or [])})")
             placeholders = True
     with tempfile.TemporaryDirectory(prefix="pg-placeholder-") as tmp:
+        env = _binding_env(Path(tmp))
         for entry in target.get("runs") or []:
             entry_args = _placeholder_args(entry["args"], Path(tmp)) if placeholders else entry["args"]
-            proc = _run(_lab_plan_argv(recipe, {**entry, "args": entry_args}, folder, args.agent), cwd=ROOT)
+            proc = _run(_lab_plan_argv(recipe, {**entry, "args": entry_args}, folder, args.agent), cwd=ROOT, env=env)
             if proc.returncode != 0:
                 tail = (proc.stdout + proc.stderr).strip()[-400:]
                 return False, f"lab --dry-run failed for kind {entry['kind']}: {tail}"

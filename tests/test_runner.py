@@ -1,11 +1,13 @@
 import datetime as dt
 import json
 import subprocess
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from lab import runner, sbx
+from lab import approve, runner, sbx
 
 NOW = dt.datetime(2026, 11, 21, 10, 30, 0)
 
@@ -297,6 +299,60 @@ def test_preflight_never_handles_keys(make_recipe, repo, tmp_path):
         runner.preflight(plan, execute=FakeSbx(plan, secrets=""), which=lambda _: "/bin/sbx")
     assert "/login" in str(exc.value) and exc.value.code == runner.EXIT_PREFLIGHT
     assert not plan.run_dir.exists(), "preflight failure must not create anything"
+
+
+def test_mixin_requires_a_credential_binding(make_recipe, repo, tmp_path, monkeypatch):
+    recipe = make_recipe(
+        **{"recipe.yaml": ("    image: debian:stable-slim", "    image: kalilinux/kali-rolling\n    workload: kits/base-kali")}
+    )
+    plan = _plan(recipe, repo, tmp_path, agent_name="codex")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    with pytest.raises(runner.Refused, match="credential binding") as exc:
+        runner.preflight(plan, execute=FakeSbx(plan), which=lambda _: "/bin/sbx")
+    text = str(exc.value)
+    assert "chatgpt.com" in text and "run: burner approve --agent codex" in text
+    assert exc.value.code == runner.EXIT_PREFLIGHT
+    creds = tmp_path / "xdg" / "sbx" / "credentials.yaml"
+    creds.parent.mkdir(parents=True)
+    creds.write_text(
+        "bindings:\n  openai:\n    oauth:\n      domains: [auth.openai.com, chatgpt.com]\n    apiKey:\n      domains: [api.openai.com]\n",
+        encoding="utf-8",
+    )
+    runner.preflight(plan, execute=FakeSbx(plan), which=lambda _: "/bin/sbx")
+
+
+def test_approve_uses_sbx_prompt_and_cleans_up(repo, tmp_path, monkeypatch, capsys):
+    calls = []
+
+    def fake_run(argv, **kw):
+        calls.append(argv)
+        if argv[1] == "create":
+            # The user answering sbx's prompt records the binding.
+            creds = tmp_path / "xdg" / "sbx" / "credentials.yaml"
+            creds.parent.mkdir(parents=True, exist_ok=True)
+            creds.write_text(
+                "bindings:\n  openai:\n    oauth:\n      domains: [auth.openai.com, chatgpt.com]\n"
+                "    apiKey:\n      domains: [api.openai.com]\n",
+                encoding="utf-8",
+            )
+        return 0
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setattr(sys, "stdin", SimpleNamespace(isatty=lambda: True))
+    assert approve.approve("codex", repo_root=repo, run=fake_run) == 0
+    create = calls[0]
+    assert create[:2] == ["sbx", "create"] and "shell" in create
+    assert create[create.index("--kit") + 1].endswith("kits/agent-codex")
+    assert calls[-1][:3] == ["sbx", "rm", "--force"]
+    assert calls[-1][-1].startswith("burner-approve-")
+    assert "approved openai" in capsys.readouterr().out
+
+
+def test_approve_reports_still_missing(repo, tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setattr(sys, "stdin", SimpleNamespace(isatty=lambda: True))
+    assert approve.approve("codex", repo_root=repo, run=lambda argv, **kw: 0) == 3
+    assert "chatgpt.com" in capsys.readouterr().out
 
 
 # --- user target kinds ---------------------------------------------------
@@ -999,3 +1055,29 @@ def test_plan_shows_how_the_app_starts(make_recipe, repo, tmp_path):
     line = next(ln for ln in runner.render_plan(plan).splitlines() if ln.startswith("  app run:"))
     assert "start: npm start" in line or "start: " in line
     assert f"port {plan.target_info['port']}" in line and "health /" in line
+
+
+def _binding_plan_refuses(tmp_path, monkeypatch, text):
+    from lab import sbx as sbx_mod
+
+    cfg = tmp_path / "cfg" / "sbx"
+    cfg.mkdir(parents=True)
+    (cfg / "credentials.yaml").write_text(text)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    with pytest.raises(sbx_mod.BindingUnreadable):
+        sbx_mod.binding_gaps({"openai": {"oauth": {"chatgpt.com"}}})
+
+
+def test_binding_gaps_malformed_file_is_reported_not_crashing(tmp_path, monkeypatch):
+    _binding_plan_refuses(tmp_path, monkeypatch, "bindings:\n  openai: [a,\n    b]\n")
+
+
+def test_binding_gaps_wrong_shape_is_reported_not_crashing(tmp_path, monkeypatch):
+    _binding_plan_refuses(tmp_path, monkeypatch, 'bindings: {openai: "str"}\n')
+
+
+def test_binding_gaps_absent_file_means_all_missing(tmp_path, monkeypatch):
+    from lab import sbx as sbx_mod
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "none"))
+    assert sbx_mod.binding_gaps({"openai": {"oauth": {"chatgpt.com"}}}) == {"openai": {"oauth": {"chatgpt.com"}}}

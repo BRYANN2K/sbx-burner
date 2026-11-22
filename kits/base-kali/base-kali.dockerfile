@@ -7,7 +7,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Platform floor: bash, curl, git, CA store, sudo and the agent user.
 # /usr/local/share/ca-certificates must exist: the runtime writes the egress
 # proxy CA there before merging it into the bundle.
-RUN apt-get update \
+# Pin the CDN mirror: http.kali.org redirects each package to a random mirror
+# (ftp.free.fr, ...), which a default-deny sandbox cannot reach at run time.
+# kali.download serves every file itself, so one install host is enough.
+RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do \
+      [ -f "$f" ] && sed -i 's#http://http.kali.org/kali#http://kali.download/kali#g' "$f" || true; \
+    done \
+ && apt-get update \
  && apt-get install -y --no-install-recommends bash ca-certificates curl git sudo jq python3 unzip xz-utils \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /usr/local/share/ca-certificates \

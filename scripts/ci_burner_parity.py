@@ -122,6 +122,17 @@ def main() -> int:
         sys.path.insert(0, str(root))
         os.chdir(root)
         from lab import recipe as recipe_mod
+        from lab import sbx as lab_sbx
+
+        # Dry-run planning refuses a mixin workload without an approved
+        # credential binding. CI stores no secrets, so plan against a
+        # throwaway credentials.yaml generated from the kits' needs; real
+        # runs still refuse until a human runs `burner approve`.
+        if needs := lab_sbx.kits_binding_needs(root / "kits"):
+            creds = tmp / "xdg" / "sbx" / "credentials.yaml"
+            creds.parent.mkdir(parents=True)
+            creds.write_text(lab_sbx.binding_snippet(needs) + "\n")
+            os.environ["XDG_CONFIG_HOME"] = str(creds.parent.parent)
 
         supported = engine_flags(root)
         for rec in recipe_mod.discover(root / "recipes"):
