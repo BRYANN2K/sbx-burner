@@ -9,21 +9,21 @@ import (
 )
 
 func TestMissingInputsNamesEveryRequiredInput(t *testing.T) {
-	r := catalog.Recipe{ID: "pentest/x", Scope: "required", TargetMode: "required", Targets: []string{"image", "port", "url", "demo"}}
+	r := catalog.Recipe{ID: "pentest/x", Scope: "required", TargetMode: "required", Targets: []string{"image", "port", "url"}}
 	got := strings.Join(missingInputs(r, engine.RunOptions{}), "; ")
-	for _, want := range []string{"--target-image", "--target-url", "--demo", "--scope"} {
+	for _, want := range []string{"--target-image", "--target-url", "--scope"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in %q", want, got)
 		}
 	}
-	if m := missingInputs(r, engine.RunOptions{Demo: true, Scope: "s.yaml"}); len(m) != 0 {
+	if m := missingInputs(r, engine.RunOptions{TargetImage: "nginx:1", Scope: "s.yaml"}); len(m) != 0 {
 		t.Fatalf("unexpected %v", m)
 	}
 }
 
 func TestReorderKeepsFlagValues(t *testing.T) {
-	got := reorder([]string{"web-x", "--target-image", "img:1", "--demo"})
-	if strings.Join(got, " ") != "--target-image img:1 --demo web-x" {
+	got := reorder([]string{"web-x", "--target-image", "img:1", "--dry-run"})
+	if strings.Join(got, " ") != "--target-image img:1 --dry-run web-x" {
 		t.Fatalf("got %v", got)
 	}
 }

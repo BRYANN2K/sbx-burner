@@ -222,7 +222,6 @@ func toolDefs() []map[string]any {
 		"app_cmd":      str,
 		"app_port":     str,
 		"prompt":       map[string]any{"type": "string", "description": "extra notes for the agent; cannot change the scope"},
-		"demo":         map[string]any{"type": "boolean"},
 	}
 	obj := func(props map[string]any, required ...string) map[string]any {
 		return map[string]any{"type": "object", "properties": props, "required": required, "additionalProperties": false}
@@ -444,9 +443,6 @@ func (s *Server) runOptions(r catalog.Recipe, args map[string]any) (engine.RunOp
 			return o, fmt.Errorf("prompt longer than %d bytes", MaxPrompt)
 		}
 		o.Prompts = []string{p}
-	}
-	if d, _ := args["demo"].(bool); d {
-		o.Demo = true
 	}
 	if r.Scope == "required" && o.Scope == "" {
 		return o, errors.New(r.ID + " needs a scope (list_scopes)")

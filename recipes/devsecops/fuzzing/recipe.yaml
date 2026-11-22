@@ -15,15 +15,12 @@ variants:
 
 run:
   timeout_minutes: 30
-  # required: the user's harness+source via --target or --target-repo, or
-  # the bundled toy parsers via --demo.
+  # required: the user's harness+source via --target or --target-repo.
   target: required
   # path: user code mounted read-only at /home/agent/target.
   # repo: a repository cloned on the host with the user's own git login,
   # then mounted like a path.
-  # demo: the bundled fixtures/c-target + fixtures/go-target (run.demo).
-  targets: [path, repo, demo]
-  demo: fixtures/demo.sh
+  targets: [path, repo]
   snapshot: false
   tools: tools/install.sh
   shared_skills: [evidence-hygiene]

@@ -1,6 +1,0 @@
- Container vuln-lab-dvwa-1  Removed
- Container vuln-lab-juice-shop-1  Removed
- Container vuln-lab-dvwa-db-1  Removed
- Volume vuln-lab_dvwa-db  Removed
- Network vuln-lab_default  Removed
-reset: containers and volumes removed, ports 3000 and 8081 closed

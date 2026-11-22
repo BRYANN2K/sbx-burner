@@ -1,7 +1,7 @@
 ---
 name: fuzzing
 category: devsecops
-summary: Fuzz the bundled C and Go targets (or a mounted target) for five minutes each, then deduplicate, minimise and classify every crash with its reproducer.
+summary: Fuzz the user's C and Go harnesses for five minutes each, then deduplicate, minimise and classify every crash with its reproducer.
 risk: low
 time: 20m
 variants:
@@ -26,8 +26,7 @@ report or panic trace, and reported once. The crash input is the proof.
 
 - To smoke-test a parser or codec before shipping it.
 - To learn fuzzing triage: dedupe by stack, minimise, classify.
-- On your own code with `--target ./my-parser`, or on the bundled fixtures
-  without one.
+- On your own code with `--target ./my-parser` or `--target-repo`.
 
 ## What you get
 
@@ -41,7 +40,6 @@ report or panic trace, and reported once. The crash input is the proof.
 ```console
 $ python -m lab run devsecops/fuzzing --target ./my-code   # your harness + source
 $ python -m lab run devsecops/fuzzing --target-repo owner/my-parser@main  # a git repo
-$ python -m lab run devsecops/fuzzing --demo               # the bundled toy parsers
 $ python -m lab run devsecops/fuzzing --target . --dry-run # preview the plan
 ```
 
@@ -50,10 +48,7 @@ $ python -m lab run devsecops/fuzzing --target . --dry-run # preview the plan
 repository on the host with your own git login (private repositories work;
 no credential enters the sandbox) and mounts it the same way. The agent
 looks for fuzzing harnesses (`fuzz_*.c`, `Fuzz*` Go tests) or writes a small
-one. `--demo` fuzzes the bundled `fixtures/c-target` (a length-prefixed
-record parser with a one-byte-off bounds check) and `fixtures/go-target` (a
-field splitter that panics on one input); those fixtures are only a target
-in demo mode. With no target flag the run is refused. Each harness gets at
+one. With no target flag the run is refused. Each harness gets at
 most five minutes of fuzzing.
 
 ## Evidence

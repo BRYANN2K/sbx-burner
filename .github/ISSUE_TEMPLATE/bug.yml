@@ -18,7 +18,7 @@ body:
     id: command
     attributes:
       label: Command
-      description: "For example: python -m lab run training/vuln-lab --dry-run"
+      description: "For example: python -m lab run devsecops/secrets-scan --target . --dry-run"
     validations:
       required: true
   - type: dropdown

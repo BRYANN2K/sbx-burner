@@ -15,7 +15,7 @@ import (
 
 var targetLabel = map[string]string{
 	"path": "folder", "repo": "git repo", "image": "image", "port": "port",
-	"url": "url", "app": "running project", "demo": "demo",
+	"url": "url", "app": "running project",
 }
 
 type homeModel struct {
@@ -348,9 +348,6 @@ func detailFields(r catalog.Recipe) [][2]string {
 		if l, ok := targetLabel[t]; ok {
 			ts = append(ts, l)
 		}
-	}
-	if r.Demo != "" && !r.Accepts("demo") {
-		ts = append(ts, "demo")
 	}
 	scope := map[string]string{"required": "scope file required", "optional": "scope file optional", "none": "none needed"}[r.Scope]
 	f := [][2]string{

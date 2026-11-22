@@ -20,7 +20,7 @@ Rename the folder. Fill in `RECIPE.md` and `recipe.yaml`.
 
 ## 3. Choose the image and tools
 
-- Pick the smallest image that has what you need. Roadmap defaults: Kali for pentest and training, REMnux for malware, Ubuntu LTS for hardening, detection, IR and desktop, Debian slim for DevSecOps, dev and CI.
+- Pick the smallest image that has what you need. Roadmap defaults: Kali for pentest, REMnux for malware, Ubuntu LTS for hardening, detection, IR and desktop, Debian slim for DevSecOps, dev and CI.
 - Check the image meets the `sbx` kit floor: bash, a uid 1000 `agent` user, git and a CA store. If it does not, the kit must add them.
 - Put install steps in `tools/`. Pin versions. Check hashes where upstream publishes them.
 

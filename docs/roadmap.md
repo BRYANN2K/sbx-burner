@@ -12,9 +12,7 @@ Linux now, macOS with macsbx.
 
 | Category | Scope |
 |---|---|
-| `foundation` | Scope guard, triage and reporting. Shared by the others. |
 | `devsecops` | Secrets, SCA, SAST, SBOM, signing, containers, IaC, licences, fuzzing, CI gate. |
-| `training` | Vulnerable labs, CTF build and solve. |
 | `pentest` | Web, API, white, grey and black box, bug bounty. |
 | `malware` | Static and offline dynamic triage, pcap analysis. |
 | `detection` | Sigma, YARA, attack replay, detection CI. |
@@ -31,18 +29,16 @@ Linux now, macOS with macsbx.
 
 About 45 recipes, built in four waves. One pull request per recipe. A wave finishes before the next starts. Each recipe needs a working eval.
 
-### Wave 1: foundation and DevSecOps
+### Wave 1: DevSecOps
 
 No live targets.
 
-- `foundation/scope-guard`, `foundation/triage-and-report`
 - `devsecops/secrets-scan`, `sca-osv`, `sast-semgrep`, `sbom-sign`, `container-scan`, `iac-scan`, `license-compliance`, `pr-security-review`, `supply-chain-risk`, `fuzzing`, `gate`
 
-### Wave 2: labs and pentest
+### Wave 2: pentest
 
-Against lab targets you start yourself.
+Against targets you own or are authorized to test.
 
-- `training/vuln-lab`, `ctf-lab`, `ctf-solver`
 - `pentest/web-recon`, `webapp-blackbox`, `api-greybox`, `whitebox-review`, `dast-light`, `binary-blackbox`, `bug-bounty`
 
 ### Wave 3: malware, detection, hardening, IR
@@ -68,7 +64,7 @@ Stubs only until macsbx can run them: `apple/xcode-ci`, `swiftui-dev`, `ios-app-
 
 | Use | Image |
 |---|---|
-| Pentest, training, bug bounty | Kali |
+| Pentest, bug bounty | Kali |
 | Malware | REMnux |
 | Hardening, detection, IR, computer use | Ubuntu LTS |
 | DevSecOps, dev, CI | Debian slim |

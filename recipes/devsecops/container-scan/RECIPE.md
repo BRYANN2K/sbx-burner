@@ -52,7 +52,7 @@ tag (a tarball inside the directory or a plain tree get a load or a
 filesystem scan). For `image` the runner resolves the ref on the
 host (or takes the tarball), loads it into the sandbox Docker engine and
 records its digest; registry credentials never enter the sandbox. The
-agent then scans `$LAB_TARGET_IMAGE` directly. No `--demo`: the
+agent then scans `$LAB_TARGET_IMAGE` directly. The
 bundled `evals/make-target.sh` generates a throwaway context on an
 end-of-life base image for the eval and for local dry runs only.
 

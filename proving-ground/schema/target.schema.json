@@ -44,7 +44,7 @@
       "required": ["kind", "args"],
       "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "enum": ["path", "repo", "app", "image", "port", "url", "demo"]},
+        "kind": {"type": "string", "enum": ["path", "repo", "app", "image", "port", "url"]},
         "args": {"type": "array", "items": {"type": "string"}}
       }
     }

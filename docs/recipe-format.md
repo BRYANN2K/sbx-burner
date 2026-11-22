@@ -21,7 +21,7 @@ recipes/<category>/<name>/
 
 ## Categories
 
-`foundation`, `devsecops`, `training`, `pentest`, `malware`, `detection`, `hardening`, `ir`, `ai-security`, `dev`, `ci`, `web`, `cu`, `apple` (macOS, planned).
+`devsecops`, `pentest`, `malware`, `detection`, `hardening`, `ir`, `ai-security`, `dev`, `ci`, `web`, `cu`, `apple` (macOS, planned).
 
 ## RECIPE.md
 
@@ -148,7 +148,7 @@ The kinds and their flags:
 | `url` | `--target-url URL` | An authorized remote `http` or `https` app. |
 | `demo` | `--demo` | The bundled lab from `run.demo`. |
 
-Training labs and `foundation/scope-guard` use `target: none`. Their subject is the lab or the policy.
+
 
 ### Refusals
 

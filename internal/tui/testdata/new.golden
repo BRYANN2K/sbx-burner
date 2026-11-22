@@ -3,9 +3,7 @@ New recipe  scaffolded into ~/.burner/recipes
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ Category                                                                                                             │
 │                                                                                                                      │
-│ ❯ foundation                                                                                                         │
-│   devsecops                                                                                                          │
-│   training                                                                                                           │
+│ ❯ devsecops                                                                                                          │
 │   pentest                                                                                                            │
 │   malware                                                                                                            │
 │   detection                                                                                                          │
@@ -17,6 +15,8 @@ New recipe  scaffolded into ~/.burner/recipes
 │   web                                                                                                                │
 │   cu                                                                                                                 │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
 
 
 

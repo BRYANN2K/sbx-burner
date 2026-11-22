@@ -76,7 +76,7 @@ Run flags (targets):
   --target-url URL           remote app listed in the scope file
   --with-submodules
 Run flags (other):
-  --demo  --scope FILE  --agent NAME (burner agents)  --dry-run  --keep  --runs-dir DIR
+  --scope FILE  --agent NAME (burner agents)  --dry-run  --keep  --runs-dir DIR
   --prompt TEXT  --prompt-file FILE   notes for the agent (repeatable)
   --on-ask skip|fail|timeout=30m      when nobody answers the agent
   --acp   drive the agent over ACP (live permissions, model choice, follow-up notes)
@@ -286,7 +286,6 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	fs.Func("prompt", "", func(v string) error { o.Prompts = append(o.Prompts, v); return nil })
 	fs.Func("prompt-file", "", func(v string) error { o.PromptFiles = append(o.PromptFiles, v); return nil })
 	fs.StringVar(&o.OnAsk, "on-ask", "", "")
-	fs.BoolVar(&o.Demo, "demo", false, "")
 	fs.BoolVar(&o.DryRun, "dry-run", false, "")
 	fs.BoolVar(&o.Keep, "keep", false, "")
 	fs.StringVar(&o.RunsDir, "runs-dir", "", "")
@@ -387,8 +386,6 @@ func missingInputs(r catalog.Recipe, o engine.RunOptions) []string {
 				kinds = append(kinds, "--target-image")
 			case "url":
 				kinds = append(kinds, "--target-url")
-			case "demo":
-				kinds = append(kinds, "--demo")
 			}
 		}
 		missing = append(missing, "a target ("+strings.Join(kinds, " | ")+")")
@@ -571,7 +568,7 @@ func absPaths(cmd string, args []string) []string {
 	return out
 }
 
-// reorder lets flags come after the positional argument (`run x --demo`).
+// reorder lets flags come after the positional argument (`run x --target .`).
 func reorder(args []string) []string {
 	var flags, pos []string
 	valueFlags := map[string]bool{"--prompt": true, "--prompt-file": true, "--on-ask": true, "--name": true, "--scope": true, "--agent": true, "--target": true, "--target-image": true, "--target-port": true, "--target-url": true, "--runs-dir": true,

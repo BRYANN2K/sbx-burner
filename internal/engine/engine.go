@@ -37,7 +37,6 @@ type RunOptions struct {
 	PromptFiles []string
 	Events      string // "-" for NDJSON on stdout
 	OnAsk       string // skip | fail | timeout=DURATION
-	Demo        bool
 	DryRun      bool
 	Keep        bool
 	RunsDir     string
@@ -92,9 +91,6 @@ func (o RunOptions) Args() []string {
 		}
 	}
 	add("--runs-dir", abs(runs))
-	if o.Demo {
-		args = append(args, "--demo")
-	}
 	if o.DryRun {
 		args = append(args, "--dry-run")
 	}
@@ -240,7 +236,7 @@ func localOrRemote(v string) string {
 
 // HasTarget reports whether any target was given.
 func (o RunOptions) HasTarget() bool {
-	return o.Target != "" || o.TargetImage != "" || o.TargetURL != "" || o.TargetRepo != "" || o.TargetApp != "" || o.Demo
+	return o.Target != "" || o.TargetImage != "" || o.TargetURL != "" || o.TargetRepo != "" || o.TargetApp != ""
 }
 
 // imageArg makes a local tarball path absolute and leaves registry refs alone.

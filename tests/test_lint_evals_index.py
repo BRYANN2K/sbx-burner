@@ -151,9 +151,9 @@ def test_gen_index_render_and_splice():
             "variants": {"linux": "beta", "macos": "planned"},
         },
         {
-            "path": "recipes/foundation/a",
+            "path": "recipes/pentest/a",
             "name": "a",
-            "category": "foundation",
+            "category": "pentest",
             "summary": "A",
             "risk": "low",
             "status": "ready",
@@ -162,7 +162,7 @@ def test_gen_index_render_and_splice():
     ]
     table = gen_index.render(entries)
     rows = [line for line in table.splitlines() if line.startswith("| [")]
-    assert rows[0].startswith("| [a](recipes/foundation/a/RECIPE.md) | foundation | A | low | ready | planned |")
+    assert rows[0].startswith("| [a](recipes/pentest/a/RECIPE.md) | pentest | A | low | ready | planned |")
     assert "B \\| pipe" in rows[1]
     readme = "# x\n\n<!-- recipes:start -->\nold\n<!-- recipes:end -->\n\ntail\n"
     out = gen_index.splice(readme, table)
@@ -241,11 +241,10 @@ def test_recipe_find(make_recipe, repo):
     [
         ("  targets: [path]", "  targets: [bogus]", "must be a list drawn from"),
         ("  targets: [path]", "  targets: [port]", "'port' requires 'image'"),
-        ("  targets: [path]", "  targets: [demo]", "'demo' requires run.demo"),
+        ("  targets: [path]", "  targets: [path, demo]", "'demo' is gone"),
         ("  target: optional\n  # Accepted", "  target: none\n  # Accepted", "cannot declare run.targets"),
         ("  targets: [path]", "  targets: []\n  target_health: bad", "target_health must start with"),
-        ("  targets: [path]", "  targets: []\n  demo: fixtures/missing.sh", "run.demo 'fixtures/missing.sh' not found"),
-        ("  targets: [path]", "  targets: []\n  demo: fixtures/missing.sh", "not in run.targets"),
+        ("  targets: [path]", "  targets: [path]\n  demo: fixtures/demo.sh", "run.demo is gone"),
         ("  targets: [path]", "  targets: [image]", "must mention LAB_TARGET_IMAGE"),
         ("  targets: [path]", "  targets: [url]", "must mention LAB_TARGET_URL"),
     ],
@@ -274,8 +273,6 @@ def test_ci_dry_args_picks_a_target_per_recipe(make_recipe, scope_file):
 
     assert ci_dry_args.dry_args(make_recipe("dev", "opt").path, None) == [], "optional target: nothing to pass"
     assert ci_dry_args.dry_args(kinds(make_recipe("dev", "p"), "  targets: [path]"), None) == ["--target", "."]
-    demo = kinds(make_recipe("dev", "d"), "  targets: [path, demo]\n  demo: fixtures/demo.sh")
-    assert ci_dry_args.dry_args(demo, None) == ["--demo"]
     url = kinds(make_recipe("dev", "u"), "  targets: [url]")
     assert ci_dry_args.dry_args(url, scope_file) == ["--target-url", "https://juice.lab.internal:3000"]
     image = kinds(make_recipe("dev", "i"), "  targets: [image]")

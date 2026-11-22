@@ -45,15 +45,7 @@ def _target_line(target: Any) -> str:
         return f"- Target: {target or 'none'}"
     parts = [
         target.get("kind", "none"),
-        str(
-            target.get("repo")
-            or target.get("app")
-            or target.get("image")
-            or target.get("url")
-            or target.get("path")
-            or target.get("demo")
-            or ""
-        ),
+        str(target.get("repo") or target.get("app") or target.get("image") or target.get("url") or target.get("path") or ""),
     ]
     line = "- Target: " + " ".join(p for p in parts if p)
     identity0 = target.get("identity") or {}

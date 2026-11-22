@@ -31,7 +31,7 @@
   ],
   "$defs": {
     "step": {
-      "description": "A plan step (create, policy-allow, tools, target-*, app-*, demo, policy-close:*, agent, policy-log, report, destroy) started, passed, failed or was skipped.",
+      "description": "A plan step (create, policy-allow, tools, target-*, app-*, policy-close:*, agent, policy-log, report, destroy) started, passed, failed or was skipped.",
       "type": "object",
       "required": [
         "schema_version",

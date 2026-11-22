@@ -454,36 +454,15 @@ def test_target_url_requires_scope_membership(make_recipe, repo, tmp_path, scope
     assert not any(s.name.startswith("target-") for s in plan.all_steps())
 
 
-def _demo_recipe(make_recipe):
-    recipe = make_recipe(**{"recipe.yaml": ("  targets: [path]", "  targets: [demo]\n  demo: fixtures/demo.sh")})
-    demo = recipe.path / "fixtures" / "demo.sh"
-    demo.parent.mkdir(exist_ok=True)
-    demo.write_text("#!/usr/bin/env bash\nset -euo pipefail\ndocker compose up -d\n")
+def test_demo_kind_is_gone(make_recipe, repo, tmp_path):
     import lab.recipe
 
-    return lab.recipe.load(recipe.path)
-
-
-def test_demo_runs_the_bundled_script(make_recipe, repo, tmp_path):
-    recipe = _demo_recipe(make_recipe)
-    plan = _plan(recipe, repo, tmp_path, demo=True)
-    assert _argv(plan, "demo")[-2:] == ["bash", f"{plan.workspace}/.lab/demo/demo.sh"]
-    assert _names(plan).index("tools") < _names(plan).index("demo") < _names(plan).index("agent")
-    runner.prepare_workspace(plan, repo_root=repo)
-    assert (plan.workspace / ".lab" / "demo" / "demo.sh").is_file()
-    env = " ".join(_argv(plan, "agent"))
-    assert "LAB_DEMO=1" in env and "LAB_TARGET_KIND=demo" in env
-    with pytest.raises(runner.Refused, match="exclusive"):
-        _plan(recipe, repo, tmp_path, demo=True, target=str(tmp_path))
-
-
-def test_demo_refused_without_run_demo(make_recipe, repo, tmp_path):
-    recipe = make_recipe(**{"recipe.yaml": ("  targets: [path]", "  targets: [demo]")})
-    with pytest.raises(runner.Refused, match="no run.demo"):
-        _plan(recipe, repo, tmp_path, demo=True)
-    default = make_recipe("devsecops", "plain")
-    with pytest.raises(runner.Refused, match="target kind 'demo'"):
-        _plan(default, repo, tmp_path, demo=True)
+    assert "demo" not in lab.recipe.TARGET_KINDS
+    recipe = make_recipe(**{"recipe.yaml": ("  targets: [path]", "  targets: [path, demo]\n  demo: fixtures/demo.sh")})
+    with pytest.raises(runner.Refused, match="recipe is invalid"):
+        _plan(recipe, repo, tmp_path, target=str(tmp_path))
+    with pytest.raises(TypeError):
+        _plan(make_recipe("devsecops", "plain"), repo, tmp_path, demo=True)
 
 
 def test_undeclared_target_kind_is_refused(make_recipe, repo, tmp_path):
@@ -517,16 +496,12 @@ def test_agent_env_vars_and_task_section(make_recipe, repo, tmp_path):
     assert "host port 8080 to container port 3000" in task
 
 
-def test_task_md_for_url_and_demo(make_recipe, repo, tmp_path, scope_file):
+def test_task_md_for_url(make_recipe, repo, tmp_path, scope_file):
     recipe = _retarget(make_recipe("pentest", "web-demo", **{"recipe.yaml": ("scope: none", "scope: required")}), "url")
     plan = _plan(recipe, repo, tmp_path, scope_path=str(scope_file), target_url="https://juice.lab.internal:3000")
     runner.prepare_workspace(plan, repo_root=repo)
     task = (plan.workspace / "TASK.md").read_text()
     assert "Remote app `https://juice.lab.internal:3000` (in scope)" in task
-    demo_recipe = _demo_recipe(make_recipe)
-    dplan = _plan(demo_recipe, repo, tmp_path, demo=True)
-    runner.prepare_workspace(dplan, repo_root=repo)
-    assert "not the user's system" in (dplan.workspace / "TASK.md").read_text()
 
 
 def test_render_plan_shows_target_kind_and_value(make_recipe, repo, tmp_path):
@@ -659,14 +634,6 @@ def test_tarball_identity(make_recipe, repo, tmp_path):
     tar.write_bytes(b"fake tar")
     plan = _plan(_image_recipe(make_recipe), repo, tmp_path, target_image=str(tar))
     assert plan.target_info["identity"]["sha256"] == hashlib.sha256(b"fake tar").hexdigest()
-
-
-def test_demo_identity(make_recipe, repo, tmp_path):
-    import hashlib
-
-    demo = _demo_recipe(make_recipe)
-    script = (demo.path / "fixtures" / "demo.sh").read_bytes()
-    assert _plan(demo, repo, tmp_path, demo=True).target_info["identity"]["sha256"] == hashlib.sha256(script).hexdigest()
 
 
 def test_target_url_with_credentials_is_refused(make_recipe, repo, tmp_path, scope_file):

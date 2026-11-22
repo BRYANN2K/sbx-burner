@@ -17,7 +17,7 @@ func TestLoadAndFind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.ID != "pentest/web-x" || r.Scope != "required" || r.TargetMode != "required" || !r.Accepts("port") || r.Demo == "" || r.Image != "kalilinux/kali-rolling" {
+	if r.ID != "pentest/web-x" || r.Scope != "required" || r.TargetMode != "required" || !r.Accepts("port") || r.Image != "kalilinux/kali-rolling" {
 		t.Fatalf("unexpected recipe: %+v", r)
 	}
 	if _, err := Find(recipes, "nope"); err == nil {

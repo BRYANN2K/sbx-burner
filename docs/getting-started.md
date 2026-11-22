@@ -52,7 +52,7 @@ Source: <https://docs.docker.com/ai/sandboxes/security/credentials/>.
 ```sh
 git clone https://github.com/BRYANN2K/agent-lab-sbx.git
 cd agent-lab-sbx
-python -m lab run training/vuln-lab --dry-run
+python -m lab run devsecops/secrets-scan --target . --dry-run
 ```
 
 The dry run changes nothing. It prints:
@@ -66,13 +66,13 @@ The dry run changes nothing. It prints:
 ## 4. Run a recipe
 
 ```sh
-python -m lab run training/vuln-lab --agent claude
+python -m lab run devsecops/secrets-scan --target ./my-repo --agent claude
 ```
 
-A recipe that tests something of yours needs a target. Your first run can use `--demo`, which tests the recipe's own bundled lab:
+A recipe always tests a target of yours. For a web recipe, start your own app in the sandbox:
 
 ```sh
-python -m lab run pentest/web-recon --scope scope.yaml --demo
+python -m lab run pentest/web-recon --scope scope.yaml --target-app ./my-app
 ```
 
 Options:
@@ -92,7 +92,7 @@ A single CLI named `burner` (product name sbx-burner) is the front end for the s
 
 A recipe tests **your** target: your repository or files, your project, your Docker image, your running app, or a remote URL you are authorized to test. The sandbox is only the isolated workbench.
 
-Bundled lab targets (Juice Shop, sample binaries, planted logs) run only with `--demo`. Two exceptions: the training labs (`training/vuln-lab`, `training/ctf-lab`) and `foundation/scope-guard`. Their subject is the lab or the policy, so they need no target.
+There is no bundled demo target: every run tests a target you pass.
 
 Each recipe lists the kinds it accepts in its `RECIPE.md` and in `run.targets` of its `recipe.yaml`. A recipe that needs a target refuses to run without one and prints the flags it accepts.
 

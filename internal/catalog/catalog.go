@@ -42,8 +42,7 @@ type Recipe struct {
 
 	Scope      string   `json:"scope"`       // required | optional | none
 	TargetMode string   `json:"target_mode"` // required | optional | none
-	Targets    []string `json:"targets"`     // path | image | port | url | demo
-	Demo       string   `json:"demo,omitempty"`
+	Targets    []string `json:"targets"`     // path | repo | app | image | port | url
 	Image      string   `json:"image,omitempty"`
 }
 
@@ -89,7 +88,6 @@ type recipeYAML struct {
 	Run struct {
 		Target  string   `yaml:"target"`
 		Targets []string `yaml:"targets"`
-		Demo    string   `yaml:"demo"`
 	} `yaml:"run"`
 }
 
@@ -267,7 +265,6 @@ func LoadRecipe(path string, source Source) (Recipe, error) {
 	if r.Targets == nil && r.TargetMode != "none" {
 		r.Targets = []string{"path"} // same default as the Python runner
 	}
-	r.Demo = cfg.Run.Demo
 	r.Image = cfg.Variants.Linux.Image
 	return r, nil
 }
@@ -364,7 +361,7 @@ func Find(recipes []Recipe, ref string) (Recipe, error) {
 
 // Categories returns the categories present, in a stable display order.
 func Categories(recipes []Recipe) []string {
-	order := []string{"mine", "foundation", "devsecops", "training", "pentest", "malware", "detection", "hardening", "ir", "ai-security", "dev", "ci", "web", "cu"}
+	order := []string{"mine", "devsecops", "pentest", "malware", "detection", "hardening", "ir", "ai-security", "dev", "ci", "web", "cu"}
 	seen := map[string]bool{}
 	for _, r := range recipes {
 		if r.Runnable() {
