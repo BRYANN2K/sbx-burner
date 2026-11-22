@@ -665,3 +665,38 @@ func TestDoctorChecksEveryEngineAgent(t *testing.T) {
 		t.Fatalf("fallback agents: %v", got)
 	}
 }
+
+func TestLastRunSkipsMalformedReports(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string, age time.Duration) {
+		d := filepath.Join(dir, name)
+		os.MkdirAll(d, 0o755)
+		p := filepath.Join(d, "report.json")
+		os.WriteFile(p, []byte(body), 0o644)
+		ts := time.Now().Add(-age)
+		os.Chtimes(p, ts, ts)
+	}
+	write("20261122-012942-secrets-scan", `{"run":{"recipe":"devsecops/secrets-scan","agent":"codex"},"counts":{"findings":1}}`, 2*time.Hour)
+	write("20261122-030000-fuzzing", `{"run": {"recipe": "devsecops/fuzz`, time.Minute)       // newest, malformed
+	write("20261122-020000-gate", `{"run":{"recipe":""},"counts":{"findings":2}}`, time.Hour) // no recipe
+	l := findLastRun(dir)
+	if l == nil || l.recipe != "secrets-scan" || l.agent != "codex" || l.findings != 1 {
+		t.Fatalf("last run: %+v", l)
+	}
+	if s := l.String(time.Now()); !strings.Contains(s, "1 finding") || !strings.Contains(s, "today ") && time.Now().Hour() >= 2 {
+		t.Fatalf("line %q", s)
+	}
+	if findLastRun(filepath.Join(dir, "missing")) != nil {
+		t.Fatal("a missing runs folder gave a last run")
+	}
+}
+
+func TestHeaderBoxGolden(t *testing.T) {
+	m := testModel(t, &fakeEngine{})
+	m.last = &lastRun{recipe: "secrets-scan", agent: "codex", findings: 1, when: time.Date(2026, 11, 22, 1, 29, 0, 0, time.UTC)}
+	golden(t, "home-last-run", m)
+	m.checking = true
+	if v := m.View(); !strings.Contains(v, "checking credentials") || strings.Contains(v, "recipes ") {
+		t.Fatal("header: no spinner while checking, or a recipes line")
+	}
+}
