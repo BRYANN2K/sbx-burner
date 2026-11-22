@@ -1,0 +1,52 @@
+schema_version: "1"
+name: container-scan
+category: devsecops
+scope: none
+
+variants:
+  linux:
+    status: beta
+    kit: kits/devsecops
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  # Vulnerability databases and a base-image pull are the slow part.
+  timeout_minutes: 30
+  target: required
+  # path = a Dockerfile context to build and scan; repo = the same context
+  # in a git repo the runner clones on the host (mounted like path);
+  # image = an image from the host's Docker, a registry (private through the
+  # user's docker login) or a docker-save tarball, loaded for the agent.
+  targets: [path, repo, image]
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    allow:
+      # Docker Hub pull of the Dockerfile's base image.
+      - registry-1.docker.io:443
+      - auth.docker.io:443
+      - production.cloudflare.docker.com:443
+    # Opened for the tools step only; closed before the agent starts.
+    install_allow:
+      # Pinned tool downloads.
+      - github.com:443
+      - release-assets.githubusercontent.com:443
+      - objects.githubusercontent.com:443
+      # apt: docker client and jq, when the image lacks them.
+      - deb.debian.org:80
+      - security.debian.org:80
+      # install.sh prefetches both vulnerability databases so scans run with
+      # --skip-db-update and GRYPE_DB_AUTO_UPDATE=false: trivy-db and
+      # trivy-java-db (OCI artifacts; defaults from trivy 0.76.2 --help) and
+      # the grype database listing/archive.
+      # TODO(verify): grype 0.122.1 serves its listing and archive from
+      # grype.anchore.io; confirm on a real run that no further host
+      # (e.g. toolbox-data.anchore.io) is needed.
+      - mirror.gcr.io:443
+      - ghcr.io:443
+      - pkg-containers.githubusercontent.com:443
+      - grype.anchore.io:443

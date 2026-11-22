@@ -1,0 +1,36 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 124B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/debian:buster-slim
+#2 DONE 0.8s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 29B done
+#4 DONE 0.0s
+
+#5 [1/2] FROM docker.io/library/debian:buster-slim@sha256:bb3dc79fddbca7e8903248ab916bb775c96ec61014b3d02b4f06043b604726dc
+#5 resolve docker.io/library/debian:buster-slim@sha256:bb3dc79fddbca7e8903248ab916bb775c96ec61014b3d02b4f06043b604726dc 0.1s done
+#5 CACHED
+
+#6 [2/2] COPY hello.sh /opt/hello.sh
+#6 DONE 0.1s
+
+#7 exporting to image
+#7 exporting layers
+#7 exporting layers 0.2s done
+#7 exporting manifest sha256:940d25f9b4ff7a8c2f84465a3a114a69d6b357b5290c523facd05638bdfdc9d4
+#7 exporting manifest sha256:940d25f9b4ff7a8c2f84465a3a114a69d6b357b5290c523facd05638bdfdc9d4 0.0s done
+#7 exporting config sha256:88f322c0379ac0222a4087577831b76cfd28525e80c9aa11b5664bb5a6aa754d 0.0s done
+#7 exporting attestation manifest sha256:c280c35fb6297338b4d173c79584cc435a7725ee51434f501816879cfcac31cb 0.0s done
+#7 exporting manifest list sha256:65adc6ff6856c3da554e4a833c4935301461b2cf002d4d23d934ff402ff0eda7
+#7 exporting manifest list sha256:65adc6ff6856c3da554e4a833c4935301461b2cf002d4d23d934ff402ff0eda7 0.0s done
+#7 naming to docker.io/library/lab-scan-target:latest done
+#7 unpacking to docker.io/library/lab-scan-target:latest 0.0s done
+#7 DONE 0.4s
