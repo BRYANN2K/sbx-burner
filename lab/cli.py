@@ -300,6 +300,17 @@ def _cmd_scope_new(argv: list[str]) -> int:
     text = scope_new.render(recipe, data)
     path = args.out or scope_new.default_path(recipe, data)
     written = False
+    blocking = scope_new.blocking(errors)
+    if blocking and not args.dry_run:
+        # Only TODO values may be left for the user; anything else means
+        # the target cannot make a valid scope, so nothing is written.
+        if args.json:
+            print(json.dumps({"path": "", "written": False, "valid": False, "errors": errors, "todo": scope_new.todos(data)}))
+        else:
+            print("refused: this target cannot make a valid scope:", file=sys.stderr)
+            for err in blocking:
+                print(f"  - {err}", file=sys.stderr)
+        return runner.EXIT_REFUSED
     if not args.dry_run:
         try:
             scope_new.write(path, text)

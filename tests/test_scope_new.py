@@ -136,3 +136,20 @@ def test_example_lab_notes_are_dropped_for_your_target():
     data, notes = scope_new.generate(_recipe("pentest/web-recon"), target_port="8080", owner="o", today=TODAY)
     assert "notes" not in data["targets"][0]
     assert any("notes" in n for n in notes)
+
+
+def test_wildcard_url_is_refused():
+    with pytest.raises(scope_new.ScopeNewError, match="a URL names one host"):
+        scope_new.target_hosts(target_url="https://*.acme.dev")
+
+
+def test_invalid_scope_is_not_written(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("BURNER_HOME", str(tmp_path))
+    args = ["scope", "new", "pentest/web-recon", "--target-url", "https://bad_host.acme.dev", "--reference", "r", "--json"]
+    assert cli.main(args) == runner.EXIT_REFUSED
+    out = json.loads(capsys.readouterr().out)
+    assert not out["written"] and any("not a valid host" in e for e in out["errors"])
+    assert not (tmp_path / "scopes").exists()
+    # --dry-run still shows it.
+    assert cli.main([*args, "--dry-run"]) == runner.EXIT_PREFLIGHT
+    assert json.loads(capsys.readouterr().out)["scope"]["targets"][0]["hosts"] == ["bad_host.acme.dev:443"]
