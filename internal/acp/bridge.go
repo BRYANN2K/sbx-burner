@@ -348,6 +348,9 @@ func (b *bridge) writeModels() {
 }
 
 func (b *bridge) pickModel(ctx context.Context) error {
+	if b.o.Model == ModelDefault {
+		return nil // keep the agent's default: set nothing, ask nothing
+	}
 	opt, ok := b.client.Models()
 	if b.o.Model != "" {
 		if !ok {
@@ -712,3 +715,6 @@ func sameCommand(title, cmd string) bool {
 	t := strings.TrimSuffix(strings.TrimSuffix(title, "…"), "...")
 	return t == cmd || (len(t) >= 20 && strings.Contains(cmd, strings.Trim(t, "' "))) || strings.HasPrefix(t, cmd)
 }
+
+// ModelDefault (--model=default) keeps the agent's own default model.
+const ModelDefault = "default"

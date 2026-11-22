@@ -241,6 +241,9 @@ func (m model) firstRunOpts(path string) engine.RunOptions {
 	case "acp":
 		if contains(m.acpAgents, p.Agent) {
 			o.ACP, o.Model, o.Permission = true, p.Model, p.Permission
+			if o.Model == "" {
+				o.Model = engine.ModelDefault
+			}
 		}
 	case "interactive":
 		o.Interactive, o.Model = true, p.Model

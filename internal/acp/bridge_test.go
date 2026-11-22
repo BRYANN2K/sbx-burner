@@ -456,3 +456,21 @@ func TestStripWorkspacePrefix(t *testing.T) {
 		}
 	}
 }
+
+func TestBridgeModelDefaultNeitherAsksNorSets(t *testing.T) {
+	var asked []string
+	_, dir, code := runFake(t, BridgeOptions{Permission: "auto", Model: ModelDefault}, func(id, q string) *string {
+		asked = append(asked, id)
+		v := "Finish"
+		return &v
+	})
+	raw, _ := os.ReadFile(filepath.Join(dir, "acp-transcript.raw.jsonl"))
+	for _, a := range asked {
+		if a == "acp-model" {
+			t.Fatal("asked for the model")
+		}
+	}
+	if code != 0 || strings.Contains(string(raw), `"configId":"model"`) {
+		t.Fatalf("exit %d or the model was set", code)
+	}
+}

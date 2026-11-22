@@ -42,7 +42,7 @@ type RunOptions struct {
 	RunsDir     string
 	ACP         bool   // drive the agent over ACP (burner acp-bridge)
 	Interactive bool   // open the agent's own TUI on the terminal (handoff)
-	Model       string // ACP model id offered by the agent
+	Model       string // ACP model id offered by the agent; ModelDefault keeps the agent's own
 	Permission  string // ACP permissions: auto | ask
 }
 
@@ -253,3 +253,7 @@ func imageArg(ref string) string {
 	}
 	return ref
 }
+
+// ModelDefault is --model's "keep the agent's default model": the bridge
+// neither sets a model nor asks for one.
+const ModelDefault = "default"

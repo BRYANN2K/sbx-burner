@@ -73,6 +73,8 @@ ACP_MAX_OPEN_ASKS = 8
 TEARDOWN_TIMEOUT = 300
 ACP_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,127}$")
 # Bridge → runner message types the runner acts on; everything else is dropped.
+# --model default: keep the agent's own model (burner acp.ModelDefault).
+MODEL_DEFAULT = "default"
 ACP_EVENT_TYPES = {"agent.message": ("text",), "agent.tool": ("tool", "summary")}
 # Optional bridge fields: the tool call's id (updates attach to one action
 # line), its command and its status. Capped and sanitised by EventWriter.
@@ -323,6 +325,11 @@ def build_plan(
         raise Refused(f"invalid --model {model!r}")
     if acp and interactive:
         raise Refused("--acp and --interactive are two ways to drive the agent; pick one")
+    if model == MODEL_DEFAULT:
+        # "Keep the agent's default": ACP passes it to the bridge (no set, no
+        # ask); an agent's own TUI and CODEX_CONFIG get no model at all.
+        if not acp:
+            model = None
     if model is not None and not (acp or interactive):
         raise Refused("--model needs --acp or --interactive")
     if model is not None and interactive and not agent.tui_model_flag:
@@ -1045,7 +1052,7 @@ def build_plan(
     elif acp:
         plan.acp = True
         acp_env = dict(agent_env)
-        if model and agent.acp_model_unlisted.startswith("env:"):
+        if model and model != MODEL_DEFAULT and agent.acp_model_unlisted.startswith("env:"):
             # The adapter merges this into the session config at start, so a
             # model outside the list it offers runs too.
             acp_env[agent.acp_model_unlisted[4:]] = json.dumps({"model": model}, separators=(",", ":"))

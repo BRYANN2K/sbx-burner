@@ -348,6 +348,10 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 			mdl = strings.TrimSpace(mdl)
 		}
 		o.Model = mdl
+		if mdl == "" && o.ACP {
+			// Picked "default": say so, or the bridge asks again at start.
+			o.Model = engine.ModelDefault
+		}
 	}
 	if o.ACP {
 		popts := []option{
@@ -1140,7 +1144,7 @@ func checkModelID(agent, id string, interactive bool, ml ModelList) error {
 
 // rememberModel keeps a typed model id for the agent in the preferences.
 func (m *model) rememberModel(agent, id string, listed ModelList) {
-	if id == "" || !modelIDRE.MatchString(id) {
+	if id == "" || id == engine.ModelDefault || !modelIDRE.MatchString(id) {
 		return
 	}
 	for _, v := range listed.Values {
