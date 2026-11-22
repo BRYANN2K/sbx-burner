@@ -332,6 +332,8 @@ evidence, eval, sources and licence, risks, `TODO(verify)`.
 
 ### 7.0 Target kinds (rule from Bryan)
 
+Since #42: no demo kind; the foundation and training categories are removed. The text below is kept as history.
+
 A recipe tests the **user's** target: their repository, files, Docker image,
 running app or authorized remote app. The sandbox is only the workbench.
 Never audit or attack the sandbox itself. Exceptions: the training labs and

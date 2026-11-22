@@ -81,7 +81,7 @@ Options:
 |---|---|
 | `--scope <file>` | Scope file. Required by security recipes. |
 | `--agent claude\|codex` | Which agent to start. |
-| `--target`, `--target-repo`, `--target-app`, `--target-image`, `--target-port`, `--target-url`, `--demo` | What to test. See [Choose your target](#5-choose-your-target). |
+| `--target`, `--target-repo`, `--target-app`, `--target-image`, `--target-port`, `--target-url` | What to test. See [Choose your target](#5-choose-your-target). |
 | `--dry-run` | Print the plan. Create nothing. |
 
 The runner creates the sandbox, applies the policy, starts the agent, collects the output and writes the report. The sandbox is removed at the end unless the recipe says otherwise.
@@ -202,14 +202,6 @@ targets:
 ```
 
 A public host needs `authorization.type: written` with a `reference`.
-
-### The bundled lab: `--demo`
-
-```sh
-python -m lab run pentest/web-recon --scope scope.yaml --demo
-```
-
-`--demo` cannot be combined with your own target.
 
 ### Supporting files
 

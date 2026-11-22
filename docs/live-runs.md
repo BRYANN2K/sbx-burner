@@ -5,7 +5,7 @@ Add notes for the agent, watch what it does, and answer its questions while it w
 ## Operator notes
 
 ```sh
-python -m lab run pentest/web-recon --scope scope.yaml --demo \
+python -m lab run pentest/web-recon --scope scope.yaml --target-app ./my-app \
     --prompt "Focus on the login flow." \
     --prompt-file notes.md
 ```
