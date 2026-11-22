@@ -1,0 +1,2070 @@
+{
+  "counts": {
+    "total": 136,
+    "fixable": 8,
+    "only_trivy": 1,
+    "only_grype": 69,
+    "by_union_severity": {
+      "critical": 2,
+      "high": 30,
+      "medium": 28,
+      "low": 11,
+      "negligible": 61,
+      "unknown": 4
+    }
+  },
+  "pairs": [
+    {
+      "cve": "CVE-2019-8457",
+      "package": "libdb5.3",
+      "installed_version": "5.3.28+dfsg1-0.5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "critical",
+        "grype": "negligible"
+      },
+      "union_severity": "critical",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2023-45853",
+      "package": "zlib1g",
+      "installed_version": "1:1.2.11.dfsg-1+deb10u2",
+      "scanners": [
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "critical"
+      },
+      "union_severity": "critical",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2018-12886",
+      "package": "gcc-8-base",
+      "installed_version": "8.3.0-6",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2018-12886",
+      "package": "libgcc1",
+      "installed_version": "1:8.3.0-6",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2018-12886",
+      "package": "libstdc++6",
+      "installed_version": "8.3.0-6",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2019-12290",
+      "package": "libidn2-0",
+      "installed_version": "2.0.5-1+deb10u1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+    },
+    {
+      "cve": "CVE-2019-15847",
+      "package": "gcc-8-base",
+      "installed_version": "8.3.0-6",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2019-15847",
+      "package": "libgcc1",
+      "installed_version": "1:8.3.0-6",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2019-15847",
+      "package": "libstdc++6",
+      "installed_version": "8.3.0-6",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2019-3843",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2019-3843",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2019-3844",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2019-3844",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2020-16156",
+      "package": "perl-base",
+      "installed_version": "5.28.1-6+deb10u1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2020-1751",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2020-1751",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2021-33560",
+      "package": "libgcrypt20",
+      "installed_version": "1.8.4-5+deb10u1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2022-1304",
+      "package": "e2fsprogs",
+      "installed_version": "1.44.5-1+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2022-1304",
+      "package": "libcom-err2",
+      "installed_version": "1.44.5-1+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2022-1304",
+      "package": "libext2fs2",
+      "installed_version": "1.44.5-1+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2022-1304",
+      "package": "libss2",
+      "installed_version": "1.44.5-1+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2023-31484",
+      "package": "perl-base",
+      "installed_version": "5.28.1-6+deb10u1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2023-50387",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50387",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50868",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50868",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2024-33599",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:H"
+    },
+    {
+      "cve": "CVE-2024-33599",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "high",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:H"
+    },
+    {
+      "cve": "CVE-2024-33601",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2024-33601",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2024-33602",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2024-33602",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "high"
+      },
+      "union_severity": "high",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2019-13627",
+      "package": "libgcrypt20",
+      "installed_version": "1.8.4-5+deb10u1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N"
+    },
+    {
+      "cve": "CVE-2020-14155",
+      "package": "libpcre3",
+      "installed_version": "2:8.39-12",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2021-3997",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2021-3997",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2022-4415",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2022-4415",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2023-4039",
+      "package": "gcc-8-base",
+      "installed_version": "8.3.0-6",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-4039",
+      "package": "libgcc1",
+      "installed_version": "1:8.3.0-6",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-4039",
+      "package": "libstdc++6",
+      "installed_version": "8.3.0-6",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-4641",
+      "package": "login",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2023-4641",
+      "package": "passwd",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2023-4806",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-4806",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-4813",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-4813",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50495",
+      "package": "libncursesw6",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50495",
+      "package": "libtinfo6",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50495",
+      "package": "ncurses-base",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-50495",
+      "package": "ncurses-bin",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2023-7008",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+    },
+    {
+      "cve": "CVE-2023-7008",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+    },
+    {
+      "cve": "CVE-2024-2236",
+      "package": "libgcrypt20",
+      "installed_version": "1.8.4-5+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2024-22365",
+      "package": "libpam-modules",
+      "installed_version": "1.3.1-5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2024-22365",
+      "package": "libpam-modules-bin",
+      "installed_version": "1.3.1-5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2024-22365",
+      "package": "libpam-runtime",
+      "installed_version": "1.3.1-5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2024-22365",
+      "package": "libpam0g",
+      "installed_version": "1.3.1-5",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+    },
+    {
+      "cve": "CVE-2024-33600",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2024-33600",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "medium",
+        "grype": "medium"
+      },
+      "union_severity": "medium",
+      "fixed_versions": [
+        "2.28-10+deb10u4"
+      ],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2016-2781",
+      "package": "coreutils",
+      "installed_version": "8.30-3",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.0/AV:L/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:N"
+    },
+    {
+      "cve": "CVE-2018-7169",
+      "package": "login",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2018-7169",
+      "package": "passwd",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2019-14855",
+      "package": "gpgv",
+      "installed_version": "2.2.12-1+deb10u2",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "cve": "CVE-2019-17543",
+      "package": "liblz4-1",
+      "installed_version": "1.8.3-1+deb10u1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    },
+    {
+      "cve": "CVE-2021-36084",
+      "package": "libsepol1",
+      "installed_version": "2.8-1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2021-36085",
+      "package": "libsepol1",
+      "installed_version": "2.8-1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2021-36086",
+      "package": "libsepol1",
+      "installed_version": "2.8-1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2021-36087",
+      "package": "libsepol1",
+      "installed_version": "2.8-1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L"
+    },
+    {
+      "cve": "CVE-2023-29383",
+      "package": "login",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N"
+    },
+    {
+      "cve": "CVE-2023-29383",
+      "package": "passwd",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype",
+        "trivy"
+      ],
+      "severities": {
+        "trivy": "low",
+        "grype": "low"
+      },
+      "union_severity": "low",
+      "fixed_versions": [],
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N"
+    },
+    {
+      "cve": "CVE-2005-2541",
+      "package": "tar",
+      "installed_version": "1.30+dfsg-6+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2007-5686",
+      "package": "login",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2007-5686",
+      "package": "passwd",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2010-4756",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2010-4756",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2011-3374",
+      "package": "apt",
+      "installed_version": "1.8.2.3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2011-3374",
+      "package": "libapt-pkg5.0",
+      "installed_version": "1.8.2.3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2011-3389",
+      "package": "libgnutls30",
+      "installed_version": "3.6.7-4+deb10u12",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2011-4116",
+      "package": "perl-base",
+      "installed_version": "5.28.1-6+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2013-4235",
+      "package": "login",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2013-4235",
+      "package": "passwd",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2013-4392",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2013-4392",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2017-11164",
+      "package": "libpcre3",
+      "installed_version": "2:8.39-12",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2017-16231",
+      "package": "libpcre3",
+      "installed_version": "2:8.39-12",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2017-18018",
+      "package": "coreutils",
+      "installed_version": "8.30-3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2017-7245",
+      "package": "libpcre3",
+      "installed_version": "2:8.39-12",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2017-7246",
+      "package": "libpcre3",
+      "installed_version": "2:8.39-12",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2018-1000654",
+      "package": "libtasn1-6",
+      "installed_version": "4.13-3+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2018-20796",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2018-20796",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2018-6829",
+      "package": "libgcrypt20",
+      "installed_version": "1.8.4-5+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010022",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010022",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010023",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010023",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010024",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010024",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010025",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-1010025",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-18276",
+      "package": "bash",
+      "installed_version": "5.0-4",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-19882",
+      "package": "login",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-19882",
+      "package": "passwd",
+      "installed_version": "1:4.5-1.1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-20386",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-20386",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-20838",
+      "package": "libpcre3",
+      "installed_version": "2:8.39-12",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-9192",
+      "package": "libc-bin",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-9192",
+      "package": "libc6",
+      "installed_version": "2.28-10+deb10u3",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-9893",
+      "package": "libseccomp2",
+      "installed_version": "2.3.3-4",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2019-9923",
+      "package": "tar",
+      "installed_version": "1.30+dfsg-6+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2020-13529",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2020-13529",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2021-20193",
+      "package": "tar",
+      "installed_version": "1.30+dfsg-6+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "bsdutils",
+      "installed_version": "1:2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "fdisk",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "libblkid1",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "libfdisk1",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "libmount1",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "libsmartcols1",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "libuuid1",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "mount",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-0563",
+      "package": "util-linux",
+      "installed_version": "2.33.1-0.1+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-3219",
+      "package": "gpgv",
+      "installed_version": "2.2.12-1+deb10u2",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2022-48303",
+      "package": "tar",
+      "installed_version": "1.30+dfsg-6+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31437",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31437",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31438",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31438",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31439",
+      "package": "libsystemd0",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31439",
+      "package": "libudev1",
+      "installed_version": "241-7~deb10u10",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-31486",
+      "package": "perl-base",
+      "installed_version": "5.28.1-6+deb10u1",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "negligible"
+      },
+      "union_severity": "negligible",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-45918",
+      "package": "libncursesw6",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "unknown"
+      },
+      "union_severity": "unknown",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-45918",
+      "package": "libtinfo6",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "unknown"
+      },
+      "union_severity": "unknown",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-45918",
+      "package": "ncurses-base",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "unknown"
+      },
+      "union_severity": "unknown",
+      "fixed_versions": [],
+      "cvss_vector": null
+    },
+    {
+      "cve": "CVE-2023-45918",
+      "package": "ncurses-bin",
+      "installed_version": "6.1+20181013-2+deb10u5",
+      "scanners": [
+        "grype"
+      ],
+      "severities": {
+        "grype": "unknown"
+      },
+      "union_severity": "unknown",
+      "fixed_versions": [],
+      "cvss_vector": null
+    }
+  ]
+}

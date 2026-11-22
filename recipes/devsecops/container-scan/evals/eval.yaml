@@ -1,0 +1,43 @@
+# python -m lab eval devsecops/container-scan                  # golden fixture (CI)
+# python -m lab eval devsecops/container-scan --run runs/<id>  # after a run on evals/make-target.sh
+description: >-
+  The golden models a `--target` (path) run on the EOL debian:buster-slim
+  build context from evals/make-target.sh: both scanners run, the three
+  reports exist, reconciliation counts are recorded, and at least one
+  critical/high CVE becomes a finding.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: trivy
+  - type: tool_ran
+    name: grype
+  - type: artifact_exists
+    path: artifacts/trivy.json
+  - type: artifact_exists
+    path: artifacts/grype.json
+  - type: artifact_exists
+    path: artifacts/reconciled.json
+  - type: min_findings
+    count: 1
+    where: {severity: "critical|high"}
+  - type: min_findings
+    count: 1
+    where: {rule: "CVE-2019-8457", tool: 'grype\+trivy|trivy\+grype', severity: critical}
+  - type: max_findings
+    count: 0
+    where: {severity: "medium|low|info"}
+  - type: max_findings
+    count: 17
+  - type: metric
+    name: total
+    min: 1
+  - type: metric
+    name: fixable
+    equals: 8
+  - type: metric
+    name: only_trivy
+    equals: 1
+  - type: metric
+    name: only_grype
+    min: 1
+  - type: no_demotions

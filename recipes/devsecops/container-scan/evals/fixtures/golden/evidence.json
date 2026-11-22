@@ -1,0 +1,465 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/container-scan",
+  "summary": "Built lab-scan-target:latest (FROM debian:buster-slim, EOL Debian 10) in the sandbox engine and scanned it with trivy 0.76.2 and grype 0.122.1. Reconciled 136 unique CVE/package pairs: 66 seen by both scanners, 1 only by trivy, 69 only by grype. 17 CVEs rate high or critical by union severity (2 critical); 8 pairs have a published fix (libc6 2.28-10+deb10u4). Not covered: the image runs no language-level packages (OS packages only), and debian-10 is end of life, so distro-tracker coverage is partial.",
+  "tools_run": [
+    {
+      "name": "docker",
+      "version": "29.5.2",
+      "command": "docker build -t lab-scan-target:latest /home/agent/target",
+      "exit_code": 0,
+      "output": "artifacts/docker-build.txt"
+    },
+    {
+      "name": "trivy",
+      "version": "0.76.2",
+      "command": "trivy image --scanners vuln --skip-version-check --skip-db-update --format json --output evidence/artifacts/trivy.json lab-scan-target:latest",
+      "exit_code": 0,
+      "output": "artifacts/trivy.json"
+    },
+    {
+      "name": "grype",
+      "version": "0.122.1",
+      "command": "GRYPE_CHECK_FOR_APP_UPDATE=false GRYPE_DB_AUTO_UPDATE=false grype docker:lab-scan-target:latest -o json --file evidence/artifacts/grype.json",
+      "exit_code": 0,
+      "output": "artifacts/grype.json"
+    },
+    {
+      "name": "reconcile.py",
+      "command": "python3 fixtures/reconcile.py --trivy evidence/artifacts/trivy.json --grype evidence/artifacts/grype.json --out evidence/artifacts/reconciled.json",
+      "exit_code": 0,
+      "output": "artifacts/reconciled.json"
+    }
+  ],
+  "findings": [
+    {
+      "id": "CVE-2019-8457",
+      "title": "CVE-2019-8457 in libdb5.3",
+      "severity": "critical",
+      "target": "lab-scan-target:latest",
+      "location": "libdb5.3@5.3.28+dfsg1-0.5",
+      "tool": "grype+trivy",
+      "rule": "CVE-2019-8457",
+      "description": "sqlite: heap out-of-bound read in function rtreenode(). Affects installed package(s): libdb5.3@5.3.28+dfsg1-0.5. Reported by grype and trivy (grype: negligible, trivy: critical). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2019-8457\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 9.8
+      }
+    },
+    {
+      "id": "CVE-2023-45853",
+      "title": "CVE-2023-45853 in zlib1g",
+      "severity": "critical",
+      "target": "lab-scan-target:latest",
+      "location": "zlib1g@1:1.2.11.dfsg-1+deb10u2",
+      "tool": "trivy",
+      "rule": "CVE-2023-45853",
+      "description": "zlib: integer overflow and resultant heap-based buffer overflow in zipOpenNewFileInZip4_6. Affects installed package(s): zlib1g@1:1.2.11.dfsg-1+deb10u2. Reported by trivy (trivy: critical). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2023-45853\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 9.8
+      }
+    },
+    {
+      "id": "CVE-2018-12886",
+      "title": "CVE-2018-12886 in gcc-8-base, libgcc1, libstdc++6",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "gcc-8-base@8.3.0-6, libgcc1@1:8.3.0-6, libstdc++6@8.3.0-6",
+      "tool": "grype+trivy",
+      "rule": "CVE-2018-12886",
+      "description": "gcc: spilling of stack protection address in cfgexpand.c and function.c leads to stack-overflow protection bypass. Affects installed package(s): gcc-8-base@8.3.0-6, libgcc1@1:8.3.0-6, libstdc++6@8.3.0-6. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2018-12886\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 8.1
+      }
+    },
+    {
+      "id": "CVE-2019-12290",
+      "title": "CVE-2019-12290 in libidn2-0",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libidn2-0@2.0.5-1+deb10u1",
+      "tool": "grype+trivy",
+      "rule": "CVE-2019-12290",
+      "description": "libidn2: missing roundtrip checks can cause incorrect A-label conversion. Affects installed package(s): libidn2-0@2.0.5-1+deb10u1. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2019-12290\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+        "score": 7.5
+      }
+    },
+    {
+      "id": "CVE-2019-15847",
+      "title": "CVE-2019-15847 in gcc-8-base, libgcc1, libstdc++6",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "gcc-8-base@8.3.0-6, libgcc1@1:8.3.0-6, libstdc++6@8.3.0-6",
+      "tool": "grype+trivy",
+      "rule": "CVE-2019-15847",
+      "description": "gcc: POWER9 \"DARN\" RNG intrinsic produces repeated output. Affects installed package(s): gcc-8-base@8.3.0-6, libgcc1@1:8.3.0-6, libstdc++6@8.3.0-6. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2019-15847\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+        "score": 7.5
+      }
+    },
+    {
+      "id": "CVE-2019-3843",
+      "title": "CVE-2019-3843 in libsystemd0, libudev1",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10",
+      "tool": "grype+trivy",
+      "rule": "CVE-2019-3843",
+      "description": "systemd: services with DynamicUser can create SUID/SGID binaries. Affects installed package(s): libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2019-3843\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "score": 7.8
+      }
+    },
+    {
+      "id": "CVE-2019-3844",
+      "title": "CVE-2019-3844 in libsystemd0, libudev1",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10",
+      "tool": "grype+trivy",
+      "rule": "CVE-2019-3844",
+      "description": "systemd: services with DynamicUser can get new privileges and create SGID binaries. Affects installed package(s): libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2019-3844\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "score": 7.8
+      }
+    },
+    {
+      "id": "CVE-2020-16156",
+      "title": "CVE-2020-16156 in perl-base",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "perl-base@5.28.1-6+deb10u1",
+      "tool": "grype+trivy",
+      "rule": "CVE-2020-16156",
+      "description": "perl-CPAN: Bypass of verification of signatures in CHECKSUMS files. Affects installed package(s): perl-base@5.28.1-6+deb10u1. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2020-16156\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "score": 7.8
+      }
+    },
+    {
+      "id": "CVE-2020-1751",
+      "title": "CVE-2020-1751 in libc-bin, libc6",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3",
+      "tool": "grype+trivy",
+      "rule": "CVE-2020-1751",
+      "description": "glibc: array overflow in backtrace functions for powerpc. Affects installed package(s): libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2020-1751\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "score": 7.0
+      }
+    },
+    {
+      "id": "CVE-2021-33560",
+      "title": "CVE-2021-33560 in libgcrypt20",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libgcrypt20@1.8.4-5+deb10u1",
+      "tool": "grype+trivy",
+      "rule": "CVE-2021-33560",
+      "description": "libgcrypt: mishandles ElGamal encryption because it lacks exponent blinding to address a side-channel attack against mpi_powm. Affects installed package(s): libgcrypt20@1.8.4-5+deb10u1. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2021-33560\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+        "score": 7.5
+      }
+    },
+    {
+      "id": "CVE-2022-1304",
+      "title": "CVE-2022-1304 in e2fsprogs, libcom-err2, libext2fs2, libss2",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "e2fsprogs@1.44.5-1+deb10u3, libcom-err2@1.44.5-1+deb10u3, libext2fs2@1.44.5-1+deb10u3, libss2@1.44.5-1+deb10u3",
+      "tool": "grype+trivy",
+      "rule": "CVE-2022-1304",
+      "description": "e2fsprogs: out-of-bounds read/write via crafted filesystem. Affects installed package(s): e2fsprogs@1.44.5-1+deb10u3, libcom-err2@1.44.5-1+deb10u3, libext2fs2@1.44.5-1+deb10u3, libss2@1.44.5-1+deb10u3. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2022-1304\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+        "score": 7.8
+      }
+    },
+    {
+      "id": "CVE-2023-31484",
+      "title": "CVE-2023-31484 in perl-base",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "perl-base@5.28.1-6+deb10u1",
+      "tool": "grype+trivy",
+      "rule": "CVE-2023-31484",
+      "description": "perl: CPAN.pm does not verify TLS certificates when downloading distributions over HTTPS. Affects installed package(s): perl-base@5.28.1-6+deb10u1. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2023-31484\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 8.1
+      }
+    },
+    {
+      "id": "CVE-2023-50387",
+      "title": "CVE-2023-50387 in libsystemd0, libudev1",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10",
+      "tool": "grype+trivy",
+      "rule": "CVE-2023-50387",
+      "description": "bind9: KeyTrap - Extreme CPU consumption in DNSSEC validator. Affects installed package(s): libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2023-50387\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "score": 7.5
+      }
+    },
+    {
+      "id": "CVE-2023-50868",
+      "title": "CVE-2023-50868 in libsystemd0, libudev1",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10",
+      "tool": "grype+trivy",
+      "rule": "CVE-2023-50868",
+      "description": "bind9: Preparing an NSEC3 closest encloser proof can exhaust CPU resources. Affects installed package(s): libsystemd0@241-7~deb10u10, libudev1@241-7~deb10u10. Reported by grype and trivy (grype: high, trivy: high). No fixed version published for debian-10 (end of life).",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2023-50868\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "No published fix for debian-10 (end of life). Rebuild on a supported base image (e.g. debian:trixie-slim) or drop the package.",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "score": 7.5
+      }
+    },
+    {
+      "id": "CVE-2024-33599",
+      "title": "CVE-2024-33599 in libc-bin, libc6",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3",
+      "tool": "grype+trivy",
+      "rule": "CVE-2024-33599",
+      "description": "glibc: stack-based buffer overflow in netgroup cache. Affects installed package(s): libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3. Reported by grype and trivy (grype: high, trivy: high). Fix available: 2.28-10+deb10u4.",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2024-33599\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "Upgrade to 2.28-10+deb10u4 (debian-10 security update).",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 8.1
+      }
+    },
+    {
+      "id": "CVE-2024-33601",
+      "title": "CVE-2024-33601 in libc-bin, libc6",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3",
+      "tool": "grype+trivy",
+      "rule": "CVE-2024-33601",
+      "description": "glibc: netgroup cache may terminate daemon on memory allocation failure. Affects installed package(s): libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3. Reported by grype and trivy (grype: high, trivy: low). Fix available: 2.28-10+deb10u4.",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2024-33601\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "Upgrade to 2.28-10+deb10u4 (debian-10 security update).",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L",
+        "score": 7.3
+      }
+    },
+    {
+      "id": "CVE-2024-33602",
+      "title": "CVE-2024-33602 in libc-bin, libc6",
+      "severity": "high",
+      "target": "lab-scan-target:latest",
+      "location": "libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3",
+      "tool": "grype+trivy",
+      "rule": "CVE-2024-33602",
+      "description": "glibc: netgroup cache assumes NSS callback uses in-buffer strings. Affects installed package(s): libc-bin@2.28-10+deb10u3, libc6@2.28-10+deb10u3. Reported by grype and trivy (grype: high, trivy: low). Fix available: 2.28-10+deb10u4.",
+      "proof": {
+        "poc": "jq '.pairs[] | select(.cve==\"CVE-2024-33602\")' evidence/artifacts/reconciled.json",
+        "artifacts": [
+          "artifacts/reconciled.json",
+          "artifacts/trivy.json",
+          "artifacts/grype.json"
+        ]
+      },
+      "remediation": "Upgrade to 2.28-10+deb10u4 (debian-10 security update).",
+      "cvss": {
+        "vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "score": 7.4
+      }
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "DIV-001",
+      "title": "grype reports 69 pairs trivy does not see; trivy reports 1 pair alone",
+      "rationale": "Scanner databases cover different namespaces: grype's Debian tracker data lists many more debian-10 packages than trivy's feed. The single trivy-only pair is zlib1g CVE-2023-45853. A lone high/critical sighting still counts as a finding; the bulk divergence is recorded here, not per pair.",
+      "next_step": "When a fix decision matters for a divergent CVE, read the distro tracker page linked in the report's dataSource."
+    },
+    {
+      "id": "EOL-001",
+      "title": "Base image debian-10 is end of life; grype warns coverage may be incomplete",
+      "rationale": "grype printed '14 packages from EOL distro - vulnerability data may be incomplete or outdated'. EOL images also receive no new fixes, which is why only 8 of 136 pairs are fixable.",
+      "next_step": "Rebuild on a supported base image and re-scan; expect the fixable share to rise."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/docker-build.txt",
+      "description": "docker build output for lab-scan-target:latest"
+    },
+    {
+      "path": "artifacts/trivy.json",
+      "description": "Raw trivy 0.76.2 image scan of lab-scan-target:latest (vuln scanner only, --skip-db-update)"
+    },
+    {
+      "path": "artifacts/grype.json",
+      "description": "Raw grype scan of the same tag (trimmed the same way)"
+    },
+    {
+      "path": "artifacts/reconciled.json",
+      "description": "One entry per unique CVE/package pair: scanners, severities, fixes, counts"
+    }
+  ],
+  "metrics": {
+    "total": 136,
+    "fixable": 8,
+    "only_trivy": 1,
+    "only_grype": 69
+  }
+}
