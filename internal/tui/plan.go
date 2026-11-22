@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,6 +27,37 @@ type planMsg struct {
 	text string
 	code int
 	err  error
+}
+
+// approveDoneMsg is sent when `burner approve` returns; the plan is
+// re-checked so an approved binding turns the refusal into a runnable plan.
+type approveDoneMsg struct{ err error }
+
+// approveAgent finds the agent a refused plan asks to approve: the engine
+// prints `run: burner approve --agent <name>` when a mixin kit's credential
+// binding is missing.
+func approveAgent(text string) string {
+	const marker = "burner approve --agent "
+	for _, l := range strings.Split(text, "\n") {
+		if i := strings.Index(l, marker); i >= 0 {
+			if fields := strings.Fields(l[i+len(marker):]); len(fields) > 0 {
+				return fields[0]
+			}
+		}
+	}
+	return ""
+}
+
+// approveCmd runs `burner approve --agent` on the user's terminal so sbx's
+// own prompt records the credential binding.
+func approveCmd(agent string) tea.Cmd {
+	self, err := os.Executable()
+	if err != nil {
+		return func() tea.Msg { return approveDoneMsg{err: err} }
+	}
+	return tea.ExecProcess(exec.Command(self, "approve", "--agent", agent), func(err error) tea.Msg {
+		return approveDoneMsg{err: err}
+	})
 }
 
 func newPlan(o engine.RunOptions) *planModel {
@@ -52,6 +85,9 @@ func (m model) updatePlan(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.loading, p.text, p.code, p.err = false, sanitize.Text(msg.text, 64*1024), msg.code, msg.err
 		p.run = p.ok()
 		return m, nil
+	case approveDoneMsg:
+		p.loading = true
+		return m, p.start(m)
 	case tea.MouseMsg:
 		p.sc.mouse(msg)
 		return m, nil
@@ -83,6 +119,12 @@ func (m model) updatePlan(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.out.Command = optsCommand(p.opts)
 			m.scr = scrLive
 			return m, m.live.start(m)
+		case "a":
+			if !p.ok() && !p.loading {
+				if agent := approveAgent(p.text); agent != "" {
+					return m, approveCmd(agent)
+				}
+			}
 		case "q":
 			return m, tea.Quit
 		}
@@ -148,7 +190,11 @@ func (m model) viewPlan() string {
 		b.WriteString("  " + sFaint.Render(truncate("same run without the menu: "+optsCommand(p.opts), w-4)) + "\n")
 		b.WriteString(hints("enter", "confirm", "←→", "run / cancel", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(p.sc.wrap), "esc", "back"))
 	} else {
-		b.WriteString("\n\n\n" + hints("esc", "back", "↑↓", "scroll", "w", wrapLabel(p.sc.wrap), "q", "quit"))
+		if approveAgent(p.text) != "" {
+			b.WriteString("\n\n\n" + hints("a", "approve in sbx", "esc", "back", "↑↓", "scroll", "w", wrapLabel(p.sc.wrap), "q", "quit"))
+		} else {
+			b.WriteString("\n\n\n" + hints("esc", "back", "↑↓", "scroll", "w", wrapLabel(p.sc.wrap), "q", "quit"))
+		}
 	}
 	return b.String()
 }

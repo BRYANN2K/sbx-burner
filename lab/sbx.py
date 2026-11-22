@@ -11,7 +11,12 @@ v0.48). Anything that could not be confirmed there is marked ``TODO(verify)``.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from . import miniyaml
 
 SBX = "sbx"
 
@@ -131,6 +136,114 @@ AGENTS: dict[str, Agent] = {
 def secret_check(agent: Agent) -> list[str]:
     """List stored secrets for the agent's service (names only, never values)."""
     return [SBX, "secret", "ls", "--service", agent.secret_service, "--quiet"]
+
+
+# --- credential bindings -------------------------------------------------
+#
+# A mixin kit's `credential@1` capability only names the credential; the
+# proxy also needs a user-approved binding in ~/.config/sbx/credentials.yaml
+# before it will inject the stored secret. `sbx create` records the binding
+# after an interactive "Approve ...?" prompt; a non-interactive run never
+# sees the prompt, so without the file the sentinel is withheld and the
+# agent fails with 401 "Authentication required".
+
+
+def credentials_path() -> Path:
+    """``~/.config/sbx/credentials.yaml`` (``$XDG_CONFIG_HOME`` honoured)."""
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sbx" / "credentials.yaml"
+
+
+def kit_binding_needs(kit_dir: Path) -> dict[str, dict[str, set[str]]]:
+    """``{service: {mechanism: {domains}}}`` a mixin kit's credential caps need."""
+    spec = next(
+        (doc for path in sorted(kit_dir.glob("*.yaml")) if isinstance(doc := miniyaml.load(path), dict) and doc.get("capabilities")),
+        {},
+    )
+    needs: dict[str, dict[str, set[str]]] = {}
+    for cap in spec.get("capabilities") or []:
+        if cap.get("type") != "com.docker.sandbox/credential@1":
+            continue
+        cfg: dict[str, Any] = cap.get("config") or {}
+        mechanisms = needs.setdefault(cfg.get("service", ""), {})
+        if api_key := cfg.get("apiKey"):
+            mechanisms["apiKey"] = {inj["domain"] for inj in api_key.get("inject") or []}
+        if oauth := cfg.get("oauth"):
+            domains = set(oauth.get("resourceHosts") or [])
+            if host := (oauth.get("tokenEndpoint") or {}).get("host"):
+                domains.add(host)
+            mechanisms["oauth"] = domains
+    return needs
+
+
+def kits_binding_needs(kits_dir: Path) -> dict[str, dict[str, set[str]]]:
+    """The union of ``kit_binding_needs`` over every kit dir in ``kits_dir``."""
+    needs: dict[str, dict[str, set[str]]] = {}
+    for kit_dir in sorted(kits_dir.glob("*/")):
+        for service, mechanisms in kit_binding_needs(kit_dir).items():
+            bound = needs.setdefault(service, {})
+            for mechanism, domains in mechanisms.items():
+                bound.setdefault(mechanism, set()).update(domains)
+    return needs
+
+
+class BindingUnreadable(Exception):
+    """credentials.yaml exists but cannot be read as the expected shape."""
+
+
+def _bindings() -> dict[str, Any]:
+    """The ``bindings`` mapping of credentials.yaml ({} when the file is absent).
+
+    TODO(verify): the real file format; sbx writes it with its own YAML
+    encoder and miniyaml reads a subset, so anything unexpected is reported
+    instead of crashing every mixin run.
+    """
+    path = credentials_path()
+    try:
+        doc = miniyaml.load(path)
+    except FileNotFoundError:
+        return {}
+    except (OSError, miniyaml.YAMLError, ValueError, TypeError, AttributeError) as exc:
+        raise BindingUnreadable(str(exc)) from exc
+    if doc is None:
+        return {}
+    if not isinstance(doc, dict):
+        raise BindingUnreadable("top level is not a mapping")
+    bindings = doc.get("bindings") or {}
+    if not isinstance(bindings, dict):
+        raise BindingUnreadable("'bindings' is not a mapping")
+    for service, mechanisms in bindings.items():
+        if not isinstance(mechanisms, dict):
+            raise BindingUnreadable(f"bindings.{service} is not a mapping")
+        for mechanism, spec in mechanisms.items():
+            if not isinstance(spec, dict) or not isinstance(spec.get("domains") or [], list):
+                raise BindingUnreadable(f"bindings.{service}.{mechanism} has no 'domains' list")
+    return bindings
+
+
+def binding_gaps(needs: dict[str, dict[str, set[str]]]) -> dict[str, dict[str, set[str]]]:
+    """The parts of ``needs`` that credentials.yaml does not already bind.
+
+    Raises BindingUnreadable when the file exists but has an unexpected shape.
+    """
+    bindings = _bindings()
+    gaps: dict[str, dict[str, set[str]]] = {}
+    for service, mechanisms in needs.items():
+        bound = bindings.get(service) or {}
+        for mechanism, domains in mechanisms.items():
+            missing = domains - {str(d) for d in (bound.get(mechanism) or {}).get("domains") or []}
+            if missing:
+                gaps.setdefault(service, {})[mechanism] = missing
+    return gaps
+
+
+def binding_snippet(gaps: dict[str, dict[str, set[str]]]) -> str:
+    """The credentials.yaml block that approves the missing domains."""
+    lines = ["bindings:"]
+    for service, mechanisms in gaps.items():
+        lines.append(f"  {service}:")
+        for mechanism, domains in mechanisms.items():
+            lines += [f"    {mechanism}:", "      domains:"] + [f"        - {d}" for d in sorted(domains)]
+    return "\n".join(lines)
 
 
 def create(

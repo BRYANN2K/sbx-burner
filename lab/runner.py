@@ -1645,6 +1645,43 @@ def preflight(plan: Plan, execute: Exec = _default_exec, which: Callable[[str], 
         if agent.interactive_login_note:
             message += f"\n{agent.interactive_login_note}"
         raise Refused(message, EXIT_PREFLIGHT)
+    binding_preflight(plan)
+
+
+def binding_preflight(plan: Plan) -> None:
+    """Refuse when the mixin kit's credential binding is not approved yet.
+
+    Runs on the dry-run path as well, so the interactive menu can offer the
+    approval before the user starts a run.
+    """
+    agent = plan.agent
+    if not (agent.mixin_kit and plan.recipe.linux.get("workload")):
+        return
+    needs: dict[str, dict[str, set[str]]] = {}
+    for step in plan.setup:
+        for i, arg in enumerate(step.argv[:-1]):
+            if arg != "--kit":
+                continue
+            for service, mechanisms in sbx.kit_binding_needs(Path(step.argv[i + 1])).items():
+                bound = needs.setdefault(service, {})
+                for mechanism, domains in mechanisms.items():
+                    bound.setdefault(mechanism, set()).update(domains)
+    try:
+        gaps = sbx.binding_gaps(needs)
+    except sbx.BindingUnreadable as exc:
+        raise Refused(
+            f"could not read {sbx.credentials_path()} ({exc}); run burner approve --agent {agent.name} or check the file",
+            EXIT_PREFLIGHT,
+        ) from exc
+    if gaps:
+        raise Refused(
+            f"the {agent.name} mixin needs an approved credential binding: without one the sandbox "
+            f"proxy withholds the stored {agent.secret_service} credential and the agent fails with "
+            'HTTP 401 "Authentication required".\n'
+            f"Missing approvals (recorded in {sbx.credentials_path()}):\n{sbx.binding_snippet(gaps)}\n"
+            f"run: burner approve --agent {agent.name}",
+            EXIT_PREFLIGHT,
+        )
 
 
 _DURATION_RE = re.compile(r"^timeout=(\d+)([smh])?$")

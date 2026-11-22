@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, evals, lint, runner, sbx, scope_new
+from . import __version__, approve, evals, lint, runner, sbx, scope_new
 from . import scope as scope_mod
 from .recipe import RecipeError, discover, find
 from .sbx import AGENTS
@@ -87,6 +87,7 @@ def _run(recipe_ref: str, args: argparse.Namespace) -> int:
             permission=args.permission,
         )
         if args.dry_run:
+            runner.binding_preflight(plan)
             print(runner.render_plan(plan))
             return runner.EXIT_OK
         runner.preflight(plan)
@@ -244,6 +245,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--run", metavar="RUN_DIR", help="evaluate a real run instead of the golden fixture")
     p_eval.add_argument("-v", "--verbose", action="store_true")
     p_eval.set_defaults(func=_cmd_eval)
+
+    p_approve = sub.add_parser("approve", help="approve a mixin agent's credential in sbx (interactive)")
+    p_approve.add_argument("--agent", required=True, choices=sorted(AGENTS))
+    p_approve.set_defaults(func=lambda a: approve.approve(a.agent))
 
     p_scope = sub.add_parser("scope", help="validate a scope file and show its network policy")
     p_scope.add_argument("file")
