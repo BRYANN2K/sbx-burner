@@ -193,7 +193,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "mcp":
 		return cmdMCP(ctx, catalogFlag, stderr)
 	case "models":
-		return cmdModels(rest, stdout, stderr)
+		return cmdModels(ctx, catalogFlag, rest, stdout, stderr)
 	case "acp":
 		return cmdACP(rest, stdout, stderr)
 	case "acp-bridge":
