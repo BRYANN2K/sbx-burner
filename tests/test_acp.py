@@ -445,3 +445,14 @@ def test_tool_events_keep_id_detail_and_status(tmp_path):
         sub = dict(schema["$defs"][e["type"]])
         sub["$defs"] = schema["$defs"]
         assert not jsonschema_lite.validate(e, sub), e
+
+
+def test_model_default_keeps_the_agent_default(make_recipe, repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("BURNER_ACP_BRIDGE", "/opt/burner")
+    recipe = make_recipe()
+    plan = _plan(recipe, repo, tmp_path, agent_name="codex", acp=True, model="default")
+    agent = plan.agent_step.argv
+    assert "--model=default" in agent
+    assert not any(a.startswith("CODEX_CONFIG") for a in agent)
+    plan = _plan(recipe, repo, tmp_path, agent_name="codex", interactive=True, model="default")
+    assert "-m" not in plan.agent_step.argv and "default" not in plan.agent_step.argv

@@ -103,3 +103,16 @@ func TestSetupOtherModel(t *testing.T) {
 		t.Fatalf("chips %q", v)
 	}
 }
+
+func TestPickingDefaultSaysSo(t *testing.T) {
+	t.Setenv("BURNER_HOME", t.TempDir())
+	eng := &fakeEngine{acp: []string{"codex"}, models: ModelList{Known: true, Values: []Model{{"gpt-6.2-sol", "6.2 Sol"}}}}
+	m, _ := toModelStep(t, eng)
+	m = press(t, m, "enter", "enter", "enter") // default, auto, no notes
+	if m.plan == nil || m.plan.opts.Model != "default" || !strings.Contains(strings.Join(m.plan.opts.Args(), " "), "--model=default") {
+		t.Fatalf("plan %+v", m.plan)
+	}
+	if p, _ := LoadPrefs(); len(p.CustomModels["codex"]) != 0 {
+		t.Fatal("default was remembered as a custom model")
+	}
+}
