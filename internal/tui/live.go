@@ -344,6 +344,7 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case runEndMsg:
 		l.finish, l.exit, l.err, l.ended = true, msg.code, msg.err, m.cfg.Now()
 		recordKept(m.ctx, l)
+		m.setupRunDone()
 		l.asks = nil
 		m.out.Code = msg.code
 		if l.done != nil {
@@ -410,6 +411,12 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if l.finish {
 			if l.sc.key(k, true) {
+				return m, nil
+			}
+			if m.setup != nil && m.setup.awaitRun && (k == "enter" || k == "h") {
+				m.setup.awaitRun = false
+				m.setup.step = setupDone
+				m.scr = scrSetup
 				return m, nil
 			}
 			switch k {

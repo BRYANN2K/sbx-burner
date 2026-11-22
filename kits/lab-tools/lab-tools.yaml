@@ -7,9 +7,9 @@
 # TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
 schemaVersion: "3"
 kind: mixin
-displayName: agent-lab-sbx tools helper
+displayName: sbx-burner tools helper
 description: Install helper for pinned, checksum-verified lab tools.
-sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
 licenses: [Apache-2.0]
 
 provides: ["agent-lab-tools@0.1.0"]

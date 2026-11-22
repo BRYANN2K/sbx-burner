@@ -1,4 +1,4 @@
-# Contributing to agent-lab-sbx
+# Contributing to sbx-burner
 
 How to propose a change, what a pull request needs, and what we accept. Read by contributors and agents.
 

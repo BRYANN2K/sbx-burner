@@ -1,5 +1,5 @@
-agent-lab-sbx
-Copyright 2026 The agent-lab-sbx authors
+sbx-burner (formerly agent-lab-sbx)
+Copyright 2026 The sbx-burner authors
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
@@ -22,6 +22,16 @@ Docker documentation
   https://github.com/docker/docs  (Apache-2.0)
   Copyright Docker, Inc.
   Adapted in: kits/agent-claude/ (from the tool-mixins guide).
+
+sbx built-in agent kits (/usr/share/sandbox/kit/<agent>/kit.yaml, sbx 0.54)
+  Proprietary: docker/sbx-releases states "Copyright 2026 Docker Inc. All
+  rights reserved." and grants no licence. No text is copied from them.
+  kits/agent-claude/, kits/agent-cursor/, kits/agent-opencode/ and
+  kits/agent-devin/ were written in our own words from the public kit
+  specification above, checked against how the sbx CLI behaves. They share
+  only facts of the protocol with the built-in kits: capability type names,
+  hostnames, token endpoints, sentinel values, file paths, the keys each
+  agent CLI reads, and release SHA-256 digests.
 -------------------------------------------------------------------------------
 
 Recipes that adapt third-party skills or prompts add their own entry below.

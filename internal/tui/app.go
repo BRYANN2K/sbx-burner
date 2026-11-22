@@ -23,20 +23,25 @@ var ErrAborted = errors.New("aborted")
 
 // Config is what the TUI starts from.
 type Config struct {
-	Root    string
-	Recipes []catalog.Recipe
-	Version string
-	Engine  Engine                                // nil: the real engine in Root
-	Doctor  func(context.Context) []doctor.Result // nil: doctor.Check
-	Cwd     string                                // "" : os.Getwd
-	RunsDir string                                // "" : <cwd>/runs
-	Now     func() time.Time                      // tests freeze time
+	Root     string
+	Recipes  []catalog.Recipe
+	Version  string
+	Engine   Engine                                // nil: the real engine in Root
+	Doctor   func(context.Context) []doctor.Result // nil: doctor.Check
+	Cwd      string                                // "" : os.Getwd
+	RunsDir  string                                // "" : <cwd>/runs
+	Now      func() time.Time                      // tests freeze time
+	Setup    bool                                  // open setup first (first launch, burner setup)
+	Official bool                                  // Root is the official catalog checkout
+	// Release returns the tag of a burner release newer than Version, or
+	// "" when there is none. nil: no release check.
+	Release func(context.Context) (string, error)
 }
 
 // Outcome tells main what happened, and what to run after the TUI exits.
 type Outcome struct {
 	Code    int
-	Action  string // "update": run `burner update` after the TUI
+	Action  string // "update": run `burner update` after the TUI; "update-install": with --install
 	Command string // the last run as a flag command, to print on exit
 	Report  string
 }
@@ -44,14 +49,24 @@ type Outcome struct {
 // engineAgents lists the runner's agents; tests replace it.
 var engineAgents = engine.Agents
 
+// engineApprovals lists the mixin kits' approvals; tests replace it.
+var engineApprovals = engine.Approvals
+
 // doctorOptions checks the credentials of every agent the engine knows,
 // or burner's own list when the engine cannot be asked.
 func doctorOptions(ctx context.Context, root string) doctor.Options {
 	o := doctor.Options{DiskPath: root}
+	o.Agents = doctor.KnownAgents()
 	if as, err := engineAgents(ctx, root); err == nil && len(as) > 0 {
-		o.Agents = engine.AgentNames(as)
-	} else {
-		o.Agents = doctor.KnownAgents()
+		seen := map[string]bool{}
+		for _, a := range o.Agents {
+			seen[a] = true
+		}
+		for _, a := range engine.AgentNames(as) {
+			if !seen[a] {
+				o.Agents = append(o.Agents, a)
+			}
+		}
 	}
 	return o
 }
@@ -72,6 +87,10 @@ const (
 	scrLog
 	scrScopeForm
 	scrSandboxes
+	scrSeries
+	scrSeriesRun
+	scrSeriesReport
+	scrSetup
 )
 
 type model struct {
@@ -102,6 +121,14 @@ type model struct {
 	logv   *logModel
 	form   *scopeForm
 	sbx    *sandboxesModel
+	ser    *seriesModel
+	srun   *seriesRunModel
+
+	modelCache map[string]*ModelList // model lists per agent, for series
+	setup      *setupModel
+	prefs      Prefs // ~/.burner/config.yaml
+
+	newer string // a newer burner release tag, from cfg.Release
 
 	out Outcome
 }
@@ -111,6 +138,7 @@ type checksMsg []doctor.Result
 type acpAgentsMsg []string
 type tuisMsg map[string][]string
 type agentsMsg []string
+type releaseMsg string
 
 func tick() tea.Cmd {
 	return tea.Tick(80*time.Millisecond, func(time.Time) tea.Msg { return tickMsg{} })
@@ -123,11 +151,19 @@ func initialModel(ctx context.Context, cfg Config) model {
 	if cfg.Doctor == nil {
 		root := cfg.Root
 		cfg.Doctor = func(ctx context.Context) []doctor.Result {
-			return doctor.Check(ctx, doctorOptions(ctx, root))
+			results := doctor.Check(ctx, doctorOptions(ctx, root))
+			if rows, err := engineApprovals(ctx, root); err == nil {
+				results = append(results, doctor.ApprovalResults(rows)...)
+			}
+			return results
 		}
 	}
 	if cfg.Cwd == "" {
 		cfg.Cwd, _ = os.Getwd()
+	}
+	prefs, _ := LoadPrefs()
+	if cfg.RunsDir == "" {
+		cfg.RunsDir = prefs.runsDir()
 	}
 	if cfg.RunsDir == "" {
 		cfg.RunsDir = cfg.Cwd + "/runs"
@@ -137,6 +173,11 @@ func initialModel(ctx context.Context, cfg Config) model {
 	}
 	m := model{ctx: ctx, cfg: cfg, eng: cfg.Engine, w: 120, h: 40, checking: true, seed: cfg.Now().UnixNano()}
 	m.home = newHome(cfg.Recipes)
+	m.prefs = prefs
+	if cfg.Setup {
+		m.setup = newSetup(prefs)
+		m.scr = scrSetup
+	}
 	m.out.Code = 130
 	return m
 }
@@ -158,7 +199,39 @@ func (m model) Init() tea.Cmd {
 	}, func() tea.Msg {
 		t, _ := eng.AgentTUIs(ctx)
 		return tuisMsg(t)
-	}, func() tea.Msg { return lastRunMsg(findLastRun(runs)) })
+	}, func() tea.Msg { return lastRunMsg(findLastRun(runs)) }, m.checkRelease())
+}
+
+func (m model) checkRelease() tea.Cmd {
+	rel, ctx := m.cfg.Release, m.ctx
+	if rel == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		tag, err := rel(ctx)
+		if err != nil {
+			return nil
+		}
+		return releaseMsg(tag)
+	}
+}
+
+// updateOutcome quits the TUI to update: the catalogs always, burner
+// itself too when a newer release is known.
+func (m model) updateOutcome() (tea.Model, tea.Cmd) {
+	m.out.Action, m.out.Code = "update", 0
+	if m.newer != "" {
+		m.out.Action = "update-install"
+	}
+	return m, tea.Quit
+}
+
+// releaseNote is the "burner X available" line, or "".
+func (m model) releaseNote() string {
+	if m.newer == "" {
+		return ""
+	}
+	return "burner " + m.newer + " available: u to update"
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -171,6 +244,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tick()
 	case lastRunMsg:
 		m.last = msg
+		return m, nil
+	case releaseMsg:
+		m.newer = string(msg)
 		return m, nil
 	case tuisMsg:
 		m.tuis = msg
@@ -188,7 +264,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Ctrl+C everywhere but the live run quits; the live run stops and
 		// destroys the sandbox first.
-		if msg.String() == "ctrl+c" && m.scr != scrLive {
+		if msg.String() == "ctrl+c" && m.scr != scrLive && m.scr != scrSeriesRun {
 			return m, tea.Quit
 		}
 	}
@@ -213,6 +289,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateScopeForm(msg)
 	case scrSandboxes:
 		return m.updateSandboxes(msg)
+	case scrSeries:
+		return m.updateSeries(msg)
+	case scrSeriesRun:
+		return m.updateSeriesRun(msg)
+	case scrSeriesReport:
+		return m.updateSeriesReport(msg)
+	case scrSetup:
+		return m.updateSetup(msg)
 	}
 	return m, nil
 }
@@ -243,6 +327,14 @@ func (m model) View() string {
 		v = m.viewScopeForm()
 	case scrSandboxes:
 		v = m.viewSandboxes()
+	case scrSeries:
+		v = m.viewSeries()
+	case scrSeriesRun:
+		v = m.viewSeriesRun()
+	case scrSeriesReport:
+		v = m.viewSeriesReport()
+	case scrSetup:
+		v = m.viewSetup()
 	}
 	return paintBG(fit(v, m.w, m.h), m.w)
 }

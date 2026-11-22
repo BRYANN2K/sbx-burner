@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="agent-lab-sbx. A row of disposable lab boxes, each holding a small terminal, labelled pentest, malware, detection and DevSecOps." width="100%">
+<img src="assets/banner.png" alt="sbx-burner. A row of disposable lab boxes, each holding a small terminal, labelled pentest, malware, detection and DevSecOps." width="100%">
 
 **Disposable lab recipes for coding agents, run inside Docker Sandboxes.**
 
@@ -16,7 +16,7 @@ Pick a recipe, give it a scope, let the agent work in a throwaway VM, and get a 
 
 Skill packs give agents knowledge. They usually run on your host, and the scope is a sentence in a prompt.
 
-agent-lab-sbx adds the missing parts around the agent:
+sbx-burner adds the missing parts around the agent:
 
 - **A disposable VM.** Each recipe runs in a Docker Sandbox (`sbx`). Destroy it when the run ends.
 - **Scope enforced by the network.** Security recipes need a scope file. The sandbox network policy blocks hosts outside it. A prompt is not the only guard.
@@ -47,6 +47,15 @@ sbx login
 
 Other platforms: see the [sbx install page](https://docs.docker.com/ai/sandboxes/install/).
 
+Install burner, the menu and CLI around the runner (macOS and Linux). The script verifies the release signature and checksum:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/BRYANN2K/sbx-burner/main/install.sh | sh
+burner setup
+```
+
+A pinned version, Homebrew (planned) and manual download with `cosign verify-blob`: [Install](docs/install.md).
+
 Store a credential for your agent. It stays on the host. The sandbox only sees a placeholder.
 
 ```sh
@@ -57,8 +66,8 @@ sbx secret set openai --oauth   # Codex
 Clone the repo and check a recipe without creating a sandbox:
 
 ```sh
-git clone https://github.com/BRYANN2K/agent-lab-sbx.git
-cd agent-lab-sbx
+git clone https://github.com/BRYANN2K/sbx-burner.git
+cd sbx-burner
 python -m lab run devsecops/secrets-scan --target . --dry-run
 ```
 

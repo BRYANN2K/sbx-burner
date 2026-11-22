@@ -16,6 +16,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/BRYANN2K/sbx-burner/internal/engine"
 )
 
 // Level of a check result.
@@ -42,6 +44,10 @@ var AgentServices = map[string]struct{ Service, Fix string }{
 	"claude": {"anthropic", "sbx secret set anthropic"},
 	"codex":  {"openai", "sbx secret set openai --oauth"},
 	"devin":  {"devin", "sbx run devin <folder>   (sign in once)"},
+	"cursor": {"cursor", "sbx secret set cursor --oauth"},
+	// OpenCode keeps its providers in its own config; burner checks the
+	// stored OpenAI credential it uses through sbx.
+	"opencode": {"openai", "sbx run opencode <folder>   (set the providers in OpenCode)"},
 }
 
 // KnownAgents returns burner's own agent names, sorted; used only when the
@@ -53,6 +59,11 @@ func KnownAgents() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// Blocked agents cannot run in sbx today, whatever their credential says.
+var Blocked = map[string]string{
+	"devin": "blocked by sbx (docker/sbx-releases#906)",
 }
 
 // Runner executes a command and returns combined output. Tests replace it.
@@ -104,6 +115,10 @@ func Check(ctx context.Context, o Options) []Result {
 		}
 	}
 
+	if sbxOK {
+		out = append(out, policyCheck(ctx, o.Run))
+	}
+
 	// Host container runtime: Docker (or colima), else Apple container.
 	// Needed only to save local images and pull private ones on the host.
 	dockerUp := false
@@ -137,6 +152,10 @@ func Check(ctx context.Context, o Options) []Result {
 	}
 
 	for _, agent := range o.Agents {
+		if why, blocked := Blocked[agent]; blocked {
+			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, why, ""})
+			continue
+		}
 		svc, ok := AgentServices[agent]
 		if !ok {
 			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, "not supported by burner yet", ""})
@@ -219,6 +238,10 @@ func agentTitle(agent string) string {
 		return "Codex credential"
 	case "devin":
 		return "Devin credential"
+	case "cursor":
+		return "Cursor credential"
+	case "opencode":
+		return "OpenCode credential"
 	}
 	return agent + " credential"
 }
@@ -277,4 +300,80 @@ func freeGB(path string) (float64, error) {
 		return 0, err
 	}
 	return float64(st.Bavail) * float64(st.Bsize) / 1e9, nil
+}
+
+// ApprovalResults turns the engine's mixin kit approvals into check lines:
+// one per kit, with `burner approve --agent X` when it still needs one.
+func ApprovalResults(rows []engine.Approval) []Result {
+	var out []Result
+	for _, a := range rows {
+		title := "Approval: " + a.Agent + " kit"
+		switch {
+		case a.Error != "":
+			out = append(out, Result{"approval-" + a.Agent, title, Warn, "could not check: " + a.Error, "burner approve --agent " + a.Agent})
+		case a.Approved:
+			out = append(out, Result{"approval-" + a.Agent, title, OK, "approved", ""})
+		default:
+			var hosts []string
+			for _, ds := range a.Missing {
+				hosts = append(hosts, ds...)
+			}
+			sort.Strings(hosts)
+			out = append(out, Result{"approval-" + a.Agent, title, Warn, "needs approval: " + strings.Join(hosts, ", "), "burner approve --agent " + a.Agent})
+		}
+	}
+	return out
+}
+
+// ApprovalsNeeded lists the agents whose kit still needs an approval.
+func ApprovalsNeeded(results []Result) []string {
+	var out []string
+	for _, r := range results {
+		if strings.HasPrefix(r.ID, "approval-") && r.Level != OK {
+			out = append(out, strings.TrimPrefix(r.ID, "approval-"))
+		}
+	}
+	return out
+}
+
+// PolicyInitCommand sets sbx's global network policy to deny by default.
+// It applies to every sbx sandbox on this machine, so burner runs it only
+// when the user asks.
+const PolicyInitCommand = "sbx policy init deny-all"
+
+// policyCheck reads sbx's policy rules: a global network rule that denies
+// everything by default means the policy is initialized.
+func policyCheck(ctx context.Context, run Runner) Result {
+	r := Result{ID: "policy", Title: "Global network policy"}
+	out, err := run(ctx, "sbx", "policy", "ls", "--json")
+	if err != nil {
+		r.Level, r.Detail, r.Fix = Warn, "could not read: "+firstLine(out, err), PolicyInitCommand
+		return r
+	}
+	var v struct {
+		Rules []struct {
+			Scope        string   `json:"scope"`
+			AppliesTo    string   `json:"applies_to"`
+			ResourceType string   `json:"resource_type"`
+			Decision     string   `json:"decision"`
+			Resources    []string `json:"resources"`
+			Status       string   `json:"status"`
+		} `json:"rules"`
+	}
+	if json.Unmarshal([]byte(out), &v) != nil {
+		r.Level, r.Detail, r.Fix = Warn, "could not read sbx policy ls --json", PolicyInitCommand
+		return r
+	}
+	for _, rule := range v.Rules {
+		if rule.Scope == "global" && rule.AppliesTo == "all" && rule.ResourceType == "network" && rule.Decision == "deny" && rule.Status != "inactive" {
+			for _, res := range rule.Resources {
+				if res == "**" {
+					r.Level, r.Detail = OK, "deny-all"
+					return r
+				}
+			}
+		}
+	}
+	r.Level, r.Detail, r.Fix = Warn, "not initialized", PolicyInitCommand
+	return r
 }

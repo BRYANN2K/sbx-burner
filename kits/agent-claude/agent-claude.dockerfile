@@ -19,7 +19,14 @@ RUN case "$TARGETARCH" in \
     && curl -fsSL "${release}/${platform}/claude" -o claude \
     && sum="$(jq -er --arg p "$platform" '.platforms[$p].checksum' manifest.json)" \
     && printf '%s  claude\n' "$sum" | sha256sum -c - \
-    && install -m 0755 claude /out/usr/local/bin/claude
+    && install -m 0755 claude /out/usr/local/bin/claude \
+    # The ACP adapter is pointed at /home/agent/.local/bin/claude, the path
+    # the built-in claude agent's native installer uses. Ship that path as a
+    # symlink so every workload resolves the same CLAUDE_CODE_EXECUTABLE.
+    && mkdir -p /out/home/agent/.local/bin \
+    && ln -s /usr/local/bin/claude /out/home/agent/.local/bin/claude \
+    && chown -R 1000:1000 /out/home/agent
 
 FROM scratch
 COPY --from=build /out/ /
+ENV CLAUDE_CONFIG_DIR=/home/agent/.claude

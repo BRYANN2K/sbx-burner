@@ -1,0 +1,40 @@
+Setup                                                            machine › agents › approvals › preferences › first run
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   Default agent                                                                                                      │
+│      claude   codex   cursor   devin   opencode                                                                      │
+│                                                                                                                      │
+│ ❯ Model                                                                                                              │
+│      gpt-6-luna   2 models                                                                                           │
+│                                                                                                                      │
+│   Mode                                                                                                               │
+│      ACP   Interactive                                                                                               │
+│                                                                                                                      │
+│   Permissions                                                                                                        │
+│      auto   ask me                                                                                                   │
+│                                                                                                                      │
+│   After the run                                                                                                      │
+│      burn   keep                                                                                                     │
+│                                                                                                                      │
+│   Runs folder                                                                                                        │
+│     ~/.burner/runs                                                                                                   │
+│                                                                                                                      │
+│ SAVED TO  /tmp/burner-tui-golden/home/config.yaml                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  tab next field  │  ←→ choose  │  n next  │  esc back

@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Recipes are for defensive work and authorized testing. Read [SECURITY.md](https://github.com/BRYANN2K/agent-lab-sbx/blob/main/SECURITY.md) first.
+        Recipes are for defensive work and authorized testing. Read [SECURITY.md](https://github.com/BRYANN2K/sbx-burner/blob/main/SECURITY.md) first.
   - type: input
     id: name
     attributes:

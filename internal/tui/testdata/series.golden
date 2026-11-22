@@ -1,0 +1,40 @@
+Series · target folder · git repo                                                                             2 recipes
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   #   RECIPE                           AGENT     MODEL                                                               │
+│ ❯ 1   devsecops/secrets-scan           codex     default                                                             │
+│   2   devsecops/sca-osv                claude    default                                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ←→ agent  │  m model  │  J/K move  │  d remove  │  esc pick more  │  enter choose target  │  ctrl+s save

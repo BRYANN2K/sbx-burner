@@ -151,7 +151,7 @@ func TestHandoffArgvOnlyRunsSbxExecForThisSandbox(t *testing.T) {
 	cases := map[string][]string{
 		"not sbx":       {"sh", "exec", "-it", sb, "--", "codex"},
 		"no tty":        {"sbx", "exec", "-i", sb, "--", "codex"},
-		"env-file":      {"sbx", "exec", "-it", "--env-file", "/Users/me/.aws/credentials", sb, "--", "codex"},
+		"env-file":      {"sbx", "exec", "-it", "--env-file", "/Users/tester/.aws/credentials", sb, "--", "codex"},
 		"cloud":         {"sbx", "exec", "-it", "--cloud", sb, "--", "codex"},
 		"user root":     {"sbx", "exec", "-it", "-u", "root", sb, "--", "codex"},
 		"detach":        {"sbx", "exec", "-it", "-D", sb, "--", "codex"},

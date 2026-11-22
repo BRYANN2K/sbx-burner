@@ -1,0 +1,40 @@
+Setup                                                            machine › agents › approvals › preferences › first run
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Try it on a sample project                                                                                           │
+│                                                                                                                      │
+│ project   ~/burner-sample/leaky-repo                                                                                 │
+│ recipe    devsecops/secrets-scan                                                                                     │
+│ agent     codex · gpt-6-luna · ACP                                                                                   │
+│ time      ~10m                                                                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  enter copy and run  │  s skip, finish  │  esc back

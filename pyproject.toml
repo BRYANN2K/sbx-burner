@@ -1,5 +1,5 @@
 [project]
-name = "agent-lab-sbx"
+name = "sbx-burner"
 version = "0.1.0"
 description = "Disposable lab recipes for coding agents, run inside Docker Sandboxes (sbx)."
 readme = "README.md"

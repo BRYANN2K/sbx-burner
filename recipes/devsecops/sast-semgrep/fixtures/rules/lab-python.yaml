@@ -1,4 +1,4 @@
-# Original rules written for agent-lab-sbx (Apache-2.0).
+# Original rules written for sbx-burner (Apache-2.0).
 # They are small on purpose: three patterns the eval target plants.
 # No rule here is copied or adapted from the Semgrep registry.
 rules:

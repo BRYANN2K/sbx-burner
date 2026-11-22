@@ -117,3 +117,11 @@ func TestFrontmatterWithColonInSummaryIsRead(t *testing.T) {
 		t.Fatalf("r=%+v err=%v", r, err)
 	}
 }
+
+func TestIsOfficial(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("BURNER_HOME", home)
+	if !IsOfficial(filepath.Join(home, "catalog")) || IsOfficial(t.TempDir()) {
+		t.Fatal("IsOfficial is wrong")
+	}
+}

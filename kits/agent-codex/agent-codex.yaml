@@ -5,9 +5,9 @@
 # TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
 schemaVersion: "3"
 kind: mixin
-displayName: Codex CLI (agent-lab-sbx)
+displayName: Codex CLI (sbx-burner)
 description: OpenAI Codex CLI native binary with a proxy-managed OpenAI credential.
-sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
 
 args:
   version:

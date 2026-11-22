@@ -1,0 +1,40 @@
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                      │
+│   ⠀⠀⠀⠀⠀⠀⣀⣀⣀⡀⠀⠀⣀⠀⠸⠿                                                                                                   │
+│   ⠀⠀⢀⣤⣶⣿⣿⡿⠿⠀⣤⡼⠿⠃⠀⠀                                                                                                   │
+│   ⠀⣰⣿⡿⠛⠉⠀⢠⣤⡀⠛⠃⠀⠀⠸⠿   burner  dev                                                                                     │
+│   ⣰⣿⡟⠀⠀⢀⣀⣨⣏⣀⠀⠀⠸⠿⠇⠀   /tmp/burner-tui-golden                                                                          │
+│   ⠛⠋⢀⣀⣾⡿⠿⠿⠿⠿⣿⣆⡀⠀⣶⣿                                                                                                   │
+│   ⣶⣦⢸⣿⡇⢤⣄⠀⢀⣠⠄⣿⡿⢀⣿⣿   agents    codex ready  ·  claude ready                                                          │
+│   ⠸⣿⣦⠘⢧⣈⣉⣀⣈⣉⣠⠟⢀⣾⣿⠇                                                                                                   │
+│   ⠀⠘⢿⣷⣤⣈⠉⠉⠉⠉⣀⣤⡀⠙⠃⠀                                                                                                   │
+│   ⠀⠀⠀⠉⠻⠿⣿⣿⣿⣿⠿⠛⠉⠀⠀⠀                                                                                                   │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  SERIES SELECTION  2 checked
+╭───────────────────────────┬─────────────────────────────────┬────────────────────────────────────────────────────────╮
+│ CATEGORY                  │ RECIPE                          │ secrets-scan  beta · official                          │
+│ › devsecops   2           │   [1] sca-osv                   │                                                        │
+│   pentest     1           │ ❯ [2] secrets-scan              │ Scan a repository and its git history for leaked       │
+│   apple       1   planned │                                 │ credentials with gitleaks, then triage every hit       │
+│                           │                                 │ before reporting.                                      │
+│                           │                                 │                                                        │
+│                           │                                 │ risk     low                                           │
+│                           │                                 │ time     10m                                           │
+│                           │                                 │ targets  folder · git repo                             │
+│                           │                                 │ tested   not yet                                       │
+│                           │                                 │ scope    none needed                                   │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+│                           │                                 │                                                        │
+╰───────────────────────────┴─────────────────────────────────┴────────────────────────────────────────────────────────╯
+  space check  │  c clear  │  enter series  │  esc leave  │  ↑↓ ←→ move                                         q quit
+                                                                              sbx 0.54.0 │ docker 29.5.2 │ 14 GB free

@@ -17,6 +17,7 @@ type doctorModel struct {
 	cursor   int
 	checking bool
 	msg      string
+	policy   bool // confirming sbx policy init deny-all
 }
 
 // copyText is replaced in tests.
@@ -24,12 +25,59 @@ var copyText = clipboard.WriteAll
 
 func (m model) updateDoctor(msg tea.Msg) (tea.Model, tea.Cmd) {
 	d := &m.doc
+	if e, ok := msg.(setupExecDoneMsg); ok {
+		if e.err != nil {
+			d.msg = e.what + ": " + e.err.Error()
+		}
+		m.checking, d.checking = true, true
+		return m, m.runChecks()
+	}
+	if _, ok := msg.(approveDoneMsg); ok {
+		// Check every line again: the approval may now be recorded.
+		m.checking, d.checking = true, true
+		return m, m.runChecks()
+	}
 	k, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return m, nil
 	}
 	d.msg = ""
+	if d.policy {
+		switch k.String() {
+		case "enter":
+			d.policy = false
+			return m, execSetup("sbx policy init", strings.Fields(doctor.PolicyInitCommand))
+		case "esc":
+			d.policy = false
+		}
+		return m, nil
+	}
 	switch k.String() {
+	case "u":
+		if m.newer != "" {
+			return m.updateOutcome()
+		}
+	case "a":
+		if d.cursor < len(m.checks) {
+			c := m.checks[d.cursor]
+			switch {
+			case c.ID == "policy" && c.Level != doctor.OK:
+				d.policy = true
+				return m, nil
+			case strings.HasPrefix(c.ID, "agent-") && c.Level != doctor.OK:
+				a := strings.TrimPrefix(c.ID, "agent-")
+				if argv := connectCommand(a); len(argv) > 0 {
+					_ = os.MkdirAll(sampleDir(), 0o755)
+					return m, execSetup("connect "+a, argv)
+				}
+			}
+		}
+		if d.cursor < len(m.checks) {
+			c := m.checks[d.cursor]
+			if strings.HasPrefix(c.ID, "approval-") && c.Level != doctor.OK {
+				return m, approveCmd(strings.TrimPrefix(c.ID, "approval-"))
+			}
+		}
 	case "up", "k":
 		if d.cursor > 0 {
 			d.cursor--
@@ -65,7 +113,7 @@ func (m model) viewDoctor() string {
 	d := m.doc
 	w := m.w
 	var b strings.Builder
-	b.WriteString(sBold.Render("Doctor") + "  " + sDim.Render("is this Mac ready to run recipes?") + "\n\n")
+	b.WriteString(sBold.Render("Doctor") + "\n\n")
 	var body []string
 	if m.checking {
 		body = append(body, sAmber.Render(m.spin())+" "+sDim.Render("checking sbx, runtime, credentials, disk"))
@@ -87,7 +135,28 @@ func (m model) viewDoctor() string {
 	if d.msg != "" {
 		b.WriteString("  " + sAmber.Render(truncate(d.msg, w-4)) + "\n")
 	}
-	b.WriteString(hints("↑↓", "move", "c", "copy the fix command", "r", "re-check", "esc", "back"))
+	if n := m.releaseNote(); n != "" {
+		b.WriteString("  " + sAmber.Render(truncate(n, w-4)) + "\n")
+	}
+	keys := []string{"↑↓", "move", "c", "copy the fix command", "r", "re-check", "esc", "back"}
+	if m.newer != "" {
+		keys = append(keys, "u", "update")
+	}
+	if d.cursor < len(m.checks) && m.checks[d.cursor].Level != doctor.OK {
+		switch id := m.checks[d.cursor].ID; {
+		case strings.HasPrefix(id, "approval-"):
+			keys = append([]string{"a", "approve in sbx"}, keys...)
+		case id == "policy":
+			keys = append([]string{"a", "set the policy"}, keys...)
+		case strings.HasPrefix(id, "agent-"):
+			keys = append([]string{"a", "connect"}, keys...)
+		}
+	}
+	if d.policy {
+		b.WriteString(box(w, sBold.Render("Global network policy")+"\n  "+sText.Render("$ "+doctor.PolicyInitCommand)+"\n  "+sAmber.Render("changes the global sbx policy: every sbx sandbox on this Mac, not only burner's")) + "\n")
+		keys = []string{"enter", "run the command", "esc", "cancel"}
+	}
+	b.WriteString(hints(keys...))
 	return b.String()
 }
 

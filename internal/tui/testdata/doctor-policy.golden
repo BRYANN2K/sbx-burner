@@ -1,0 +1,40 @@
+Doctor
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  sbx installed                  sbx version v0.54.0 4bec4a5                                                        │
+│ ✓  Host container runtime         docker 29.5.2                                                                      │
+│ ✓  Docker buildx (recipe kits)    available                                                                          │
+│ !  Claude Code credential         no credential stored  sbx secret set anthropic                                     │
+│ ✓  Codex credential               credential stored (openai)                                                         │
+│ ✓  Free disk                      14 GB free                                                                         │
+│ !  Global network policy          not initialized  sbx policy init deny-all                                          │
+│ ✓  GitHub login                   signed in                                                                          │
+│ ✓  Approval: codex kit            approved                                                                           │
+│ !  Approval: claude kit           needs approval: api.anthropic.com  burner approve --agent claude                   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Global network policy                                                                                                │
+│   $ sbx policy init deny-all                                                                                         │
+│   changes the global sbx policy: every sbx sandbox on this Mac, not only burner's                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  enter run the command  │  esc cancel

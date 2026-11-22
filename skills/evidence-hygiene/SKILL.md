@@ -1,6 +1,6 @@
 ---
 name: evidence-hygiene
-description: Record lab evidence so that every finding can be re-checked by someone else. Use whenever you run a tool, confirm a finding, or write evidence/evidence.json in an agent-lab-sbx recipe.
+description: Record lab evidence so that every finding can be re-checked by someone else. Use whenever you run a tool, confirm a finding, or write evidence/evidence.json in an sbx-burner recipe.
 ---
 
 # Evidence hygiene

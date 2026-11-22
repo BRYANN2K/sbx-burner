@@ -1,4 +1,4 @@
-module github.com/agent-lab-sbx/pg-sbom-sign
+module github.com/sbx-burner/pg-sbom-sign
 
 go 1.22
 

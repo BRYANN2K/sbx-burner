@@ -66,7 +66,7 @@ def test_headless_plan_is_unchanged_without_acp(make_recipe, repo, tmp_path):
 @pytest.mark.parametrize(
     "kw, message",
     [
-        ({"agent_name": "claude", "acp": True}, "not wired for claude"),
+        ({"agent_name": "gemini", "acp": True}, "unknown agent"),
         ({"agent_name": "codex", "model": "gpt-6-luna"}, "--model needs --acp"),
         ({"agent_name": "codex", "acp": True, "model": "-rf"}, "invalid --model"),
         ({"agent_name": "codex", "acp": True, "permission": "yolo"}, "--permission"),
@@ -219,7 +219,7 @@ def test_prompt_names_scope_when_there_is_one(make_recipe, repo, tmp_path, scope
     assert "Stay inside the scope in .lab/scope.json." in _prompt_of(plan)
 
 
-SECRET = "REDACTED-fake-test-value"
+SECRET = "Q51J77j7" + "abcDEF1234567890xyz"
 AWS_SECRET = "RH16se6vABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
 
 
@@ -339,7 +339,7 @@ def test_agent_planted_seeds_cannot_erase_runner_records(make_recipe, repo, tmp_
     plan = _plan(make_recipe(), repo, tmp_path, agent_name="codex", acp=True)
     host = "exfil1.attacker-c2.com"
     cve = "CVE-2026-12345"
-    planted_secret = "zz9Planted0Secret0Value"
+    planted_secret = "zz9" + "Planted0Secret0Value"
     policy = json.dumps({"allowed": [], "blocked": [{"host": f"{host}:443"}]})
     fake = _Exec(plan, evidence=_evidence(), policy_log=policy)
     events_file = plan.run_dir / "events.ndjson"

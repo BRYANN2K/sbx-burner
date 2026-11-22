@@ -11,8 +11,10 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
 	"github.com/BRYANN2K/sbx-burner/internal/sanitize"
+	"github.com/BRYANN2K/sbx-burner/internal/series"
 )
 
 // lastRun is the newest readable report under the runs folder.
@@ -117,7 +119,11 @@ func (m model) agentsLine() string {
 		}
 		parts = append(parts, a+" "+state)
 	}
-	return strings.Join(parts, sDim.Render("  ·  "))
+	line := strings.Join(parts, sDim.Render("  ·  "))
+	if need := doctor.ApprovalsNeeded(m.checks); len(need) > 0 {
+		line += sDim.Render("  ·  ") + sAmber.Render("approvals needed: "+strings.Join(need, ", "))
+	}
+	return line
 }
 
 // headLines renders the top box: logo left, info right, vertically
@@ -134,6 +140,13 @@ func (m model) headLines() []string {
 	info := []string{name, ellipsis(folder, infoW), "", kv("agents", m.agentsLine())}
 	if m.last != nil {
 		info = append(info, kv("last run", m.last.String(m.cfg.Now())))
+	}
+	if saved := series.List(catalog.Home()); len(saved) > 0 {
+		var names []string
+		for i := len(saved) - 1; i >= 0 && len(names) < 3; i-- {
+			names = append(names, saved[i].Name)
+		}
+		info = append(info, kv("series", strings.Join(names, " · ")))
 	}
 	logo := m.logoLines()
 	top := (len(logo) - len(info)) / 2

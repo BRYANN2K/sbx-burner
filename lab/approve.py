@@ -71,3 +71,35 @@ def approve(
         domains = sorted({d for domains in mechanisms.values() for d in domains})
         print(f"approved {service}: {', '.join(domains)}", file=out)
     return 0
+
+
+def status(repo_root: Path = REPO_ROOT) -> list[dict]:
+    """Every mixin kit's credential approval: approved, or the missing domains.
+
+    Reads the kits and sbx's credentials.yaml only; never writes either.
+    """
+    out = []
+    for name, agent in sbx.AGENTS.items():
+        if not agent.mixin_kit:
+            continue
+        row: dict = {"agent": name, "kit": agent.mixin_kit, "approved": False, "missing": {}, "error": ""}
+        kit = repo_root / agent.mixin_kit
+        if not (kit / f"{kit.name}.yaml").is_file():
+            # Same check as build_plan: a missing kit is never "approved".
+            row["error"] = f"mixin kit {agent.mixin_kit} is missing"
+            out.append(row)
+            continue
+        try:
+            gaps = sbx.binding_gaps(sbx.kit_binding_needs(kit))
+        except sbx.BindingUnreadable as exc:
+            row["error"] = f"could not read {sbx.credentials_path()}: {exc}"
+            out.append(row)
+            continue
+        except OSError as exc:
+            row["error"] = f"could not read {kit}: {exc.strerror or exc}"
+            out.append(row)
+            continue
+        row["approved"] = not gaps
+        row["missing"] = {svc: sorted({d for ds in mech.values() for d in ds}) for svc, mech in gaps.items()}
+        out.append(row)
+    return out

@@ -7,9 +7,9 @@
 # TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
 schemaVersion: "3"
 kind: workload
-displayName: REMnux (noble) (agent-lab-sbx)
+displayName: REMnux (noble) (sbx-burner)
 description: REMnux (noble) base with the sbx platform floor, for lab recipes.
-sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
 
 capabilities:
   - type: com.docker.sandbox/sbx@1

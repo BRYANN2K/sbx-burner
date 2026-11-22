@@ -1,0 +1,104 @@
+# syntax=docker/sandbox-kit:3
+# Devin CLI as a mixin, for workloads that are not Docker's built-in devin
+# agent (the Kali, REMnux and Ubuntu bases in this directory).
+# The credential follows the kit spec; burner's own text. Hostnames, the
+# token endpoint and the credentials.toml keys are facts of Devin's CLI.
+# Devin's credential is PASSTHROUGH: the real token is written into
+# ~/.local/share/devin/credentials.toml inside the sandbox, where the agent
+# can read it (the CLI puts it inside protobuf payloads, which the proxy
+# cannot rewrite). Treat a Devin run as exposing that token to the agent.
+# KNOWN UPSTREAM BUG (docker/sbx-releases#906): sbx's credential engine
+# writes the declared `format: toml` credentialFile as JSON, so the CLI
+# fails its TOML parse at startup. Worked around in the lifecycle startup
+# hook below: when the file is JSON, its values are re-emitted as TOML —
+# the sentinel in an unbound sandbox, the real passthrough token in a
+# bound one. Remove once the engine honours `format: toml`.
+schemaVersion: "3"
+kind: mixin
+displayName: Devin CLI (sbx-burner)
+description: Devin CLI with a proxy-managed Devin credential.
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
+
+args:
+  version:
+    default: "3000.14.30821"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: DEVIN_VERSION
+
+provides: ["devin@${{ kit.args.version }}"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          - "*.devin.ai:443"
+          - api.devin.ai:443
+          - windsurf.com:443
+          - server.codeium.com:443
+          - unleash.codeium.com:443
+  - type: com.docker.sandbox/credential@1
+    optional: true
+    description: Devin login token (passthrough, readable inside the sandbox)
+    config:
+      service: devin
+      phase: runtime
+      apiKey:
+        inject:
+          - {domain: server.codeium.com, header: Authorization, format: "Bearer %s"}
+          - {domain: api.devin.ai, header: Authorization, format: "Bearer %s"}
+      oauth:
+        tokenEndpoint: {host: api.devin.ai, path: /auth/cli/token}
+        resourceHosts: [server.codeium.com, api.devin.ai]
+        responseFields:
+          accessToken: token
+          refreshToken: token
+        # Passthrough: the CLI sends the token inside protobuf bodies, out of
+        # the proxy's reach, so sbx writes the real token into the file.
+        passthrough: true
+        credentialFile:
+          path: ~/.local/share/devin/credentials.toml
+          format: toml
+          structure:
+            api_server_url: https://server.codeium.com
+            devin_webapp_host: app.devin.ai
+            devin_api_url: https://api.devin.ai
+            windsurf_api_key: "{{.PrimaryApiKey}}"
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: |
+            mkdir -p /home/agent/.config/devin /home/agent/.local/share/devin \
+              && chown agent:agent /home/agent/.config /home/agent/.config/devin \
+                /home/agent/.local /home/agent/.local/share /home/agent/.local/share/devin
+          user: "0"
+          description: Create Devin's config and data folders for the agent user
+      startup:
+        # Workaround for docker/sbx-releases#906: the credential engine
+        # writes credentialFile as JSON despite `format: toml`, and the CLI
+        # aborts on the parse error. Re-emit the same values as TOML on
+        # every start; untouched when the file is already TOML, so the fix
+        # self-heals if the engine rewrites it on (re)create. The key value
+        # — sentinel or real passthrough token — is preserved verbatim.
+        - command: |
+            set -e
+            f="$HOME/.local/share/devin/credentials.toml"
+            [ -f "$f" ] || exit 0
+            head -c1 "$f" | grep -q '{' || exit 0
+            key=$(sed -n 's/.*"windsurf_api_key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -1)
+            [ -n "$key" ] || exit 0
+            {
+              printf 'api_server_url = "https://server.codeium.com"\n'
+              printf 'devin_api_url = "https://api.devin.ai"\n'
+              printf 'devin_webapp_host = "app.devin.ai"\n'
+              printf 'windsurf_api_key = "%s"\n' "$key"
+            } > "$f"
+          user: agent
+          description: Re-emit JSON credentials.toml as TOML (sbx-releases#906)
+      files:
+        - path: /home/agent/.config/devin/config.json
+          content: '{"auto_update": false, "version": 1}'
+          overwrite: false
+          description: Turn off Devin's self-update in config.json
+
+dockerfile: agent-devin.dockerfile

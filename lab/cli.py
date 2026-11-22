@@ -197,6 +197,19 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def _cmd_approvals(args: argparse.Namespace) -> int:
+    from . import approve as approve_mod
+
+    rows = approve_mod.status()
+    if args.json:
+        print(json.dumps({"approvals": rows}))
+    else:
+        for r in rows:
+            state = "approved" if r["approved"] else (r["error"] or "needs approval: burner approve --agent " + r["agent"])
+            print(f"{r['agent']:<10} {r['kit']:<20} {state}")
+    return 0
+
+
 def _cmd_scope(args: argparse.Namespace) -> int:
     try:
         scope = scope_mod.load(args.file, check_dates=not args.ignore_dates)
@@ -256,6 +269,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_approve = sub.add_parser("approve", help="approve a mixin agent's credential in sbx (interactive)")
     p_approve.add_argument("--agent", required=True, choices=sorted(AGENTS))
     p_approve.set_defaults(func=lambda a: approve.approve(a.agent))
+
+    p_appr = sub.add_parser("approvals", help="which mixin kits still need a credential approval in sbx")
+    p_appr.add_argument("--json", action="store_true")
+    p_appr.set_defaults(func=_cmd_approvals)
 
     p_scope = sub.add_parser("scope", help="validate a scope file and show its network policy")
     p_scope.add_argument("file")
