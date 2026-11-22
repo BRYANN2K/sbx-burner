@@ -11,6 +11,7 @@ import (
 
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
+	"github.com/BRYANN2K/sbx-burner/internal/series"
 )
 
 var targetLabel = map[string]string{
@@ -26,6 +27,8 @@ type homeModel struct {
 	cat     int
 	rec     int
 	search  bool
+	selMode bool     // series selection mode
+	checked []string // recipe ids in the order they were checked
 	filter  textinput.Model
 	msg     string
 }
@@ -147,9 +150,39 @@ func (m model) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	}
+	if h.selMode {
+		switch k.String() {
+		case " ":
+			if r, ok := h.current(); ok && r.Runnable() {
+				h.toggle(r.ID)
+			}
+			h.col = 1
+			return m, nil
+		case "c":
+			h.checked = nil
+			return m, nil
+		case "esc":
+			h.selMode, h.checked = false, nil
+			return m, nil
+		case "enter":
+			if len(h.checked) == 0 {
+				return m, nil
+			}
+			return m.openSeries(m.newSeriesItems(h.checked), "")
+		}
+	}
 	switch k.String() {
 	case "q":
 		return m, tea.Quit
+	case "v":
+		h.selMode, h.col = true, 1
+		return m, nil
+	case "e":
+		if saved := series.List(catalog.Home()); len(saved) > 0 {
+			last := saved[len(saved)-1]
+			return m.openSeries(append([]series.Item{}, last.Items...), last.Name)
+		}
+		return m, nil
 	case "/":
 		h.search, h.col, h.rec = true, 1, 0
 		return m, h.filter.Focus()
@@ -163,8 +196,7 @@ func (m model) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.scr = scrNew
 		return m, nil
 	case "u":
-		m.out.Action, m.out.Code = "update", 0
-		return m, tea.Quit
+		return m.updateOutcome()
 	case "left", "h":
 		if h.filter.Value() == "" {
 			h.col = 0
@@ -203,6 +235,8 @@ func (m model) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.flow = newFlow(r, m.cfg.Cwd, m.checks, m.agents, m.acpAgents)
+		m.flow.prefs = m.prefs
+		m.flow.advance()
 		m.scr = scrFlow
 		return m, m.flow.focusCmd()
 	case "esc":
@@ -224,6 +258,9 @@ func (m model) viewHome() string {
 
 	// Columns.
 	bodyH := m.h - lipgloss.Height(b.String()) - 1
+	if h.selMode {
+		bodyH--
+	}
 	if h.msg != "" {
 		bodyH--
 	}
@@ -285,9 +322,9 @@ func (m model) viewHome() string {
 			style = sFaint
 		}
 		if i == h.rec && h.col == 1 {
-			rl = append(rl, sel(recW-4, "❯ "+name))
+			rl = append(rl, sel(recW-4, "❯ "+h.box(r.ID)+name))
 		} else {
-			rl = append(rl, "  "+style.Render(name))
+			rl = append(rl, "  "+h.box(r.ID)+style.Render(name))
 		}
 	}
 	if len(list) == 0 {
@@ -301,12 +338,21 @@ func (m model) viewHome() string {
 	if showDetail {
 		cols = append(cols, col(detW, bodyH, m.detail(detW-4), "right"))
 	}
+	if h.selMode {
+		b.WriteString(sAmber.Render("  SERIES SELECTION") + sDim.Render(fmt.Sprintf("  %d checked", len(h.checked))) + "\n")
+	}
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, cols...) + "\n")
 	if h.msg != "" {
 		b.WriteString("  " + sAmber.Render(h.msg) + "\n")
 	}
 	// Bottom: every command in one bar, then the doctor status line.
-	keys := []string{"enter", "run", "/", "search", "s", "sandboxes", "d", "doctor", "n", "new recipe", "u", "update", "↑↓ ←→", "move"}
+	keys := []string{"enter", "run", "/", "search", "v", "series", "s", "sandboxes", "d", "doctor", "n", "new recipe", "u", "update", "↑↓ ←→", "move"}
+	if len(series.List(catalog.Home())) > 0 {
+		keys = append(keys[:6], append([]string{"e", "last series"}, keys[6:]...)...)
+	}
+	if h.selMode {
+		keys = []string{"space", "check", "c", "clear", "enter", "series", "esc", "leave", "↑↓ ←→", "move"}
+	}
 	quit := sSoft.Render("q") + " " + sDim.Render("quit") + " "
 	cmds := hints(keys...)
 	if lipgloss.Width(cmds)+lipgloss.Width(quit)+2 > w {
@@ -411,7 +457,7 @@ func (m model) detail(w int) string {
 // statusLine: catalog on the left; sbx, runtime, credentials, disk on the
 // right. The spinner turns only while the doctor checks run.
 func (m model) statusLine() string {
-	left := ""
+	left := sAmber.Render(m.releaseNote())
 	var right string
 	if m.checking {
 		right = sAmber.Render(m.spin()) + sDim.Render(" checking sbx, runtime, disk")
@@ -471,4 +517,28 @@ func testedWith(r catalog.Recipe) string {
 		return "not yet"
 	}
 	return strings.Join(r.TestedWith, " · ")
+}
+
+func (h *homeModel) toggle(id string) {
+	for i, x := range h.checked {
+		if x == id {
+			h.checked = append(h.checked[:i], h.checked[i+1:]...)
+			return
+		}
+	}
+	h.checked = append(h.checked, id)
+}
+
+// box is the series check box of a recipe row, only in selection mode:
+// [ ] or its order [1] [2]…
+func (h homeModel) box(id string) string {
+	if !h.selMode {
+		return ""
+	}
+	for i, x := range h.checked {
+		if x == id {
+			return sAmber.Render(fmt.Sprintf("[%d] ", i+1))
+		}
+	}
+	return sFaint.Render("[ ] ")
 }

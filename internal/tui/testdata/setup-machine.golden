@@ -1,0 +1,40 @@
+Setup                                                            machine › agents › approvals › preferences › first run
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  sbx installed                  sbx version v0.54.0 4bec4a5                                                        │
+│ ✓  Host container runtime         docker 29.5.2                                                                      │
+│ ✓  Docker buildx (recipe kits)    available                                                                          │
+│ !  Global network policy          not initialized                                                                    │
+│ ✓  Free disk                      14 GB free                                                                         │
+│ ✓  GitHub login                   signed in                                                                          │
+│                                                                                                                      │
+│ Global network policy                                                                                                │
+│   $ sbx policy init deny-all                                                                                         │
+│   changes the global sbx policy: every sbx sandbox on this Mac, not only burner's                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  enter run the command  │  s skip  │  n next

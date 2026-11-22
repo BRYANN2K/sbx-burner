@@ -9,9 +9,9 @@
 # TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
 schemaVersion: "3"
 kind: workload
-displayName: Kali Linux (rolling) (agent-lab-sbx)
+displayName: Kali Linux (rolling) (sbx-burner)
 description: Kali Linux (rolling) base with the sbx platform floor, for lab recipes.
-sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
 
 capabilities:
   - type: com.docker.sandbox/sbx@1

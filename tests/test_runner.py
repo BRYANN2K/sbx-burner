@@ -1100,3 +1100,50 @@ def test_acknowledged_risky_techniques_are_recorded(make_recipe, repo, tmp_path)
     runner.execute_plan(plan, execute=FakeSbx(plan), log=lambda _: None)
     run = json.loads((plan.run_dir / "report.json").read_text())["run"]
     assert run["scope"] == {"id": "unit-lab", "risky_acknowledged": ["dos"]}
+
+
+def test_approval_status_lists_each_mixin_kit(tmp_path, monkeypatch):
+    from lab import approve
+
+    cfg = tmp_path / "cfg" / "sbx"
+    cfg.mkdir(parents=True)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    (cfg / "credentials.yaml").write_text(
+        "bindings:\n  openai:\n    oauth:\n      domains: [chatgpt.com, auth.openai.com, api.openai.com]\n"
+    )
+    rows = {r["agent"]: r for r in approve.status()}
+    assert set(rows) >= {"claude", "codex"}
+    assert rows["claude"]["approved"] is False and rows["claude"]["missing"]
+    (cfg / "credentials.yaml").write_text("bindings: {openai: str}\n")
+    assert all(r["error"] for r in approve.status())
+
+
+def test_every_agent_mixin_kit_exists():
+    from lab.recipe import REPO_ROOT
+
+    for agent in sbx.AGENTS.values():
+        if agent.mixin_kit:
+            kit = REPO_ROOT / agent.mixin_kit
+            assert (kit / f"{kit.name}.yaml").is_file(), f"{agent.name}: {agent.mixin_kit} has no {kit.name}.yaml"
+
+
+def test_missing_mixin_kit_is_refused(make_recipe, repo, tmp_path, monkeypatch):
+    import dataclasses
+
+    agent = dataclasses.replace(sbx.AGENTS["codex"], mixin_kit="kits/agent-nope")
+    monkeypatch.setitem(sbx.AGENTS, "codex", agent)
+    recipe = make_recipe(
+        "devsecops", "kali-x", **{"recipe.yaml": ("image: debian:stable-slim", "image: debian:stable-slim\n    workload: kits/base-kali")}
+    )
+    with pytest.raises(runner.Refused, match="mixin kit kits/agent-nope is missing"):
+        _plan(recipe, repo, tmp_path, agent_name="codex")
+
+
+def test_approval_status_never_approves_a_missing_kit(monkeypatch):
+    import dataclasses
+
+    from lab import approve
+
+    monkeypatch.setitem(sbx.AGENTS, "devin", dataclasses.replace(sbx.AGENTS["devin"], mixin_kit="kits/agent-devin-missing"))
+    row = next(r for r in approve.status() if r["agent"] == "devin")
+    assert row["approved"] is False and "is missing" in row["error"]

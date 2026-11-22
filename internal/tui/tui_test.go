@@ -690,10 +690,10 @@ func TestDoctorChecksEveryEngineAgent(t *testing.T) {
 	orig := engineAgents
 	defer func() { engineAgents = orig }()
 	engineAgents = func(context.Context, string) ([]engine.AgentInfo, error) {
-		return []engine.AgentInfo{{Name: "claude"}, {Name: "codex"}, {Name: "devin"}, {Name: "opencode"}}, nil
+		return []engine.AgentInfo{{Name: "claude"}, {Name: "codex"}, {Name: "devin"}, {Name: "newagent"}}, nil
 	}
 	o := doctorOptions(context.Background(), "/catalog")
-	if got := strings.Join(o.Agents, ","); got != "claude,codex,devin,opencode" || o.DiskPath != "/catalog" {
+	if got := strings.Join(o.Agents, ","); got != "claude,codex,cursor,devin,opencode,newagent" || o.DiskPath != "/catalog" {
 		t.Fatalf("doctor options: agents=%s disk=%s", got, o.DiskPath)
 	}
 	engineAgents = func(context.Context, string) ([]engine.AgentInfo, error) { return nil, errors.New("no engine") }
@@ -1222,5 +1222,322 @@ func TestKeptRunIsRecorded(t *testing.T) {
 	list, _ := sandboxes.Load(home)
 	if len(list) != 1 || list[0].Name != "lab-secrets-scan-012942" || list[0].RunDir != "/runs/20261122-012942-secrets-scan" {
 		t.Fatalf("recorded %+v", list)
+	}
+}
+
+func TestSeriesSelectEditSaveAndRun(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("BURNER_HOME", home)
+	runs := t.TempDir()
+	rep := filepath.Join(runs, "20261122-012942-x", "report.md")
+	os.MkdirAll(filepath.Dir(rep), 0o700)
+	os.WriteFile(rep, []byte("# r\n"), 0o600)
+	os.WriteFile(strings.TrimSuffix(rep, ".md")+".json", []byte(`{"findings":[{"id":"a","title":"Leaked key","severity":"critical"}]}`), 0o600)
+	eng := &fakeEngine{events: []events.Event{{Type: "done", Report: rep, RunID: "20261122-012942-x"}}}
+	m := testModel(t, eng)
+	m.cfg.RunsDir = runs
+	m.agents = []string{"claude", "codex"}
+	for i := range m.checks {
+		if m.checks[i].ID == "agent-claude" {
+			m.checks[i].Level = doctor.OK
+		}
+	}
+	// v: selection mode; check sca-osv then secrets-scan.
+	m = press(t, m, "v", "space", "down", "space")
+	if !m.home.selMode || strings.Join(m.home.checked, ",") != "devsecops/sca-osv,devsecops/secrets-scan" {
+		t.Fatalf("checked %v", m.home.checked)
+	}
+	golden(t, "home-series-selection", m)
+	m = press(t, m, "enter")
+	if m.scr != scrSeries || len(m.ser.items) != 2 || m.ser.items[0].Agent != "codex" {
+		t.Fatalf("series %+v", m.ser)
+	}
+	m = press(t, m, "left") // agent of row 1 → claude
+	m = press(t, m, "down", "K")
+	if m.ser.items[0].Recipe != "devsecops/secrets-scan" || m.ser.items[1].Agent != "claude" {
+		t.Fatalf("edit %+v", m.ser.items)
+	}
+	golden(t, "series", m)
+	m = press(t, m, "ctrl+s")
+	m = typeText(m, "Repo audit")
+	m = press(t, m, "enter")
+	if _, err := os.Stat(filepath.Join(home, "series", "repo-audit.json")); err != nil {
+		t.Fatalf("not saved: %v (%s)", err, m.ser.err)
+	}
+	// esc keeps the selection on home; e reloads the last saved series.
+	m = press(t, m, "esc")
+	if m.scr != scrHome || !m.home.selMode || len(m.home.checked) != 2 {
+		t.Fatal("esc lost the selection")
+	}
+	m = press(t, m, "esc", "e")
+	if m.scr != scrSeries || m.ser.name != "repo-audit" {
+		t.Fatalf("e did not reload: %v %+v", m.scr, m.ser)
+	}
+	// enter: target (the first recipe's kinds), then the series runs.
+	m = press(t, m, "enter") // target question
+	if m.scr != scrFlow || !m.flow.series {
+		t.Fatal("no target flow for the series")
+	}
+	m = press(t, m, "enter", "enter") // Local folder › This folder
+	if m.scr != scrSeriesRun {
+		t.Fatalf("series did not start: scr=%v q=%+v", m.scr, m.flow.q)
+	}
+	cmd := waitCh(m.srun.ch)
+	for i := 0; i < 20 && !m.srun.done; i++ {
+		var nm tea.Model
+		nm, cmd = m.Update(cmd())
+		m = nm.(model)
+		if cmd == nil {
+			break
+		}
+	}
+	if !m.srun.done || len(m.srun.combined.Findings) != 1 || len(m.srun.combined.Findings[0].Sources) != 2 {
+		t.Fatalf("series run %+v", m.srun.combined)
+	}
+	if len(eng.runs) != 2 || eng.runs[1].Agent != "claude" || eng.runs[0].OnAsk != "skip" {
+		t.Fatalf("engine runs %+v", eng.runs)
+	}
+	m = press(t, m, "enter")
+	if m.scr != scrSeriesReport {
+		t.Fatal("enter did not open the combined report")
+	}
+	v := m.View()
+	if !strings.Contains(v, "Leaked key") || !strings.Contains(v, "devsecops/secrets-scan · devsecops/sca-osv") {
+		t.Fatalf("combined report:\n%s", v)
+	}
+}
+
+func TestDoctorApprovesAKitAndHomeSaysSo(t *testing.T) {
+	m := testModel(t, &fakeEngine{})
+	m.checks = append(m.checks, doctor.ApprovalResults([]engine.Approval{
+		{Agent: "codex", Approved: true},
+		{Agent: "claude", Missing: map[string][]string{"anthropic": {"api.anthropic.com"}}},
+	})...)
+	if v := m.View(); !strings.Contains(v, "approvals needed: claude") {
+		t.Fatalf("home does not say an approval is needed:\n%s", v)
+	}
+	m = press(t, m, "d")
+	for m.doc.cursor < len(m.checks)-1 {
+		m = press(t, m, "down")
+	}
+	golden(t, "doctor-approvals", m)
+	if _, cmd := m.Update(keyMsg("a")); cmd == nil {
+		t.Fatal("a did not start the sbx approval")
+	}
+	nm, cmd := m.Update(approveDoneMsg{})
+	m = nm.(model)
+	if !m.checking || cmd == nil {
+		t.Fatal("the lines were not checked again after the approval")
+	}
+}
+
+func setupChecks() []doctor.Result {
+	c := checks()
+	c = append(c,
+		doctor.Result{ID: "policy", Title: "Global network policy", Level: doctor.Warn, Detail: "not initialized", Fix: doctor.PolicyInitCommand},
+		doctor.Result{ID: "git-login", Title: "GitHub login", Level: doctor.OK, Detail: "signed in"},
+	)
+	return append(c, doctor.ApprovalResults([]engine.Approval{
+		{Agent: "codex", Approved: true},
+		{Agent: "claude", Missing: map[string][]string{"anthropic": {"api.anthropic.com"}}},
+	})...)
+}
+
+func TestSetupWalksEveryStep(t *testing.T) {
+	home := filepath.Join(goldenTree, "home") // fixed: the path shows on screen
+	os.RemoveAll(home)
+	t.Setenv("BURNER_HOME", home)
+	eng := &fakeEngine{models: ModelList{Current: "gpt-6.2-sol", Values: []Model{{"gpt-6-luna", "6 Luna"}, {"gpt-6.2-sol", "6.2 Sol"}}}}
+	m := testModel(t, eng)
+	m.setup, m.scr = newSetup(Prefs{}), scrSetup
+	m.cfg.Official = true
+	m.checks = setupChecks()
+	m.acpAgents = []string{"codex"}
+	golden(t, "setup-welcome", m)
+	m = press(t, m, "enter")
+	golden(t, "setup-machine", m)
+	if _, cmd := m.Update(keyMsg("enter")); cmd == nil {
+		t.Fatal("enter did not run sbx policy init")
+	}
+	m.setup.busy = false
+	m = press(t, m, "n")
+	golden(t, "setup-agents", m)
+	if _, cmd := m.Update(keyMsg("enter")); cmd == nil {
+		t.Fatal("enter did not connect the agent")
+	}
+	m.setup.busy = false
+	m = press(t, m, "down", "down", "down", "down")
+	if _, cmd := m.Update(keyMsg("o")); cmd == nil {
+		t.Fatal("o did not open OpenCode")
+	}
+	m.setup.busy = false
+	m = press(t, m, "n")
+	golden(t, "setup-approvals", m)
+	m = press(t, m, "down")
+	if _, cmd := m.Update(keyMsg("a")); cmd == nil {
+		t.Fatal("a did not approve the claude kit")
+	}
+	m.setup.busy = false
+	nm, cmd := m.Update(keyMsg("n"))
+	m = nm.(model)
+	if m.setup.step != setupPrefs || cmd == nil {
+		t.Fatal("preferences did not ask codex for its models")
+	}
+	nm, _ = m.Update(cmd())
+	m = nm.(model)
+	m = press(t, m, "tab", "right") // model: gpt-6-luna
+	golden(t, "setup-prefs", m)
+	m = press(t, m, "n")
+	p, ok := LoadPrefs()
+	if !ok || p.Agent != "codex" || p.Model != "gpt-6-luna" || p.Mode != "acp" || p.Permission != "auto" {
+		t.Fatalf("prefs %+v %v", p, ok)
+	}
+	st, _ := os.Stat(filepath.Join(home, "config.yaml"))
+	if st.Mode().Perm() != 0o600 {
+		t.Fatalf("config.yaml mode %v", st.Mode())
+	}
+	golden(t, "setup-first-run", m)
+	m = press(t, m, "s")
+	golden(t, "setup-done", m)
+	m = press(t, m, "enter")
+	if m.scr != scrHome || m.setup != nil {
+		t.Fatal("enter did not open burner")
+	}
+}
+
+func TestPrefsAreTheFlowDefaults(t *testing.T) {
+	f := newFlow(recipes()[0], treeDir(t), checks(), []string{"claude", "codex"}, []string{"codex"})
+	f.prefs = Prefs{Agent: "codex", Mode: "interactive", Model: "gpt-6-luna", Permission: "ask"}
+	f.models, f.modelsFor = ModelList{Values: []Model{{"gpt-6.2-sol", ""}, {"gpt-6-luna", ""}}}, "codex"
+	f.answers = []answer{{value: "path"}, {value: "here"}}
+	f.advance()
+	if f.q.title != "Agent" || f.q.options[f.q.cursor].value != "codex" {
+		t.Fatalf("agent default %+v", f.q)
+	}
+	f.answers = append(f.answers, answer{title: "Agent", value: "codex"})
+	f.advance()
+	if f.q.title != "Mode" || f.q.options[f.q.cursor].value != "interactive" {
+		t.Fatalf("mode default %+v", f.q)
+	}
+	f.answers = append(f.answers, answer{title: "Mode", value: "acp"})
+	f.advance()
+	if f.q.title != "Model" || f.q.options[f.q.cursor].value != "gpt-6-luna" {
+		t.Fatalf("model default %+v", f.q)
+	}
+}
+
+func TestDoctorPolicyActionAsksFirst(t *testing.T) {
+	m := testModel(t, &fakeEngine{})
+	m.checks = setupChecks()
+	m = press(t, m, "d")
+	for m.checks[m.doc.cursor].ID != "policy" {
+		m = press(t, m, "down")
+	}
+	nm, cmd := m.Update(keyMsg("a"))
+	m = nm.(model)
+	if cmd != nil || !m.doc.policy {
+		t.Fatal("a ran the policy command without asking")
+	}
+	golden(t, "doctor-policy", m)
+	if _, cmd := m.Update(keyMsg("enter")); cmd == nil {
+		t.Fatal("enter did not run the policy command")
+	}
+}
+
+func TestSetupSkipsTheSampleOutsideTheOfficialCatalog(t *testing.T) {
+	m := testModel(t, &fakeEngine{})
+	m.setup, m.scr = newSetup(Prefs{}), scrSetup
+	m.setup.step = setupFirstRun
+	if _, cmd := m.Update(keyMsg("enter")); cmd != nil {
+		t.Fatal("the sample was built from a user catalog")
+	}
+	if !strings.Contains(m.View(), "the sample comes from the official catalog") {
+		t.Fatal("no status line")
+	}
+}
+
+func TestDevinIsBlockedBySbx(t *testing.T) {
+	res := doctor.Check(context.Background(), doctor.Options{Agents: []string{"devin"}, LookPath: func(string) (string, error) { return "/bin/x", nil },
+		Run: func(context.Context, string, ...string) (string, error) { return "", nil }})
+	var devin doctor.Result
+	for _, r := range res {
+		if r.ID == "agent-devin" {
+			devin = r
+		}
+	}
+	if devin.Level != doctor.Warn || !strings.Contains(devin.Detail, "blocked by sbx") || !strings.Contains(devin.Detail, "#906") {
+		t.Fatalf("devin %+v", devin)
+	}
+	c := append(checks(), devin)
+	f := newFlow(recipes()[0], treeDir(t), c, []string{"claude", "codex", "devin"}, nil)
+	f.prefs = Prefs{Agent: "devin"}
+	f.answers = []answer{{value: "path"}, {value: "here"}}
+	f.advance()
+	var opt option
+	for _, o := range f.q.options {
+		if o.value == "devin" {
+			opt = o
+		}
+	}
+	if !opt.disabled || f.q.options[f.q.cursor].value == "devin" {
+		t.Fatalf("devin selectable on a built-in recipe: %+v cursor=%d", opt, f.q.cursor)
+	}
+	// Kali recipe with an approved devin kit: selectable.
+	kali := recipes()[0]
+	kali.Image = "kali"
+	c2 := append(c, doctor.Result{ID: "approval-devin", Level: doctor.OK})
+	f = newFlow(kali, treeDir(t), c2, []string{"codex", "devin"}, nil)
+	f.answers = []answer{{value: "path"}, {value: "here"}}
+	f.advance()
+	opts := map[string]option{}
+	for _, o := range f.q.options {
+		opts[o.value] = o
+	}
+	if f.q.title != "Agent" || opts["devin"].value != "devin" || opts["devin"].disabled || opts["devin"].note != "kit approved" {
+		t.Fatal("devin not selectable on a Kali recipe with its kit approved")
+	}
+	// Kit present but not approved yet: selectable, "needs approval".
+	c3 := append(c, doctor.Result{ID: "approval-devin", Level: doctor.Warn, Detail: "needs approval: api.devin.ai"})
+	f = newFlow(kali, treeDir(t), c3, []string{"codex", "devin"}, nil)
+	f.answers = []answer{{value: "path"}, {value: "here"}}
+	f.advance()
+	for _, o := range f.q.options {
+		if o.value == "devin" && (o.disabled || o.note != "needs approval") {
+			t.Fatalf("devin with an unapproved kit: %+v", o)
+		}
+	}
+	// Kit missing: still blocked.
+	c4 := append(c, doctor.Result{ID: "approval-devin", Level: doctor.Warn, Detail: "could not check: mixin kit kits/agent-devin is missing"})
+	f = newFlow(kali, treeDir(t), c4, []string{"codex", "devin"}, nil)
+	f.answers = []answer{{value: "path"}, {value: "here"}}
+	f.advance()
+	for _, o := range f.q.options {
+		if o.value == "devin" && !o.disabled {
+			t.Fatal("devin selectable with a missing kit")
+		}
+	}
+}
+
+func TestNewerReleaseShowsAndInstalls(t *testing.T) {
+	m := testModel(t, &fakeEngine{})
+	if strings.Contains(m.View(), "available") {
+		t.Fatal("no release known: no note")
+	}
+	nm, _ := m.Update(keyMsg("u"))
+	if got := nm.(model).out.Action; got != "update" {
+		t.Fatalf("u without a newer release: %q", got)
+	}
+	nm, _ = m.Update(releaseMsg("v9.9.9"))
+	m = nm.(model)
+	if !strings.Contains(m.View(), "burner v9.9.9 available: u to update") {
+		t.Fatal("home has no release note")
+	}
+	m.scr = scrDoctor
+	if !strings.Contains(m.View(), "burner v9.9.9 available: u to update") {
+		t.Fatal("doctor has no release note")
+	}
+	nm, _ = m.Update(keyMsg("u"))
+	if got := nm.(model).out.Action; got != "update-install" {
+		t.Fatalf("u with a newer release: %q", got)
 	}
 }

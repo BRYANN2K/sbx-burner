@@ -313,4 +313,4 @@ def test_agents_command_lists_the_runner_table(capsys):
 
     assert cli.main(["agents", "--json"]) == 0
     names = [a["name"] for a in _json.loads(capsys.readouterr().out)["agents"]]
-    assert names == ["claude", "codex", "devin"]
+    assert names == ["claude", "codex", "cursor", "opencode", "devin"]

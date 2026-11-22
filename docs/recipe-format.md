@@ -40,7 +40,7 @@ Markdown with YAML frontmatter. The frontmatter feeds the README gallery. The bo
 | `licence` | SPDX id of the recipe itself. |
 | `sources` | Upstream projects and their licences. Anything vendored or inspired by. |
 
-Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today). Devin sign-in is currently broken in sbx. `python -m lab agents` lists them (`burner agents` does the same). There is no `agents` field. An old `agents` key is ignored with a lint warning, so remove it.
+Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today). Devin is blocked by sbx for now (docker/sbx-releases#906). `python -m lab agents` lists them (`burner agents` does the same). There is no `agents` field. An old `agents` key is ignored with a lint warning, so remove it.
 
 Example:
 

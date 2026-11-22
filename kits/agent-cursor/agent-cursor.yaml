@@ -1,0 +1,93 @@
+# syntax=docker/sandbox-kit:3
+# Cursor agent CLI as a mixin, for workloads that are not Docker's built-in
+# cursor agent (the Kali, REMnux and Ubuntu bases in this directory).
+# The credential, the first-start files and the dockerd capability follow
+# the kit spec; burner's own text and scripts. Hostnames, sentinel values
+# and the files cursor-agent reads are facts of the protocol. Without them
+# the CLI starts in `agent login` on a workload that is not sbx's own.
+schemaVersion: "3"
+kind: mixin
+displayName: Cursor Agent (sbx-burner)
+description: Cursor agent CLI with a proxy-managed Cursor credential.
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
+
+args:
+  version:
+    default: "2026.11.22-e9042b2"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9]+)?$'
+    buildArg: CURSOR_VERSION
+
+provides: ["cursor@${{ kit.args.version }}"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # Cursor's API and OAuth hosts.
+          - api2.cursor.sh:443
+          - api3.cursor.sh:443
+          - repo42.cursor.sh:443
+          - cursor.com:443
+          # Needed at run time: session/new downloads its service parts here.
+          - downloads.cursor.com:443
+  # Both mechanisms are declared; sbx uses the one the host has stored. No
+  # proxyManaged on apiKey: a CURSOR_API_KEY placeholder set on every start
+  # would make the CLI pick key auth on an OAuth-only host.
+  - type: com.docker.sandbox/credential@1
+    optional: true
+    description: Cursor credential held by the sbx proxy (key or OAuth)
+    config:
+      service: cursor
+      phase: runtime
+      apiKey:
+        name: CURSOR_API_KEY
+        inject:
+          - {domain: api2.cursor.sh, header: Authorization, format: "Bearer %s"}
+          - {domain: api3.cursor.sh, header: Authorization, format: "Bearer %s"}
+          - {domain: repo42.cursor.sh, header: Authorization, format: "Bearer %s"}
+          - {domain: cursor.com, header: Authorization, format: "Bearer %s"}
+      oauth:
+        tokenEndpoint: {host: api2.cursor.sh, path: /auth/poll}
+        resourceHosts: [api2.cursor.sh, api3.cursor.sh, repo42.cursor.sh, cursor.com]
+        sentinels:
+          accessToken: cursor-oat-proxy-managed
+          refreshToken: cursor-ort-proxy-managed
+        responseFields:
+          accessToken: accessToken
+          refreshToken: refreshToken
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: install -d -o agent -g agent /home/agent/.cursor
+          user: "0"
+          description: Create ~/.cursor for the agent user
+        # cursor-agent keys its trust marker on a slug of the workspace path;
+        # writing the marker for the workspace only skips its trust prompt.
+        - command: |
+            set -eu
+            if [ -z "${WORKSPACE_DIR:-}" ]; then
+              echo "no WORKSPACE_DIR: the workspace is not pre-trusted" >&2
+              exit 0
+            fi
+            name=$(printf '%s' "$WORKSPACE_DIR" | LC_ALL=C sed -e 's/[^A-Za-z0-9]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')
+            mark="/home/agent/.cursor/projects/$name/.workspace-trusted"
+            [ -f "$mark" ] && exit 0
+            mkdir -p "$(dirname "$mark")"
+            path_json=$(printf '%s' "$WORKSPACE_DIR" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+            now=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+            printf '{"trustedAt":"%s","workspacePath":"%s"}\n' "$now" "$path_json" > "$mark"
+          user: agent
+          env: [WORKSPACE_DIR]
+          description: Mark the workspace as trusted for cursor-agent
+      files:
+        - path: /home/agent/.cursor/cli-config.json
+          content: '{"network": {"useHttp1ForAgent": true}}'
+          overwrite: false
+          description: Make cursor-agent use HTTP/1.1 for its agent connection
+  # cursor-agent starts its ACP session services through a Docker daemon;
+  # without one session/new fails.
+  - type: com.docker.sandbox/dockerd@1
+    optional: true
+
+dockerfile: agent-cursor.dockerfile

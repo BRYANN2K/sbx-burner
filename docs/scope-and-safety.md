@@ -115,7 +115,7 @@ The agent runs with every permission inside the sandbox. It has no approval prom
 
 - microVM isolation from your machine,
 - a network policy built from the scope, with install hosts closed before the agent starts,
-- credentials injected by the `sbx` proxy, never visible in the VM,
+- credentials injected by the `sbx` proxy, never visible in the VM (Devin excepted, see [Credentials](#credentials)),
 - your target mounted read-only (`path`, `repo`) or copied (`app`).
 
 This model relies on two `sbx` properties that are not yet verified:
@@ -132,6 +132,8 @@ Malware and some detection recipes need no outbound access. They run with the ne
 ## Credentials
 
 Agent credentials stay on the host. The sandbox sees a placeholder. The runner never reads or prints a key. Cloud audit recipes pass credentials only through `sbx secret`.
+
+Devin is the exception. Its credential is passthrough: sbx writes the real Devin token into `~/.local/share/devin/credentials.toml` inside the sandbox, because the CLI sends it inside protobuf bodies the proxy cannot rewrite. The agent, and anything it runs, can read that token and send it to any host the policy allows. Run Devin only against targets you would trust with your Devin account, and revoke the token if a run looks wrong.
 
 ## Stop conditions
 

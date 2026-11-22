@@ -28,6 +28,7 @@ import (
 	"github.com/BRYANN2K/sbx-burner/internal/mcp"
 	"github.com/BRYANN2K/sbx-burner/internal/sandboxes"
 	"github.com/BRYANN2K/sbx-burner/internal/scaffold"
+	"github.com/BRYANN2K/sbx-burner/internal/series"
 	"github.com/BRYANN2K/sbx-burner/internal/tui"
 	"github.com/BRYANN2K/sbx-burner/internal/update"
 )
@@ -51,7 +52,8 @@ const (
 const usage = `burner — disposable lab recipes for coding agents in sbx
 
 Usage:
-  burner                      interactive menu
+  burner                      interactive menu (setup on the first launch)
+  burner setup                machine, agents, approvals, preferences, a first run
   burner list [--json]        recipes in the catalog and in ~/.burner/recipes
   burner show <recipe> [--json]
   burner run <recipe> [flags] run a recipe (same flags as the menu asks)
@@ -65,6 +67,9 @@ Usage:
                               write a scope for that recipe from the target (~/.burner/scopes)
   burner doctor [--json]
   burner answer <run-dir> <ask-id> <answer>   answer the agent from another terminal
+  burner series list            saved series
+  burner series run NAME [--target…|--target-app…|--target-url…] [--scope FILE]
+                              run a saved series against one target, combined report
   burner sandboxes [--json]   sandboxes kept with --keep
   burner burn NAME|--kept     remove a kept sandbox, or all of them
   burner approve --agent A    approve the agent's credential for lab kits (interactive)
@@ -114,7 +119,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			fmt.Fprint(stderr, usage)
 			return exitUsage
 		}
-		return interactive(ctx, catalogFlag, stderr)
+		return interactive(ctx, catalogFlag, stderr, false)
 	}
 	cmd, rest := args[0], args[1:]
 	switch cmd {
@@ -125,7 +130,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "burner", version)
 		return exitOK
 	case "doctor":
-		return cmdDoctor(ctx, rest, stdout)
+		return cmdDoctor(ctx, catalogFlag, rest, stdout)
 	case "list":
 		return cmdList(catalogFlag, rest, stdout, stderr)
 	case "show":
@@ -136,6 +141,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdNew(catalogFlag, rest, stdout, stderr)
 	case "answer":
 		return cmdAnswer(rest, stderr)
+	case "series":
+		return cmdSeries(ctx, catalogFlag, rest, stdout, stderr)
+	case "setup":
+		if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
+			return fail(stderr, exitUsage, errors.New("burner setup is interactive: it needs a terminal"))
+		}
+		return interactive(ctx, catalogFlag, stderr, true)
 	case "sandboxes":
 		return cmdSandboxes(ctx, rest, stdout, stderr)
 	case "burn":
@@ -186,7 +198,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func interactive(ctx context.Context, catalogFlag string, stderr io.Writer) int {
+func interactive(ctx context.Context, catalogFlag string, stderr io.Writer, setup bool) int {
 	root, err := catalog.FindRoot(catalogFlag)
 	if err != nil {
 		return fail(stderr, exitNotReady, err)
@@ -195,7 +207,8 @@ func interactive(ctx context.Context, catalogFlag string, stderr io.Writer) int 
 	for _, p := range problems {
 		fmt.Fprintln(stderr, "warning:", p)
 	}
-	out, err := tui.Run(ctx, tui.Config{Root: root, Recipes: recipes, Version: version})
+	_, configured := tui.LoadPrefs()
+	out, err := tui.Run(ctx, tui.Config{Root: root, Recipes: recipes, Version: version, Setup: setup || !configured, Official: catalog.IsOfficial(root), Release: newerRelease})
 	if errors.Is(err, tui.ErrAborted) {
 		return exitOK
 	}
@@ -205,6 +218,8 @@ func interactive(ctx context.Context, catalogFlag string, stderr io.Writer) int 
 	switch out.Action {
 	case "update":
 		return cmdUpdate(ctx, nil, os.Stdout, stderr)
+	case "update-install":
+		return cmdUpdate(ctx, []string{"--install"}, os.Stdout, stderr)
 	case "left-while-stopping":
 		fmt.Fprintln(stderr, "burner: you left while the runner was destroying the sandbox. It keeps going in the background; check with: sbx ls (remove a leftover with: sbx rm --force <name>)")
 	}
@@ -217,7 +232,7 @@ func interactive(ctx context.Context, catalogFlag string, stderr io.Writer) int 
 	return out.Code
 }
 
-func cmdDoctor(ctx context.Context, args []string, stdout io.Writer) int {
+func cmdDoctor(ctx context.Context, catalogFlag string, args []string, stdout io.Writer) int {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	asJSON := fs.Bool("json", false, "")
 	if fs.Parse(args) != nil {
@@ -225,6 +240,11 @@ func cmdDoctor(ctx context.Context, args []string, stdout io.Writer) int {
 	}
 	home, _ := os.UserHomeDir()
 	results := doctor.Check(ctx, doctor.Options{DiskPath: home})
+	if root, err := catalog.FindRoot(catalogFlag); err == nil {
+		if rows, err := engine.Approvals(ctx, root); err == nil {
+			results = append(results, doctor.ApprovalResults(rows)...)
+		}
+	}
 	if *asJSON {
 		_ = json.NewEncoder(stdout).Encode(map[string]any{"status": doctor.Worst(results), "checks": results})
 	} else {
@@ -473,6 +493,18 @@ func cmdNew(catalogFlag string, args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "Created %s\nNext: edit RECIPE.md, recipe.yaml and AGENTS.md, then run: burner lint %s\n", dest, dest)
 	return exitOK
+}
+
+// newerRelease is the TUI's release check: the latest tag when it is
+// newer than this binary, else "".
+func newerRelease(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	rel, err := update.Latest(ctx)
+	if err != nil || !update.Newer(rel.Tag, version) {
+		return "", err
+	}
+	return rel.Tag, nil
 }
 
 func cmdUpdate(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -792,4 +824,90 @@ func cmdBurn(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "burned "+n)
 	}
 	return code
+}
+
+func cmdSeries(ctx context.Context, catalogFlag string, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || (args[0] != "list" && args[0] != "run") {
+		fmt.Fprintln(stderr, "usage: burner series list | burner series run NAME [target flags] [--scope FILE]")
+		return exitUsage
+	}
+	home := catalog.Home()
+	if args[0] == "list" {
+		for _, s := range series.List(home) {
+			var ids []string
+			for _, it := range s.Items {
+				ids = append(ids, it.Recipe)
+			}
+			fmt.Fprintf(stdout, "%-24s %s\n", s.Name, strings.Join(ids, ", "))
+		}
+		return exitOK
+	}
+	fs := flag.NewFlagSet("series run", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var o engine.RunOptions
+	fs.StringVar(&o.Target, "target", "", "")
+	fs.StringVar(&o.TargetRepo, "target-repo", "", "")
+	fs.StringVar(&o.TargetApp, "target-app", "", "")
+	fs.StringVar(&o.AppCmd, "app-cmd", "", "")
+	fs.StringVar(&o.AppPort, "app-port", "", "")
+	fs.StringVar(&o.TargetImage, "target-image", "", "")
+	fs.StringVar(&o.TargetPort, "target-port", "", "")
+	fs.StringVar(&o.TargetURL, "target-url", "", "")
+	fs.StringVar(&o.Scope, "scope", "", "")
+	fs.StringVar(&o.RunsDir, "runs-dir", "", "")
+	if fs.Parse(reorder(args[1:])) != nil || fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: burner series run NAME [target flags] [--scope FILE]")
+		return exitUsage
+	}
+	s, err := series.Load(home, fs.Arg(0))
+	if err != nil {
+		return fail(stderr, exitUsage, err)
+	}
+	root, err := catalog.FindRoot(catalogFlag)
+	if err != nil {
+		return fail(stderr, exitNotReady, err)
+	}
+	recipes, _ := catalog.Load(root)
+	if o.RunsDir == "" {
+		cwd, _ := os.Getwd()
+		o.RunsDir = filepath.Join(cwd, "runs")
+	}
+	acpAgents := make([]string, 0, len(acp.Profiles))
+	for n := range acp.Profiles {
+		acpAgents = append(acpAgents, n)
+	}
+	plans := series.Prepare(s, recipes, o, acpAgents)
+	run := func(ctx context.Context, ro engine.RunOptions) (string, int, error) {
+		code, st, err := live.Run(ctx, root, ro, live.Options{Out: stderr})
+		report := ""
+		if st != nil && st.Done != nil {
+			report = st.Done.Report
+		}
+		return report, code, err
+	}
+	progress := func(i int, r series.RecipeResult) {
+		if r.Status != "running" {
+			fmt.Fprintf(stdout, "%d  %-30s %-8s %s %s\n", i+1, r.Recipe, r.Agent, r.Status, r.Reason)
+		}
+	}
+	c, path, err := series.Run(ctx, s, plans, targetLabel(o), o.RunsDir, run, progress)
+	if err != nil {
+		return fail(stderr, exitFailed, err)
+	}
+	fmt.Fprintf(stdout, "%d findings · %s\n", len(c.Findings), path)
+	for _, r := range c.Recipes {
+		if r.Status == "failed" {
+			return exitFailed
+		}
+	}
+	return exitOK
+}
+
+func targetLabel(o engine.RunOptions) string {
+	for _, v := range []string{o.TargetURL, o.TargetApp, o.TargetImage, o.TargetRepo, o.Target} {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

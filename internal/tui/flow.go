@@ -38,6 +38,7 @@ const (
 
 type option struct {
 	label, value, note string
+	disabled           bool // shown faint, cannot be picked
 }
 
 type question struct {
@@ -84,6 +85,10 @@ type flowModel struct {
 	scopeDryKey string
 	inflight    map[string]bool
 
+	prefs       Prefs           // setup's defaults (~/.burner/config.yaml)
+	series      bool            // a series: target (and scope) only
+	scopeRecipe *catalog.Recipe // the series recipe whose scope template is used
+
 	models        ModelList
 	modelsFor     string
 	modelsLoading bool
@@ -129,6 +134,12 @@ func newFlow(r catalog.Recipe, cwd string, checks []doctor.Result, agents, acp [
 // and to the answers so far.
 func (f *flowModel) sections() []string {
 	s := []string{"target"}
+	if f.series {
+		if f.scopeRecipe != nil {
+			s = append(s, "scope")
+		}
+		return append(s, "run")
+	}
 	if f.r.Scope != "none" && f.r.Scope != "" {
 		s = append(s, "scope")
 	}
@@ -203,10 +214,17 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		}
 	}
 
-	// Scope.
-	if r.Scope == "required" || r.Scope == "optional" {
+	// Scope (in a series: when one of its recipes needs one).
+	scopeMode := r.Scope
+	if f.series {
+		scopeMode = "none"
+		if f.scopeRecipe != nil {
+			scopeMode = "required"
+		}
+	}
+	if scopeMode == "required" || scopeMode == "optional" {
 		use := "yes"
-		if r.Scope == "optional" {
+		if scopeMode == "optional" {
 			v, ok := w.ask(question{section: "scope", title: "Use a scope file?", kind: qSelect,
 				options: []option{{label: "No", value: "no"}, {label: "Yes", value: "yes"}}})
 			if !ok {
@@ -223,6 +241,10 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		}
 	}
 
+	if f.series {
+		return o, true
+	}
+
 	// Agent.
 	// Every agent the runner can launch; recipes no longer restrict it.
 	agents := f.agents
@@ -231,21 +253,37 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 	}
 	var aopts []option
 	def := -1
+	kali := r.Image != ""
 	for _, a := range agents {
 		svc, ok := doctor.AgentServices[a]
 		if !ok {
 			continue
 		}
 		note := "credential stored"
-		if !doctor.AgentReady(f.checks, a) {
+		disabled := false
+		if why, blocked := doctor.Blocked[a]; blocked {
+			// Blocked on sbx's built-in agent; on a Kali recipe burner's
+			// own mixin kit runs it instead, once that kit exists (lab
+			// approvals reports a missing kit as an error, never a row
+			// the runner would refuse). Its approval is asked in the run.
+			note, disabled = why, true
+			if kali {
+				switch c, ok := f.check("approval-" + a); {
+				case ok && c.Level == doctor.OK:
+					note, disabled = "kit approved", false
+				case ok && !strings.Contains(c.Detail, "is missing") && !strings.HasPrefix(c.Detail, "could not check"):
+					note, disabled = "needs approval", false
+				}
+			}
+		} else if !doctor.AgentReady(f.checks, a) {
 			note = "no credential · " + svc.Fix
 		} else if def < 0 {
 			def = len(aopts)
 		}
-		if f.checks == nil {
+		if f.checks == nil && !disabled {
 			note = ""
 		}
-		aopts = append(aopts, option{label: agentName(a), value: a, note: note})
+		aopts = append(aopts, option{label: agentName(a), value: a, note: note, disabled: disabled})
 	}
 	if len(aopts) == 0 {
 		w.ask(question{section: "agent", title: "Agent", kind: qSelect, hint: "The runner reported no agent burner supports yet."})
@@ -253,9 +291,22 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 	}
 	if def < 0 {
 		def = 0
+		for i, op := range aopts {
+			if !op.disabled {
+				def = i
+				break
+			}
+		}
+	}
+	if f.prefs.Agent != "" {
+		for i, op := range aopts {
+			if op.value == f.prefs.Agent && !op.disabled {
+				def = i
+			}
+		}
 	}
 	o.Agent = aopts[def].value
-	if len(aopts) > 1 {
+	if len(aopts) > 1 || aopts[0].disabled {
 		v, ok := w.ask(question{section: "agent", title: "Agent", kind: qSelect, options: aopts, cursor: def})
 		if !ok {
 			return
@@ -273,7 +324,7 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		mopts = append(mopts, option{label: "Headless", value: "headless", note: "one prompt, live view"})
 	}
 	mopts = append(mopts, option{label: "Interactive", value: "interactive", note: "the agent's own TUI in the sandbox"})
-	mode, ok := w.ask(question{section: "mode", title: "Mode", kind: qSelect, options: mopts})
+	mode, ok := w.ask(question{section: "mode", title: "Mode", kind: qSelect, options: mopts, cursor: optIndex(mopts, f.prefs.Mode)})
 	if !ok {
 		return
 	}
@@ -294,17 +345,18 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 				mo = append(mo, option{label: md.Value, value: md.Value, note: md.Name})
 			}
 		}
-		mdl, ok := w.ask(question{section: "model", title: "Model", kind: qSelect, options: mo})
+		mdl, ok := w.ask(question{section: "model", title: "Model", kind: qSelect, options: mo, cursor: optIndex(mo, f.prefs.Model)})
 		if !ok {
 			return
 		}
 		o.Model = mdl
 	}
 	if o.ACP {
-		perm, ok := w.ask(question{section: "permissions", title: "Permissions", kind: qSelect, options: []option{
+		popts := []option{
 			{label: "auto", value: "auto", note: "allow once, every grant logged"},
 			{label: "ask me", value: "ask"},
-		}})
+		}
+		perm, ok := w.ask(question{section: "permissions", title: "Permissions", kind: qSelect, options: popts, cursor: optIndex(popts, f.prefs.Permission)})
 		if !ok {
 			return
 		}
@@ -410,6 +462,11 @@ func (f *flowModel) target(w *walker, kind string, o *engine.RunOptions) bool {
 // scopeStep: create a scope from the target (preview, edit), reuse a saved
 // one, browse, or type a path.
 func (f *flowModel) scopeStep(w *walker, o engine.RunOptions) (string, bool) {
+	rcp := f.r
+	if f.series && f.scopeRecipe != nil {
+		rcp = *f.scopeRecipe
+		o.Recipe = rcp.EngineRef()
+	}
 	key := scopeKey(o)
 	if f.scopeDry == nil || f.scopeDryKey != key {
 		w.ask(question{section: "scope", title: "Scope", loader: "scope-dry", loadKey: "dry\x00" + key, loadOpts: o, loading: "preparing a scope from your target…"})
@@ -422,7 +479,7 @@ func (f *flowModel) scopeStep(w *walker, o engine.RunOptions) (string, bool) {
 	} else {
 		hint = "cannot create one: " + sanitize.Line(f.scopeDry.Error, 200)
 	}
-	saved := savedScopes(f.r)
+	saved := savedScopes(rcp)
 	if len(saved) > 0 {
 		opts = append(opts, option{label: "Reuse a saved scope", value: "saved", note: fmt.Sprintf("%d in ~/.burner/scopes", len(saved))})
 	}
@@ -680,6 +737,9 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			o := f.q.options[f.cursor]
+			if o.disabled {
+				return m, nil
+			}
 			f.record(o.value, o.label)
 		case "q":
 			return m, tea.Quit
@@ -750,6 +810,12 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) afterAnswer() (tea.Model, tea.Cmd) {
 	f := m.flow
 	if f.q == nil {
+		if f.series {
+			return m.startSeries(f.opts)
+		}
+		if m.prefs.Keep {
+			f.opts.Keep = true
+		}
 		m.plan = newPlan(f.opts)
 		m.scr = scrPlan
 		return m, m.plan.start(m)
@@ -825,9 +891,12 @@ func (m model) viewFlow() string {
 				}
 				line += strings.Repeat(" ", pad) + sDim.Render(o.note)
 			}
-			if i == f.cursor {
+			switch {
+			case i == f.cursor:
 				body = append(body, sel(inner-2, "❯ "+line))
-			} else {
+			case o.disabled:
+				body = append(body, "  "+sFaint.Render(line))
+			default:
 				body = append(body, "  "+sSoft.Render(line))
 			}
 		}
@@ -942,4 +1011,24 @@ func targetLabelOf(o engine.RunOptions) string {
 		return tildify(o.Target)
 	}
 	return ""
+}
+
+// optIndex is the option whose value is v, else the first one.
+func optIndex(opts []option, v string) int {
+	for i, o := range opts {
+		if v != "" && o.value == v {
+			return i
+		}
+	}
+	return 0
+}
+
+// check returns a doctor line by id.
+func (f *flowModel) check(id string) (doctor.Result, bool) {
+	for _, c := range f.checks {
+		if c.ID == id {
+			return c, true
+		}
+	}
+	return doctor.Result{}, false
 }

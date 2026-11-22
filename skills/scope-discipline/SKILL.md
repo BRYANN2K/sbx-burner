@@ -1,6 +1,6 @@
 ---
 name: scope-discipline
-description: Stay inside the authorized scope of a lab run. Use before any network request, scan, exploit attempt or file access outside the workspace in an agent-lab-sbx security recipe.
+description: Stay inside the authorized scope of a lab run. Use before any network request, scan, exploit attempt or file access outside the workspace in an sbx-burner security recipe.
 ---
 
 # Scope discipline

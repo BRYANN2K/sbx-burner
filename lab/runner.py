@@ -713,7 +713,10 @@ def build_plan(
                 f"Use --agent {' or '.join(a.name for a in sbx.AGENTS.values() if a.mixin_kit)} for this recipe."
             )
         workload = str((repo_root / linux["workload"]).resolve())
-        kits.insert(0, str((repo_root / agent.mixin_kit).resolve()))
+        kit_dir = (repo_root / agent.mixin_kit).resolve()
+        if not (kit_dir / f"{kit_dir.name}.yaml").is_file():
+            raise Refused(f"{agent.name}'s mixin kit {agent.mixin_kit} is missing ({kit_dir.name}.yaml not found)")
+        kits.insert(0, str(kit_dir))
     else:
         workload = agent.name
     extra = [f"{target_path}:{TARGET_MOUNT}:ro"] if target_path else []

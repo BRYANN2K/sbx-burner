@@ -1,0 +1,40 @@
+Doctor
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  sbx installed                  sbx version v0.54.0 4bec4a5                                                        │
+│ ✓  Host container runtime         docker 29.5.2                                                                      │
+│ ✓  Docker buildx (recipe kits)    available                                                                          │
+│ !  Claude Code credential         no credential stored  sbx secret set anthropic                                     │
+│ ✓  Codex credential               credential stored (openai)                                                         │
+│ ✓  Free disk                      14 GB free                                                                         │
+│ ✓  Approval: codex kit            approved                                                                           │
+│ !  Approval: claude kit           needs approval: api.anthropic.com  burner approve --agent claude                   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  a approve in sbx  │  ↑↓ move  │  c copy the fix command  │  r re-check  │  esc back

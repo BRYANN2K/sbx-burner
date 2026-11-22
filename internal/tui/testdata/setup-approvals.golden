@@ -1,0 +1,40 @@
+Setup                                                            machine › agents › approvals › preferences › first run
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  Approval: codex kit            approved                                                                           │
+│ !  Approval: claude kit           needs approval: api.anthropic.com                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  a approve in sbx  │  s skip  │  n next  │  esc back

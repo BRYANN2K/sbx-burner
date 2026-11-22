@@ -98,6 +98,13 @@ var ErrNoCatalog = errors.New("no recipe catalog found")
 // $BURNER_CATALOG, then ~/.burner/catalog. It never looks at the current
 // directory: the engine imports Python from the root, and a folder can fake
 // anything about itself, including its git origin.
+// IsOfficial reports whether root is the official catalog checkout
+// (~/.burner/catalog), not one given with --catalog or $BURNER_CATALOG.
+func IsOfficial(root string) bool {
+	home := Home()
+	return home != "" && filepath.Clean(absOr(root)) == filepath.Join(home, "catalog")
+}
+
 func FindRoot(explicit string) (string, error) {
 	for _, dir := range []string{explicit, os.Getenv("BURNER_CATALOG")} {
 		if dir != "" && isCatalog(dir) {

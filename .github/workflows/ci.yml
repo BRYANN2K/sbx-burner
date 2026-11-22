@@ -91,6 +91,13 @@ jobs:
           mapfile -t files < <(git ls-files '*.sh')
           if [ "${#files[@]}" -gt 0 ]; then shellcheck -x "${files[@]}"; fi
 
+  host-paths:
+    name: no host paths
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-host-paths.sh
+
   yaml:
     name: yamllint
     runs-on: ubuntu-24.04

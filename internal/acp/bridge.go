@@ -34,6 +34,25 @@ var Profiles = map[string]Profile{
 	// the sbx 0.54 codex kit: mode values read-only | workspace-write |
 	// agent (auto review) | agent-full-access.
 	"codex": {ModeOption: "mode", FullTrust: "agent-full-access", AskFirst: "agent"},
+	// Verified 2026-11-22 against @agentclientprotocol/claude-agent-acp
+	// 0.109.1 (session-mode.js buildAvailableModes): mode values default
+	// (Manual) | acceptEdits | plan | auto | bypassPermissions. The last is
+	// offered only when the process is not root or IS_SANDBOX is set —
+	// both hold inside sbx.
+	"claude": {ModeOption: "mode", FullTrust: "bypassPermissions", AskFirst: "default"},
+	// Verified 2026-11-22 against cursor-agent 2026.11.22 (`cursor-agent
+	// acp`) in the sbx 0.54 cursor kit: mode values agent | plan | ask.
+	// "agent" is the only mode with tool access; "plan" is read-only — the
+	// closest to ask-before-acting the CLI offers.
+	"cursor": {ModeOption: "mode", FullTrust: "agent", AskFirst: "plan"},
+	// Verified 2026-11-22 against opencode 2.3.2 (`opencode acp`) in the
+	// sbx 0.54 opencode kit: mode values build | plan.
+	"opencode": {ModeOption: "mode", FullTrust: "build", AskFirst: "plan"},
+	// Verified 2026-11-22 against devin 3000.14.30821 (`devin acp`) in the
+	// sbx 0.54 devin kit: mode values accept-edits | smart | ask | plan |
+	// bypass. "bypass" is Devin's auto-approve-all; "accept-edits" is its
+	// default Code mode.
+	"devin": {ModeOption: "mode", FullTrust: "bypass", AskFirst: "accept-edits"},
 }
 
 // BridgeOptions drive one ACP run inside a sandbox.

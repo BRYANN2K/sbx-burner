@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/BRYANN2K/agent-lab-sbx/lab/schema/events.schema.json",
+  "$id": "https://github.com/BRYANN2K/sbx-burner/lab/schema/events.schema.json",
   "title": "agent-lab live run event",
   "description": "One NDJSON line written by `lab run --events FILE|-` (and passed through by burner). Every event carries schema_version, type, seq (monotonic per run, starting at 0, usable as a cursor), ts (RFC 3339) and run_id. Validate an event against $defs[<type>]. Readers must ignore unknown event types for forward compatibility; within a known type, additionalProperties is false. Agent-controlled text (ask.question, ask.choices, agent.message.text, agent.tool.summary) is stripped of control and escape sequences, length-capped and redacted by the runner before it is written. The schema enforces the same limits (maxLength 4096 per text field, 512 per choice, 64 choices; no C0 control character except tab and newline, no DEL, no ESC, no C1 control character U+0080-U+009F), so a decoder rejects any event that slipped through.",
   "oneOf": [

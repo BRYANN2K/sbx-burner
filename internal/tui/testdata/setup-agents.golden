@@ -1,0 +1,40 @@
+Setup                                                            machine › agents › approvals › preferences › first run
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ !  Claude                         no credential stored                                                               │
+│ ✓  Codex                          credential stored (openai)                                                         │
+│ !  Cursor                         not checked                                                                        │
+│ !  Devin                          not checked                                                                        │
+│ !  OpenCode                       not checked                                                                        │
+│                                                                                                                      │
+│ Connect Claude                                                                                                       │
+│   $ sbx secret set anthropic                                                                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter connect  │  s skip  │  n next  │  esc back

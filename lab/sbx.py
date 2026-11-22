@@ -85,6 +85,26 @@ AGENTS: dict[str, Agent] = {
             "Claude Code can also sign in with a subscription through /login inside the sandbox. "
             "That flow is interactive, so unattended runs need a stored key: sbx secret set anthropic"
         ),
+        # Verified on sbx 0.54 (2026-11-22): the built-in claude image carries
+        # claude at ~/.local/bin but no ACP server and no Node. The ACP
+        # adapter is the npm package @agentclientprotocol/claude-agent-acp
+        # (successor of zed-industries/claude-code-acp); it drives the
+        # sandbox's own claude through CLAUDE_CODE_EXECUTABLE —
+        # /home/agent/.local/bin/claude on the built-in agent, a symlink the
+        # agent-claude mixin ships at the same path — so the proxy-managed
+        # OAuth sentinel in ~/.claude/.credentials.json keeps working.
+        acp=("env", "CLAUDE_CODE_EXECUTABLE=/home/agent/.local/bin/claude", "/home/agent/.local/bin/claude-agent-acp"),
+        acp_install=(
+            "set -euo pipefail; "
+            "command -v node >/dev/null || { sudo apt-get update -qq && "
+            "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs npm >/dev/null; }; "
+            # --ignore-scripts: verified to work without install scripts.
+            'npm install -g --ignore-scripts --prefix "$HOME/.local" --no-fund --no-audit '
+            "@agentclientprotocol/claude-agent-acp@0.109.1; "
+            # Recorded in logs/acp-install.log: what actually got installed.
+            'node --version; npm ls -g --prefix "$HOME/.local" --all --json'
+        ),
+        acp_install_hosts=("deb.debian.org:80", "security.debian.org:80", "registry.npmjs.org:443"),
     ),
     "codex": Agent(
         name="codex",
@@ -121,6 +141,47 @@ AGENTS: dict[str, Agent] = {
         ),
         acp_install_hosts=("deb.debian.org:80", "security.debian.org:80", "registry.npmjs.org:443"),
     ),
+    "cursor": Agent(
+        name="cursor",
+        secret_service="cursor",
+        setup_commands=("sbx secret set cursor --oauth", "sbx secret set cursor"),
+        # sbx's own session config is `cursor-agent -p --trust <prompt>`.
+        headless=("cursor-agent", "-p", "--trust"),
+        hosts=("api2.cursor.sh:443", "api3.cursor.sh:443", "repo42.cursor.sh:443", "cursor.com:443"),
+        # The built-in kit declares agent-skills at /home/agent/.cursor/skills.
+        skills_dir=".cursor/skills",
+        context_file="AGENTS.md",
+        mixin_kit="kits/agent-cursor",
+        interactive_login_note=("Cursor signs in with `agent login` inside the sandbox; sbx keeps the OAuth record on the host."),
+        # Verified on sbx 0.54 (2026-11-22): cursor-agent 2026.11.22 ships a
+        # native ACP server — `cursor-agent acp`, no adapter to install.
+        # configOptions expose mode (agent/plan/ask) and model
+        # (default[] = Auto).
+        acp=("/home/agent/.local/bin/cursor-agent", "acp"),
+    ),
+    "opencode": Agent(
+        name="opencode",
+        # OpenCode reads provider keys sbx injects as env sentinels. Its own
+        # OpenAI OAuth binding works; Anthropic OAuth is not passed through —
+        # Anthropic needs an API key.
+        secret_service="openai",
+        setup_commands=("sbx secret set openai --oauth", "sbx secret set openai", "sbx secret set anthropic"),
+        # Verified by Bryan (2026-11-22): `opencode run -m openai/gpt-6-luna`.
+        headless=("opencode", "run"),
+        hosts=("api.openai.com:443", "auth.openai.com:443", "chatgpt.com:443", "api.anthropic.com:443"),
+        skills_dir=".agents/skills",
+        context_file="AGENTS.md",
+        mixin_kit="kits/agent-opencode",
+        interactive_login_note=(
+            "OpenCode uses provider keys sbx injects as env (OPENAI_API_KEY and friends); "
+            "OpenAI OAuth works, Anthropic OAuth does not reach it."
+        ),
+        # Verified on sbx 0.54 (2026-11-22): opencode 2.3.2 ships a native
+        # ACP server — `opencode acp`, no adapter to install. configOptions
+        # expose model (<provider>/<id>, e.g. openai/gpt-6-luna), mode
+        # (build/plan) and effort.
+        acp=("/usr/local/bin/opencode", "acp"),
+    ),
     "devin": Agent(
         name="devin",
         secret_service="devin",
@@ -131,16 +192,20 @@ AGENTS: dict[str, Agent] = {
         # sbx's own startup command is `devin --permission-mode dangerous
         # --respect-workspace-trust=false`; -p is Devin's non-interactive mode.
         headless=("devin", "--permission-mode", "dangerous", "--respect-workspace-trust", "false", "-p"),
-        # TODO(verify): the hosts Devin needs are not documented; sbx grants
-        # the built-in agent's endpoints itself. Read `sbx policy log` after
-        # the first real run and pin them here.
-        hosts=(),
+        # From the built-in devin kit's network-policy (sbx 0.54, 2026-11-22).
+        hosts=("api.devin.ai:443", "server.codeium.com:443", "windsurf.com:443", "unleash.codeium.com:443"),
         # TODO(verify): Devin reads AGENTS.md; its skills directory is not documented.
         skills_dir=".agents/skills",
         context_file="AGENTS.md",
-        # No mixin kit yet: Devin runs only on recipes that use sbx's built-in
-        # workload (no `workload:` in recipe.yaml).
-        mixin_kit="",
+        mixin_kit="kits/agent-devin",
+        # Verified on sbx 0.54 (2026-11-22): `devin acp` is a native ACP v1
+        # server; configOptions expose mode
+        # (accept-edits/smart/ask/plan/bypass) and model (adaptive,
+        # swe-2-high, ...). Blocked today by an sbx kit bug: the credential
+        # engine writes ~/.local/share/devin/credentials.toml as JSON, and
+        # the CLI fails its TOML parse before serving. Fix confirmed locally
+        # (handshake answers once the file is real TOML); not patched here.
+        acp=("/home/agent/.local/bin/devin", "acp"),
         interactive_login_note="Devin signs in once inside a sandbox (`sbx run devin <folder>`); sbx then reuses it.",
     ),
 }

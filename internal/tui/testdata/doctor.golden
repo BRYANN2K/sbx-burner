@@ -1,4 +1,4 @@
-Doctor  is this Mac ready to run recipes?
+Doctor
 
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ ✓  sbx installed                  sbx version v0.54.0 4bec4a5                                                        │
@@ -37,4 +37,4 @@ Doctor  is this Mac ready to run recipes?
 
 
 
-  ↑↓ move  │  c copy the fix command  │  r re-check  │  esc back
+  a connect  │  ↑↓ move  │  c copy the fix command  │  r re-check  │  esc back

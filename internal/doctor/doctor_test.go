@@ -3,6 +3,7 @@ package doctor
 import (
 	"context"
 	"errors"
+	"github.com/BRYANN2K/sbx-burner/internal/engine"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,7 @@ func found(string) (string, error) { return "/bin/x", nil }
 func TestAllGood(t *testing.T) {
 	res := Check(context.Background(), Options{
 		LookPath: found,
+		Agents:   []string{"claude", "codex"}, // devin is blocked by sbx
 		Run: fake(map[string]string{
 			"sbx version": "sbx 0.48.0",
 			"docker info --format {{.ServerVersion}}":   "29.5.2",
@@ -33,6 +35,7 @@ func TestAllGood(t *testing.T) {
 			"gh auth status --active":                   "Logged in",
 			"sbx secret ls --service devin --quiet":     "devin",
 			"docker buildx version":                     "github.com/docker/buildx v0.36.1",
+			"sbx policy ls --json":                      `{"rules":[{"scope":"global","applies_to":"all","resource_type":"network","decision":"deny","resources":["**"],"status":"active"}]}`,
 		}),
 	})
 	if Worst(res) != OK || !AgentReady(res, "claude") || !AgentReady(res, "codex") {
@@ -122,5 +125,31 @@ func TestAppleContainerCountsAsRuntime(t *testing.T) {
 		if r.ID == "runtime" && (r.Level != OK || r.Detail != "Apple container") {
 			t.Fatalf("got %+v", r)
 		}
+	}
+}
+
+func TestApprovalResults(t *testing.T) {
+	rows := []engine.Approval{
+		{Agent: "codex", Kit: "kits/agent-codex", Approved: true},
+		{Agent: "claude", Kit: "kits/agent-claude", Missing: map[string][]string{"anthropic": {"api.anthropic.com"}}},
+		{Agent: "cursor", Error: "bindings.cursor is not a mapping"},
+	}
+	res := ApprovalResults(rows)
+	if len(res) != 3 || res[0].Level != OK || res[1].Fix != "burner approve --agent claude" || !strings.Contains(res[1].Detail, "api.anthropic.com") || res[2].Level != Warn {
+		t.Fatalf("results %+v", res)
+	}
+	if got := strings.Join(ApprovalsNeeded(res), ","); got != "claude,cursor" {
+		t.Fatalf("needed %s", got)
+	}
+}
+
+func TestPolicyCheck(t *testing.T) {
+	r := policyCheck(context.Background(), fake(map[string]string{"sbx policy ls --json": `{"rules":[{"scope":"global","applies_to":"all","resource_type":"filesystem:read","decision":"allow","resources":["**"]}]}`}))
+	if r.Level != Warn || r.Fix != PolicyInitCommand || r.Detail != "not initialized" {
+		t.Fatalf("not initialized: %+v", r)
+	}
+	r = policyCheck(context.Background(), fake(map[string]string{"sbx policy ls --json": `{"rules":[{"scope":"global","applies_to":"all","resource_type":"network","decision":"deny","resources":["**"],"status":"active"}]}`}))
+	if r.Level != OK || r.Detail != "deny-all" {
+		t.Fatalf("initialized: %+v", r)
 	}
 }

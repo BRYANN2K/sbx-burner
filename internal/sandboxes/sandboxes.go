@@ -69,11 +69,30 @@ func save(home string, list []Entry) error {
 		return err
 	}
 	b, _ := json.MarshalIndent(list, "", "  ")
-	tmp := registry(home) + ".tmp"
-	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err != nil {
+	return writeAtomic(registry(home), append(b, '\n'))
+}
+
+// writeAtomic writes through a unique temp file in the same folder (0600),
+// then renames it over path.
+func writeAtomic(path string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".tmp-*")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, registry(home))
+	tmp := f.Name()
+	defer os.Remove(tmp)
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Chmod(0o600); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // Add records a kept sandbox (replacing an entry with the same name).

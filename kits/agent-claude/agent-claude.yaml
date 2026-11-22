@@ -3,12 +3,16 @@
 # agent (the Kali, REMnux and Ubuntu bases in this directory).
 # Adapted from the "Package a tool as a mixin" guide in the Docker Sandboxes
 # docs (docs.docker.com/ai/sandboxes/customize/author/tool-mixins).
-# TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
+# The credential and the first-start files follow the kit spec
+# (com.docker.sandbox/credential@1, lifecycle@1); burner's own text and
+# scripts, written for this repo. Hostnames, sentinel values and the JSON
+# keys Claude Code reads are facts of the protocol. Without these files the
+# CLI starts in /login on a workload that is not sbx's built-in one.
 schemaVersion: "3"
 kind: mixin
-displayName: Claude Code (agent-lab-sbx)
+displayName: Claude Code (sbx-burner)
 description: Claude Code native binary with a proxy-managed Anthropic credential.
-sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+sourceUrl: https://github.com/BRYANN2K/sbx-burner
 
 args:
   version:
@@ -24,16 +28,80 @@ capabilities:
       runtime:
         allow:
           - api.anthropic.com:443
+          # OAuth token endpoint: Claude Code refreshes the claude.ai token
+          # here through the proxy.
+          - platform.claude.com:443
+  # Both mechanisms are declared; sbx uses the one the host has stored.
+  # Optional because an OAuth-only host has no key value to hand over, and a
+  # required credential would warn about that working setup.
   - type: com.docker.sandbox/credential@1
+    optional: true
+    description: Anthropic credential held by the sbx proxy (key or OAuth)
     config:
       service: anthropic
       phase: runtime
       apiKey:
-        name: ANTHROPIC_API_KEY
-        proxyManaged: true
         inject:
-          - domain: api.anthropic.com
-            header: x-api-key
-            format: "%s"
+          - {domain: api.anthropic.com, header: x-api-key, format: "%s"}
+      oauth:
+        tokenEndpoint: {host: platform.claude.com, path: /v1/oauth/token}
+        sentinels:
+          accessToken: sk-ant-oat01-proxy-managed
+          refreshToken: sk-ant-ort01-proxy-managed
+        # sbx renders this file with placeholder tokens; the proxy puts the
+        # real token on the wire only for the hosts above.
+        credentialFile:
+          path: ~/.claude/.credentials.json
+          structure:
+            claudeAiOauth:
+              accessToken: "{{.AccessToken}}"
+              refreshToken: "{{.RefreshToken}}"
+              expiresAt: "{{.ExpiresAt}}"
+              scopes: "{{.Scopes}}"
+            primaryApiKey: "{{.PrimaryApiKey}}"
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        # Onboarding, trust and bypass answers, so the CLI asks nothing at
+        # start. Root writes it (an image may already ship one the agent
+        # user cannot replace) and hands it to the agent user. Rewritten on
+        # every create, so the auto-mode question is pre-answered too.
+        - command: |
+            set -eu
+            home=/home/agent
+            dir="${WORKSPACE_DIR:-/}"
+            quoted=$(printf '%s' "$dir" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g' -e 's/\r/\\r/g')
+            trust='"/": {"hasTrustDialogAccepted": true}'
+            if [ "$dir" != "/" ]; then
+              trust="$trust, \"$quoted\": {\"hasTrustDialogAccepted\": true}"
+            fi
+            printf '{"hasCompletedOnboarding": true, "bypassPermissionsModeAccepted": true, "hasSeenAutoDefaultNudge": true, "projects": {%s}}\n' \
+              "$trust" > "$home/.claude.json"
+            chown agent:agent "$home/.claude.json"
+          user: "0"
+          env: [WORKSPACE_DIR]
+          description: Write ~/.claude.json with onboarding and trust answered
+        - command: install -d -o agent -g agent /home/agent/.claude
+          user: "0"
+          description: Create ~/.claude for the agent user
+        # The key helper is added only when sbx resolved a credential mode;
+        # with mode "none" Claude Code is left to ask for /login. The
+        # default mode belongs under "permissions", where Claude Code reads it.
+        - command: |
+            set -eu
+            helper=""
+            case "${SBX_CRED_ANTHROPIC_MODE:-none}" in
+              none) ;;
+              *) helper='"apiKeyHelper": "echo proxy-managed", ' ;;
+            esac
+            {
+              printf '{%s' "$helper"
+              printf '"permissions": {"defaultMode": "bypassPermissions"}, '
+              printf '"bypassPermissionsModeAccepted": true, '
+              printf '"skipDangerousModePermissionPrompt": true}\n'
+            } > /home/agent/.claude/settings.json
+          user: agent
+          env: [SBX_CRED_ANTHROPIC_MODE]
+          description: Write ~/.claude/settings.json for the resolved credential mode
 
 dockerfile: agent-claude.dockerfile

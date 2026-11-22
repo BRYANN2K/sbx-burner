@@ -210,9 +210,13 @@ and trivy.
 - A real run mounts the workspace at the host's absolute
   `runs/<id>/workspace` path, so captured artifacts contain the user's home
   directory. In golden files, rewrite that prefix to `/home/agent/workspace`
-  (and the target to `/home/agent/target`) before committing. `grep -rn
-  '/Users/\|/home/[a-z]*/\|/opt/homebrew' evals/fixtures/` must find nothing
-  but those two paths, and no host `/tmp/` path may remain. In-sandbox
+  (and the target to `/home/agent/target`) before committing. Semgrep also
+  turns an absolute `--config` path into a dotted rule id
+  (`Users.<name>.Documents.Projects...`); record with a relative `--config`
+  so ids read `fixtures.<rule>`. `scripts/check-host-paths.sh` (run in CI)
+  must pass: it greps for `Users\.[a-z]+\.|/Users/|/home/[a-z]+/|Documents\.Projects`
+  and allows only `/home/agent/` and the tests' `/Users/tester/` and
+  `/home/tester/`. No host `/tmp/` path may remain. In-sandbox
   scratch paths in recorded commands (for example `/tmp/run-keys`, which
   keeps a key outside `evidence/`) are fine.
 - Add `evals/make-target.sh` when a planted target makes a live eval possible.
