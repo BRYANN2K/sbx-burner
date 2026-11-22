@@ -158,6 +158,18 @@ func connectCommand(agent string) []string {
 	return strings.Fields(cmd)
 }
 
+// connectCmd opens the agent with sbx run so the user signs in with their
+// plan; the panel closes by itself once sbx has stored the credential.
+func connectCmd(agent string) tea.Cmd {
+	svc := doctor.AgentServices[agent].Service
+	what := "Connect " + setupAgentName[agent]
+	watch := func() bool {
+		out, err := exec.Command("sbx", "secret", "ls", "--service", svc, "--quiet").Output()
+		return err == nil && strings.TrimSpace(string(out)) != ""
+	}
+	return termWatchCmd(what, connectCommand(agent), watch, func(err error) tea.Msg { return setupExecDoneMsg{what, err} })
+}
+
 func execSetup(what string, argv []string) tea.Cmd {
 	if len(argv) == 0 {
 		return nil
@@ -340,7 +352,7 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if a != "opencode" && !s.busy {
 				_ = os.MkdirAll(sampleDir(), 0o755)
 				s.busy = true
-				return m, execSetup("connect "+a, connectCommand(a))
+				return m, connectCmd(a)
 			}
 		case "o":
 			if !s.busy {
