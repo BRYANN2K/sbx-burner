@@ -1,0 +1,31 @@
+# python -m lab eval devsecops/sbom-sign                  # golden fixture (CI)
+# python -m lab eval devsecops/sbom-sign --run runs/<id>  # after a run on evals/make-target.sh
+# The golden artifacts are a real syft 1.57.2 scan of the make-target.sh
+# output, signed by a real cosign 3.1.4 with an ephemeral key.
+description: >-
+  Against the planted project, the agent produces both SBOM formats, signs
+  the CycloneDX document with the run's ephemeral key, and proves the
+  signature verifies. Nothing is uploaded and no finding is reported.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: syft
+  - type: tool_ran
+    name: cosign
+  - type: artifact_exists
+    path: artifacts/sbom.cdx.json
+  - type: artifact_exists
+    path: artifacts/sbom.spdx.json
+  - type: artifact_exists
+    path: artifacts/sbom.cdx.json.sig
+  - type: artifact_contains
+    path: artifacts/verify.txt
+    pattern: "Verified OK"
+  - type: artifact_absent
+    pattern: "PRIVATE KEY"
+  - type: metric
+    name: signature_verified
+    equals: true
+  - type: max_findings
+    count: 0
+  - type: no_demotions

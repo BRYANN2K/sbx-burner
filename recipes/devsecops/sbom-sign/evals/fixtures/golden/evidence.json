@@ -1,0 +1,61 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/sbom-sign",
+  "summary": "Built CycloneDX and SPDX SBOMs of sbom-demo with syft 1.57.2 (5 components from package-lock.json), generated a throwaway cosign key pair in /tmp, signed sbom.cdx.json offline with cosign 3.1.4 (empty signing config: no Rekor/Fulcio/OIDC/TSA), and verified the bundle: Verified OK. The signature attests this run only; it is not tied to a real identity.",
+  "tools_run": [
+    {
+      "name": "syft",
+      "version": "1.57.2",
+      "command": "syft scan dir:/home/agent/target -q -o cyclonedx-json=evidence/artifacts/sbom.cdx.json -o spdx-json=evidence/artifacts/sbom.spdx.json",
+      "exit_code": 0,
+      "output": "artifacts/sbom.cdx.json"
+    },
+    {
+      "name": "cosign",
+      "version": "3.1.4",
+      "command": "cosign signing-config create --no-default-rekor --no-default-fulcio --no-default-oidc --no-default-tsa --out evidence/artifacts/signing-config.json",
+      "exit_code": 0,
+      "output": "artifacts/signing-config.json"
+    },
+    {
+      "name": "cosign",
+      "version": "3.1.4",
+      "command": "cosign generate-key-pair --output-key-prefix /tmp/run-keys/cosign",
+      "exit_code": 0,
+      "output": "artifacts/cosign.pub"
+    },
+    {
+      "name": "cosign",
+      "version": "3.1.4",
+      "command": "cosign sign-blob --key /tmp/run-keys/cosign.key --signing-config evidence/artifacts/signing-config.json --bundle evidence/artifacts/sbom.cdx.json.sig evidence/artifacts/sbom.cdx.json",
+      "exit_code": 0,
+      "output": "artifacts/sbom.cdx.json.sig"
+    },
+    {
+      "name": "cosign",
+      "version": "3.1.4",
+      "command": "cosign verify-blob --bundle evidence/artifacts/sbom.cdx.json.sig --key evidence/artifacts/cosign.pub --insecure-ignore-tlog evidence/artifacts/sbom.cdx.json",
+      "exit_code": 0,
+      "output": "artifacts/verify.txt"
+    }
+  ],
+  "findings": [],
+  "hypotheses": [
+    {
+      "id": "PROV-001",
+      "title": "Signature bundle carries no transparency-log proof",
+      "rationale": "By design: the run signs offline with a throwaway key (the signing config lists no Rekor, Fulcio, OIDC or TSA service). The bundle proves the SBOM was not modified after signing inside this sandbox; it does not prove who signed it or when.",
+      "next_step": "For provenance a third party can check, sign in CI with cosign keyless (Fulcio certificate + Rekor inclusion proof) and drop --insecure-ignore-tlog from verification."
+    }
+  ],
+  "artifacts": [
+    {"path": "artifacts/sbom.cdx.json", "description": "CycloneDX JSON SBOM of the target, produced by syft 1.57.2"},
+    {"path": "artifacts/sbom.spdx.json", "description": "The same SBOM as SPDX JSON"},
+    {"path": "artifacts/sbom.cdx.json.sig", "description": "Sigstore v0.3 bundle: message digest + signature + public-key hint"},
+    {"path": "artifacts/cosign.pub", "description": "Public half of the throwaway key pair generated for this run"},
+    {"path": "artifacts/signing-config.json", "description": "Cosign signing config used for signing: no Rekor, Fulcio, OIDC or TSA service"},
+    {"path": "artifacts/verify.txt", "description": "cosign verify-blob output (both streams): Verified OK"},
+    {"path": "artifacts/digests.txt", "description": "sha256sum of the SBOMs, the bundle and the public key"}
+  ],
+  "metrics": {"components": 5, "signature_verified": true}
+}
