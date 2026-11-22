@@ -65,6 +65,7 @@ type Update struct {
 	Command  string // rawInput.command, cleaned (tool calls)
 	Content  string // the first text content, cleaned: the agent's description, or the output once completed
 	Output   string // rawOutput when it is text (or its stdout), cleaned
+	Delta    string // codex-acp: _meta.terminal_output_delta.data, cleaned
 }
 
 // Permission is a cleaned session/request_permission.
@@ -369,6 +370,13 @@ func (c *Client) onNotification(m message) {
 		u.Command = sanitize.Line(toolCommand(p.Update["rawInput"]), 2000)
 		u.Content = sanitize.Text(toolText(p.Update["content"]), 16<<10)
 		u.Output = sanitize.Text(rawOutput(p.Update["rawOutput"]), 16<<10)
+		var meta struct {
+			Delta struct {
+				Data string `json:"data"`
+			} `json:"terminal_output_delta"`
+		}
+		_ = json.Unmarshal(p.Update["_meta"], &meta)
+		u.Delta = sanitize.Text(meta.Delta.Data, 16<<10)
 	case "plan":
 	default:
 		u.Kind = "other"

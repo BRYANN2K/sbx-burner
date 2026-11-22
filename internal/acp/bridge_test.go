@@ -408,3 +408,36 @@ func TestFirstSentence(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestToolTitleThatIsTheCommandShowsOnce(t *testing.T) {
+	var buf bytes.Buffer
+	b := &bridge{o: BridgeOptions{Out: &buf, Cwd: "/w"}}
+	long := "W=$LAB_WORKSPACE; mkdir -p $W/evidence/artifacts; A=$W/evidence/artifacts; cd /home/agent/target; gitleaks git --redact ."
+	b.tool(Update{Kind: "tool_call_update", ToolID: "t1", Title: long[:60], Command: long})
+	var m struct {
+		Fields map[string]string `json:"fields"`
+	}
+	_ = json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &m)
+	if m.Fields["summary"] != long || m.Fields["detail"] != "" {
+		t.Fatalf("fields %v", m.Fields)
+	}
+}
+
+func TestCodexTerminalOutputAndBoldThought(t *testing.T) {
+	var buf bytes.Buffer
+	b := &bridge{o: BridgeOptions{Out: &buf, Cwd: "/w"}}
+	b.tool(Update{Kind: "tool_call", ToolID: "e1", Title: "gitleaks git .", Command: "gitleaks git .", ToolKind: "execute", Status: "in_progress"})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "e1", Delta: "scanning\n"})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "e1", Status: "completed", Delta: "leaks found: 3\n"})
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	var last struct {
+		Fields map[string]string `json:"fields"`
+	}
+	_ = json.Unmarshal([]byte(lines[len(lines)-1]), &last)
+	if last.Fields["tool"] != "output" || last.Fields["summary"] != "scanning\nleaks found: 3" {
+		t.Fatalf("output %v", last.Fields)
+	}
+	if got := firstSentence("**Starting Gitleaks scan**"); got != "Starting Gitleaks scan" {
+		t.Fatal(got)
+	}
+}

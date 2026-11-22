@@ -420,6 +420,7 @@ func (b *bridge) Update(u Update) {
 type toolState struct {
 	summary, detail, status, title string
 	sent                           string // the last emitted summary/detail/status
+	delta                          string // codex: the terminal output so far (last 16 KiB)
 	shown, output                  bool
 }
 
@@ -451,9 +452,17 @@ func (b *bridge) tool(u Update) {
 	if u.Command != "" {
 		t.detail = b.stripCd(u.Command)
 	}
+	if u.Delta != "" {
+		t.delta += u.Delta
+		if len(t.delta) > 16<<10 {
+			t.delta = t.delta[len(t.delta)-16<<10:]
+		}
+	}
 	done := u.Status == "completed" || u.Status == "failed"
 	var out string
 	switch {
+	case done && u.Content == "" && u.Output == "" && t.delta != "":
+		out = t.delta
 	case done && u.Content != "":
 		out = u.Content
 	case done && u.Output != "":
@@ -464,12 +473,18 @@ func (b *bridge) tool(u Update) {
 	if u.Status != "" {
 		t.status = u.Status
 	}
+	// No description: a title that is the command (claude's) reads as the
+	// command, once; a real title (a file, "Run tests") keeps the command
+	// under it.
 	summary := t.summary
-	if summary == "" {
+	if summary == "" && t.title != "" && !sameCommand(t.title, t.detail) {
 		summary = t.title
 	}
 	if summary == "" {
 		summary = t.detail
+	}
+	if summary == "" {
+		summary = t.title
 	}
 	fields := map[string]string{"tool": nz(u.ToolKind, "execute"), "summary": summary, "detail": t.detail, "id": u.ToolID, "status": t.status}
 	if t.detail == summary {
@@ -662,5 +677,16 @@ func firstSentence(t string) string {
 			end = i + 1
 		}
 	}
-	return sanitize.Line(strings.TrimSuffix(strings.TrimSpace(t[:end]), "."), 200)
+	// Codex titles its reasoning in markdown bold: "**Starting the scan**".
+	return sanitize.Line(strings.Trim(strings.TrimSuffix(strings.TrimSpace(t[:end]), "."), "*_ "), 200)
+}
+
+// sameCommand reports whether a tool title is the command itself, maybe
+// cut short by the adapter.
+func sameCommand(title, cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+	t := strings.TrimSuffix(strings.TrimSuffix(title, "…"), "...")
+	return t == cmd || (len(t) >= 20 && strings.Contains(cmd, strings.Trim(t, "' "))) || strings.HasPrefix(t, cmd)
 }
