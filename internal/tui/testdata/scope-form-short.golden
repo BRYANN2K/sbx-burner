@@ -1,0 +1,30 @@
+Scope · web-recon  valid
+╭───────────────────────────────────────────────────────────┬──────────────────────────────────────╮
+│   Name                                                    │ PREVIEW                              │
+│     web-recon-localhost-8080                              │ authorization own-lab                │
+│                                                           │ targets       localhost:8080         │
+│ ❯ Targets                                                 │ valid         30 days                │
+│     localhost:8080  + add host                            │ network       strict                 │
+│                                                           │ techniques    2 on                   │
+│   Authorization                                           │ out of scope  -                      │
+│      own-lab   written                                    │ owner         Test Owner             │
+│                                                           │                                      │
+│   Valid for                                               │ SAVE                                 │
+│      7 days   30 days   90 days   2026-11-22 → 2026-12-22 │ ~/.burner/scopes/web-recon-localhos… │
+│                                                           │ export to…                        x  │
+│   Techniques                                              │                                      │
+│       [x] recon                                           │                                      │
+│       [x] scan                                            │                                      │
+│       [ ] exploit                                         │                                      │
+│                                                           │                                      │
+│     risky                                                 │                                      │
+│       [ ] brute-force                                     │                                      │
+│       [ ] lockout-testing                                 │                                      │
+│       [ ] credential-reuse                                │                                      │
+│       [ ] dos                                             │                                      │
+│       [ ] ddos                                            │                                      │
+│       [ ] data-destruction                                │                                      │
+│       [ ] social-engineering                              │                                      │
+│       [ ] phishing                                        │                                      │
+╰───────────────────────────────────────────────────────────┴──────────────────────────────────────╯
+  ↑↓ move  │  tab next field  │  a add host  │  d remove last  │  enter save  │  x export  │  esc ba

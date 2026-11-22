@@ -14,14 +14,21 @@ Scope · pentest/web-recon  valid                                           targ
 │      7 days   30 days   90 days   2026-11-22 → 2026-12-22                     │ export to…                        x  │
 │                                                                               │                                      │
 │ ❯ Techniques                                                                  │                                      │
-│     [x] recon                           [x] scan                              │                                      │
-│     [ ] exploit                                                               │                                      │
+│       [x] recon                                                               │                                      │
+│       [x] scan                                                                │                                      │
+│       [ ] exploit                                                             │                                      │
+│                                                                               │                                      │
 │     risky                                                                     │                                      │
-│     [ ] brute-force                     [ ] lockout-testing                   │                                      │
-│     [ ] credential-reuse                [x] dos                               │                                      │
-│     [ ] ddos                            [ ] data-destruction                  │                                      │
-│     [ ] social-engineering              [ ] phishing                          │                                      │
-│     [ ] physical                        [ ] ransomware                        │                                      │
+│       [ ] brute-force                                                         │                                      │
+│       [ ] lockout-testing                                                     │                                      │
+│       [ ] credential-reuse                                                    │                                      │
+│   ❯ [x] dos                     degrade or stop a service                     │                                      │
+│       [ ] ddos                                                                │                                      │
+│       [ ] data-destruction                                                    │                                      │
+│       [ ] social-engineering                                                  │                                      │
+│       [ ] phishing                                                            │                                      │
+│       [ ] physical                                                            │                                      │
+│       [ ] ransomware                                                          │                                      │
 │                                                                               │                                      │
 │   Out of scope                                                                │                                      │
 │     + add host                                                                │                                      │
@@ -29,12 +36,5 @@ Scope · pentest/web-recon  valid                                           targ
 │   Network                                                                     │                                      │
 │      strict   standard                                                        │                                      │
 │                                                                               │                                      │
-│                                                                               │                                      │
-│                                                                               │                                      │
-│                                                                               │                                      │
-│                                                                               │                                      │
-│                                                                               │                                      │
-│                                                                               │                                      │
-│                                                                               │                                      │
 ╰───────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────╯
-  tab next field  │  space toggle  │  ←→ choose  │  a add host  │  enter save + use  │  x export  │  esc back
+  ↑↓ move  │  tab next field  │  space toggle  │  a all  │  n none  │  enter save + use  │  x export  │  esc back
