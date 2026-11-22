@@ -1,0 +1,15 @@
+{
+  "name": "pg-license-compliance",
+  "version": "1.4.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Thumbnail service for poster-frame generation",
+  "dependencies": {
+    "ffmpeg-static": "5.2.0",
+    "lodash": "4.17.21",
+    "rxjs": "7.8.1"
+  },
+  "devDependencies": {
+    "mupdf": "1.28.6"
+  }
+}

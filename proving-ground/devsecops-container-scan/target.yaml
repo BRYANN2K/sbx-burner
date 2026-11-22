@@ -1,0 +1,18 @@
+recipe: devsecops/container-scan
+summary: Dockerfile on an EOL base, scanned as a build context and as a docker-save tarball
+# project/Dockerfile pins debian:buster-slim (EOL) by index digest on purpose:
+# the planted CVEs (e.g. CVE-2019-8457 in libdb5.3 5.3.28+dfsg1-0.5) depend
+# on that exact package set. The reason lives here, not in the Dockerfile.
+build: build.sh
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-container-scan/project"]
+  - kind: image
+    args: ["--target-image", "proving-ground/.build/devsecops-container-scan/image.tar"]
+runs_pending:
+  # Local-daemon image source: build.sh leaves this tag in the host daemon;
+  # resolving a non-registry ref lands with the target-sources runner work.
+  - kind: image
+    args: ["--target-image", "pg/devsecops-container-scan:buster"]
+needs: [docker]
+cost: medium

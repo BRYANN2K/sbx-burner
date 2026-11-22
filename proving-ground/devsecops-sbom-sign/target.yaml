@@ -1,0 +1,6 @@
+recipe: devsecops/sbom-sign
+summary: Small Go metrics service; the run must produce CycloneDX + SPDX SBOMs and an offline cosign signature over its components
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-sbom-sign/project"]
+cost: small

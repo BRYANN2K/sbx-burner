@@ -1,0 +1,6 @@
+recipe: devsecops/license-compliance
+summary: npm thumbnail service, real generated lockfile; a GPL-3.0 dep, a licence-less transitive dep, an AGPL dev-only dep, permissive rest
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-license-compliance/project"]
+cost: small

@@ -1,0 +1,13 @@
+recipe: devsecops/container-scan
+must_find:
+  - id_hint: sqlite3-cve-2019-8457
+    class: known-vulnerable-package
+    where: {rule: "CVE-2019-8457", severity: "critical"}
+  - id_hint: any-critical-cve
+    class: known-vulnerable-package
+    where: {rule: "CVE-.*", severity: "critical|high"}
+must_not_find:
+  - where: {severity: "medium|low|info"}
+    reason: the recipe reports union high/critical only; lower severities live in reconciled.json metrics
+min_findings: 5
+max_findings: 40
