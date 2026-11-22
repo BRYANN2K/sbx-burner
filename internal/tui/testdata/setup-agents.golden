@@ -1,17 +1,17 @@
 Setup                                                            machine › agents › approvals › preferences › first run
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ !  Claude                         no credential stored                                                               │
-│ ✓  Codex                          credential stored (openai)                                                         │
-│ !  Cursor                         not checked                                                                        │
-│ !  Devin                          not checked                                                                        │
-│ !  OpenCode                       not checked                                                                        │
-│                                                                                                                      │
-│ Connect Claude                                                                                                       │
-│   $ sbx secret set anthropic                                                                                         │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
+  !  Claude                   no credential stored
+  ✓  Codex                    openai
+  !  Cursor                   not checked
+  !  Devin                    blocked by sbx (docker/sbx-releases#906)
+  !  OpenCode                 providers set in OpenCode  o
 
-
+  ╭──────────────────────────────────────────────────────────────────────────────────╮
+  │ Connect Claude                                                                   │
+  │ $ sbx secret set anthropic                                                       │
+  │                                                                                  │
+  │  enter connect    s skip                                                         │
+  ╰──────────────────────────────────────────────────────────────────────────────────╯
 
 
 

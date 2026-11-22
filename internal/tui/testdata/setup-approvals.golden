@@ -1,8 +1,7 @@
 Setup                                                            machine › agents › approvals › preferences › first run
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✓  Approval: codex kit            approved                                                                           │
-│ !  Approval: claude kit           needs approval: api.anthropic.com                                                  │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+  ✓  Codex kit (kali)         approved
+  !  Claude kit (kali)        api.anthropic.com
 
 
 
@@ -37,4 +36,5 @@ Setup                                                            machine › age
 
 
 
-  ↑↓ move  │  a approve in sbx  │  s skip  │  n next  │  esc back
+
+  ↑↓ move  │  s skip  │  n next  │  esc back
