@@ -6,7 +6,7 @@ A recipe is a folder. The runner reads it, builds a sandbox, starts an agent and
 
 ```
 recipes/<category>/<name>/
-├── RECIPE.md          # frontmatter: name, category, summary, risk (low|medium|high), time, agents, variants, status, licence, sources
+├── RECIPE.md          # frontmatter: name, category, summary, risk (low|medium|high), time, tested_with (optional), variants, status, licence, sources
 ├── recipe.yaml        # variants: linux {kit, image, sbxenv}, macos {status: planned}
 ├── AGENTS.md          # role, scope rules, allowed tools, evidence format, stop conditions
 ├── scope.example.yaml # authorization, valid dates, targets, techniques (security recipes)
@@ -34,11 +34,13 @@ Markdown with YAML frontmatter. The frontmatter feeds the README gallery. The bo
 | `summary` | One sentence. |
 | `risk` | `low`, `medium` or `high`. How much harm a mistake could do. |
 | `time` | Typical run time, for example `10 min`. |
-| `agents` | Agents the recipe was tested with: `claude`, `codex`. |
+| `tested_with` | Optional. Agents proven by a real run, for example `[codex]`. Information only. |
 | `variants` | `linux`, `macos`. |
 | `status` | For example `planned`, `experimental`, `stable`. |
 | `licence` | SPDX id of the recipe itself. |
 | `sources` | Upstream projects and their licences. Anything vendored or inspired by. |
+
+Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today). Devin sign-in is currently broken in sbx. `python -m lab agents` lists them (`burner agents` does the same). There is no `agents` field. An old `agents` key is ignored with a lint warning, so remove it.
 
 Example:
 
@@ -49,7 +51,7 @@ category: devsecops
 summary: Find committed secrets in a repository and its history.
 risk: low
 time: 10 min
-agents: [claude, codex]
+tested_with: [codex]
 variants: [linux]
 status: experimental
 licence: Apache-2.0
