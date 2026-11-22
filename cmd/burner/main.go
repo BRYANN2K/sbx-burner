@@ -122,16 +122,39 @@ func ensureCatalog(ctx context.Context, catalogFlag string, stderr io.Writer) {
 	if catalogFlag != "" || os.Getenv("BURNER_CATALOG") != "" {
 		return
 	}
-	if _, err := catalog.FindRoot(""); err == nil {
-		return
-	}
 	home := catalog.Home()
 	if home == "" {
+		return
+	}
+	if root, err := catalog.FindRoot(""); err == nil {
+		refreshCatalog(ctx, root, home, stderr)
 		return
 	}
 	fmt.Fprintln(stderr, "fetching the recipe catalog into "+filepath.Join(home, "catalog")+" …")
 	if _, err := update.EnsureOfficial(ctx, home); err != nil {
 		fmt.Fprintln(stderr, "burner: could not fetch the recipe catalog:", err)
+	}
+}
+
+// refreshCatalog fast-forwards the official catalog at most once an hour, so
+// kits and recipes stay in step with the release without a separate
+// `burner update`. It never overwrites local edits (fast-forward only) and
+// stays quiet when offline.
+func refreshCatalog(ctx context.Context, root, home string, stderr io.Writer) {
+	if !catalog.IsOfficial(root) {
+		return
+	}
+	stamp := filepath.Join(home, "cache", "catalog-fetched")
+	if st, err := os.Stat(stamp); err == nil && time.Since(st.ModTime()) < time.Hour {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	c, err := update.Pull(ctx, root)
+	_ = os.MkdirAll(filepath.Dir(stamp), 0o700)
+	_ = os.WriteFile(stamp, nil, 0o600)
+	if err == nil && c.From != c.To {
+		fmt.Fprintf(stderr, "recipe catalog updated: %s → %s\n", c.From, c.To)
 	}
 }
 
