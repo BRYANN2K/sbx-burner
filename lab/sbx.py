@@ -201,10 +201,9 @@ AGENTS: dict[str, Agent] = {
         # Verified on sbx 0.54 (2026-11-22): `devin acp` is a native ACP v1
         # server; configOptions expose mode
         # (accept-edits/smart/ask/plan/bypass) and model (adaptive,
-        # swe-2-high, ...). Blocked today by an sbx kit bug: the credential
-        # engine writes ~/.local/share/devin/credentials.toml as JSON, and
-        # the CLI fails its TOML parse before serving. Fix confirmed locally
-        # (handshake answers once the file is real TOML); not patched here.
+        # swe-2-high, ...). sbx's credential engine writes
+        # ~/.local/share/devin/credentials.toml as JSON (docker/sbx-releases
+        # #906); burner's Kali kit re-emits it as TOML at start.
         acp=("/home/agent/.local/bin/devin", "acp"),
         interactive_login_note="Devin signs in once inside a sandbox (`sbx run devin <folder>`); sbx then reuses it.",
     ),

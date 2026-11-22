@@ -253,7 +253,6 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 	}
 	var aopts []option
 	def := -1
-	kali := r.Image != ""
 	for _, a := range agents {
 		svc, ok := doctor.AgentServices[a]
 		if !ok {
@@ -261,21 +260,7 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		}
 		note := "credential stored"
 		disabled := false
-		if why, blocked := doctor.Blocked[a]; blocked {
-			// Blocked on sbx's built-in agent; on a Kali recipe burner's
-			// own mixin kit runs it instead, once that kit exists (lab
-			// approvals reports a missing kit as an error, never a row
-			// the runner would refuse). Its approval is asked in the run.
-			note, disabled = why, true
-			if kali {
-				switch c, ok := f.check("approval-" + a); {
-				case ok && c.Level == doctor.OK:
-					note, disabled = "kit approved", false
-				case ok && !strings.Contains(c.Detail, "is missing") && !strings.HasPrefix(c.Detail, "could not check"):
-					note, disabled = "needs approval", false
-				}
-			}
-		} else if !doctor.AgentReady(f.checks, a) {
+		if !doctor.AgentReady(f.checks, a) {
 			note = "no credential · " + svc.Fix
 		} else if def < 0 {
 			def = len(aopts)

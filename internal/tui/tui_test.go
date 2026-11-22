@@ -1456,64 +1456,29 @@ func TestSetupSkipsTheSampleOutsideTheOfficialCatalog(t *testing.T) {
 	}
 }
 
-func TestDevinIsBlockedBySbx(t *testing.T) {
+func TestDevinIsANormalAgent(t *testing.T) {
 	res := doctor.Check(context.Background(), doctor.Options{Agents: []string{"devin"}, LookPath: func(string) (string, error) { return "/bin/x", nil },
-		Run: func(context.Context, string, ...string) (string, error) { return "", nil }})
+		Run: func(_ context.Context, name string, args ...string) (string, error) {
+			if name == "sbx" && len(args) > 0 && args[0] == "secret" {
+				return "devin", nil
+			}
+			return "", nil
+		}})
+	if !doctor.AgentReady(res, "devin") {
+		t.Fatal("devin with a stored credential is not ready")
+	}
 	var devin doctor.Result
 	for _, r := range res {
 		if r.ID == "agent-devin" {
 			devin = r
 		}
 	}
-	if devin.Level != doctor.Warn || !strings.Contains(devin.Detail, "blocked by sbx") || !strings.Contains(devin.Detail, "#906") {
-		t.Fatalf("devin %+v", devin)
-	}
-	c := append(checks(), devin)
-	f := newFlow(recipes()[0], treeDir(t), c, []string{"claude", "codex", "devin"}, nil)
-	f.prefs = Prefs{Agent: "devin"}
-	f.answers = []answer{{value: "path"}, {value: "here"}}
-	f.advance()
-	var opt option
-	for _, o := range f.q.options {
-		if o.value == "devin" {
-			opt = o
-		}
-	}
-	if !opt.disabled || f.q.options[f.q.cursor].value == "devin" {
-		t.Fatalf("devin selectable on a built-in recipe: %+v cursor=%d", opt, f.q.cursor)
-	}
-	// Kali recipe with an approved devin kit: selectable.
-	kali := recipes()[0]
-	kali.Image = "kali"
-	c2 := append(c, doctor.Result{ID: "approval-devin", Level: doctor.OK})
-	f = newFlow(kali, treeDir(t), c2, []string{"codex", "devin"}, nil)
-	f.answers = []answer{{value: "path"}, {value: "here"}}
-	f.advance()
-	opts := map[string]option{}
-	for _, o := range f.q.options {
-		opts[o.value] = o
-	}
-	if f.q.title != "Agent" || opts["devin"].value != "devin" || opts["devin"].disabled || opts["devin"].note != "kit approved" {
-		t.Fatal("devin not selectable on a Kali recipe with its kit approved")
-	}
-	// Kit present but not approved yet: selectable, "needs approval".
-	c3 := append(c, doctor.Result{ID: "approval-devin", Level: doctor.Warn, Detail: "needs approval: api.devin.ai"})
-	f = newFlow(kali, treeDir(t), c3, []string{"codex", "devin"}, nil)
+	f := newFlow(recipes()[0], treeDir(t), append(checks(), devin), []string{"claude", "codex", "devin"}, nil)
 	f.answers = []answer{{value: "path"}, {value: "here"}}
 	f.advance()
 	for _, o := range f.q.options {
-		if o.value == "devin" && (o.disabled || o.note != "needs approval") {
-			t.Fatalf("devin with an unapproved kit: %+v", o)
-		}
-	}
-	// Kit missing: still blocked.
-	c4 := append(c, doctor.Result{ID: "approval-devin", Level: doctor.Warn, Detail: "could not check: mixin kit kits/agent-devin is missing"})
-	f = newFlow(kali, treeDir(t), c4, []string{"codex", "devin"}, nil)
-	f.answers = []answer{{value: "path"}, {value: "here"}}
-	f.advance()
-	for _, o := range f.q.options {
-		if o.value == "devin" && !o.disabled {
-			t.Fatal("devin selectable with a missing kit")
+		if o.value == "devin" && (o.disabled || o.note != "credential stored") {
+			t.Fatalf("devin %+v", o)
 		}
 	}
 }

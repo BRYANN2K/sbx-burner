@@ -72,11 +72,6 @@ func KnownAgents() []string {
 // SbxLoginCommand signs the user in to Docker Sandboxes.
 const SbxLoginCommand = "sbx login"
 
-// Blocked agents cannot run in sbx today, whatever their credential says.
-var Blocked = map[string]string{
-	"devin": "blocked by sbx (docker/sbx-releases#906)",
-}
-
 // Runner executes a command and returns combined output. Tests replace it.
 type Runner func(ctx context.Context, name string, args ...string) (string, error)
 
@@ -216,10 +211,6 @@ func Check(ctx context.Context, o Options) []Result {
 	}
 
 	for _, agent := range o.Agents {
-		if why, blocked := Blocked[agent]; blocked {
-			out = append(out, res("agent-"+agent, agentTitle(agent), Warn, why, ""))
-			continue
-		}
 		svc, ok := AgentServices[agent]
 		if !ok {
 			out = append(out, res("agent-"+agent, agentTitle(agent), Warn, "not supported by burner yet", ""))

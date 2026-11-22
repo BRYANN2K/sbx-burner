@@ -8,7 +8,7 @@ Run your first recipe: install `sbx`, store a credential, do a dry run, then a r
 - macOS 14+ on Apple silicon, Linux with KVM, or Windows 11. These are the `sbx` platform limits.
 - Python 3.11+. No packages to install.
 - A Docker account for `sbx login`.
-- A coding agent. Supported agents: Claude Code, Codex, Cursor, Devin and OpenCode. `python -m lab agents` lists the agents the runner can launch. Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today). Devin is blocked by sbx for now (docker/sbx-releases#906).
+- A coding agent. Supported agents: Claude Code, Codex, Cursor, Devin and OpenCode. `python -m lab agents` lists the agents the runner can launch. Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today).
 
 ## burner setup
 

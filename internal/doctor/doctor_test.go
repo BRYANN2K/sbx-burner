@@ -26,7 +26,7 @@ func found(string) (string, error) { return "/bin/x", nil }
 func TestAllGood(t *testing.T) {
 	res := Check(context.Background(), Options{
 		LookPath: found,
-		Agents:   []string{"claude", "codex"}, // devin is blocked by sbx
+		Agents:   []string{"claude", "codex"},
 		Run: fake(map[string]string{
 			"sbx version": "sbx 0.48.0",
 			"docker info --format {{.ServerVersion}}":                      "29.5.2",
