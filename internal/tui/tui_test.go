@@ -920,8 +920,8 @@ func TestProjectPickerSkipsABurnerFolder(t *testing.T) {
 }
 
 func TestLastErrorPrefersTheSbxDaemonLine(t *testing.T) {
-	log := "$ sbx create --name lab-x\n[exit 1]\n--- stdout ---\n\n--- stderr ---\nerror: failed to run sandbox container\n\n--- sbx daemon ---\nsbx: create sandbox failed: write file /etc/hosts failed (exit 255)\ncontainer: sh: error while loading shared libraries: libc.so.6: Permission denied\n"
-	if got := lastError(log); got != "container: sh: error while loading shared libraries: libc.so.6: Permission denied" {
+	log := "$ sbx create --name lab-x\n[exit 1]\n--- stdout ---\n\n--- stderr ---\nerror: failed to run sandbox container\n\n--- sbx daemon ---\nsbx: create sandbox failed: write file /etc/hosts failed (exit 255)\ncontainer stderr (from the guest, untrusted): sh: error while loading shared libraries: libc.so.6: Permission denied\n"
+	if got := lastError(log); got != "container stderr (from the guest, untrusted): sh: error while loading shared libraries: libc.so.6: Permission denied" {
 		t.Fatalf("last error %q", got)
 	}
 }
