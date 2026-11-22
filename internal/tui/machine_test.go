@@ -160,3 +160,56 @@ func TestActionLineReadsAsTyped(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+// The setup panel fits the terminal and keeps one height on every step.
+func TestSetupPanelFitsTheTerminal(t *testing.T) {
+	for _, sz := range []struct {
+		name string
+		w, h int
+	}{{"short", 100, 30}, {"tall", 160, 50}, {"default", 120, 40}} {
+		m := bareSetup(t, true)
+		m.w, m.h = sz.w, sz.h
+		m.checks = append(m.checks, setupChecks()...)
+		if sz.name != "default" {
+			golden(t, "setup-machine-"+sz.name, m)
+		}
+		var heights []int
+		for _, step := range []int{setupMachine, setupAgents, setupApprovals, setupPrefs, setupFirstRun, setupDone} {
+			m.setup.step, m.setup.cursor = step, 0
+			lines := strings.Split(m.View(), "\n")
+			top, last := 0, len(lines)-1
+			for top < len(lines) && strings.TrimSpace(lines[top]) == "" {
+				top++
+			}
+			for last > 0 && strings.TrimSpace(lines[last]) == "" {
+				last--
+			}
+			panelH := last - top + 1
+			if len(lines) != sz.h || panelH > sz.h-2 || !strings.Contains(lines[last], "╯") || !strings.Contains(lines[last-1], "│") {
+				t.Fatalf("%s step %d: view %d lines, panel %d, for a %d-line terminal; bottom border cut or detached", sz.name, step, len(lines), panelH, sz.h)
+			}
+			heights = append(heights, panelH, top)
+		}
+		for i := 2; i < len(heights); i += 2 {
+			if heights[i] != heights[0] || heights[i+1] != heights[1] {
+				t.Fatalf("%s: panel height/top changes between steps: %v", sz.name, heights)
+			}
+		}
+	}
+}
+
+// Every sbx login removed: each agent reads not connected, one card for
+// the selected row only.
+func TestSetupAgentsNothingConnected(t *testing.T) {
+	m := bareSetup(t, true)
+	m.checks = nil
+	for _, a := range setupAgentsList {
+		m.checks = append(m.checks, doctor.Result{ID: "agent-" + a, Level: doctor.Warn, Detail: "no credential stored", Fix: doctor.AgentServices[a].Fix})
+	}
+	m.setup.step, m.setup.cursor = setupAgents, 0
+	golden(t, "setup-agents-none", m)
+	v := m.View()
+	if strings.Count(v, "Connect ") != 1 || strings.Contains(v, "blocked") {
+		t.Fatal("one connect card, no blocked state")
+	}
+}

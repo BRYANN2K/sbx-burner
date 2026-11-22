@@ -22,6 +22,14 @@ import (
 // approvals, preferences, first run, done. Every action runs only on the
 // user's key; burner never writes sbx's own files.
 
+// Setup panel layout: lines around the content area (border 2, padding
+// 2, blank lines 3, rules 2, keys 1), and the content area's height: the
+// tallest step fits in setupContent lines.
+const (
+	setupChrome  = 10
+	setupContent = 20
+)
+
 const (
 	setupWelcome = iota
 	setupMachine
@@ -607,11 +615,8 @@ func (m model) viewSetup() string {
 					v = doctor.AgentServices[a].Service
 				}
 			}
-			if why, blocked := doctor.Blocked[a]; blocked {
-				mk, v = sAmber.Render("!"), why
-			}
-			if a == "opencode" {
-				v, key = "providers set in OpenCode", "o"
+			if a == "opencode" && ok && c.Level == doctor.OK {
+				v = "providers set in OpenCode"
 			}
 			vs := sDim.Render(v)
 			if ok && c.Level != doctor.OK {
@@ -622,14 +627,14 @@ func (m model) viewSetup() string {
 		a := setupAgentsList[s.cursor]
 		c, ok := m.check("agent-" + a)
 		keys = []string{"↑↓", "move", "s", "skip", "n", "next", "esc", "back"}
-		switch _, blocked := doctor.Blocked[a]; {
+		switch {
 		case a == "opencode" && ok && c.Level == doctor.OK:
 			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
 		case a == "opencode":
 			L = append(L, "", card(sBold.Render("Configure OpenCode"), sSoft.Render("$ sbx run opencode "+tildify(sampleDir())), "",
 				btn("o", "open OpenCode", true)+"  "+btn("s", "skip", false)))
 			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
-		case !ok || c.Level != doctor.OK || blocked:
+		case !ok || c.Level != doctor.OK:
 			if argv := connectCommand(a); len(argv) > 0 {
 				L = append(L, "", card(sBold.Render("Connect "+setupAgentName[a]), sSoft.Render("$ "+tildify(strings.Join(argv, " "))), "",
 					btn("enter", "connect", true)+"  "+btn("s", "skip", false)))
@@ -840,25 +845,61 @@ func (m model) viewSetup() string {
 	if m.checking || s.busy || s.loading {
 		title = append(title, sAmber.Render(m.spin())+" "+sDim.Render("working"))
 	}
-	logo := sAmber.Render(strings.Join(m.logoLines(), "\n"))
-	head := lipgloss.JoinHorizontal(lipgloss.Center, logo, "    ", strings.Join(title, "\n"))
 	rule := sFaint.Render(strings.Repeat("─", w))
-	// A fixed content height keeps the panel still when a card appears or
-	// the step changes.
-	const contentH = 20
-	for len(L) < contentH {
-		L = append(L, "")
+	// The panel always fits the terminal and keeps one height on every
+	// step. The logo header shows when the full content area fits under
+	// it; otherwise a one-line header, and the content area takes what is
+	// left.
+	contentH, logoH := setupContent, len(m.logoLines())
+	head := ""
+	if m.h-2-setupChrome-logoH >= setupContent {
+		logo := sAmber.Render(strings.Join(m.logoLines(), "\n"))
+		head = lipgloss.JoinHorizontal(lipgloss.Top, logo, "    ", lipgloss.NewStyle().Height(logoH).Render(strings.Join(title, "\n")))
+	} else {
+		if room := m.h - 2 - setupChrome - 1; room < contentH {
+			contentH = room
+		}
+		if contentH < 3 {
+			contentH = 3
+		}
+		line := sBold.Render("burner") + " " + sDim.Render(m.cfg.Version) + sDim.Render(" · ") + sSoft.Render("Setup") + sDim.Render(" · ")
+		if s.step == setupDone {
+			line += sAmber.Render("ready")
+		} else {
+			line += sText.Render(strings.ToUpper(stepName[:1])+stepName[1:]) + " " + sDim.Render(fmt.Sprintf("%d of %d", stepN, len(setupSteps))) + " " + bar
+		}
+		if m.checking || s.busy || s.loading {
+			line += "  " + sAmber.Render(m.spin())
+		}
+		head = line
 	}
-	inner := head + "\n\n" + rule + "\n\n" + strings.Join(L, "\n") + "\n\n" + rule + "\n" + strings.TrimLeft(hints(keys...), " ")
+	lines := strings.Split(strings.Join(L, "\n"), "\n")
+	for i, l := range lines {
+		if lipgloss.Width(l) > w {
+			lines[i] = truncateANSI(l, w) // a wrapped line would change the height
+		}
+	}
+	if len(lines) > contentH {
+		lines = lines[:contentH]
+	}
+	for len(lines) < contentH {
+		lines = append(lines, "")
+	}
+	inner := head + "\n\n" + rule + "\n\n" + strings.Join(lines, "\n") + "\n\n" + rule + "\n" + truncateANSI(strings.TrimLeft(hints(keys...), " "), w)
 	panel := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colLine).Padding(1, 2).Width(panelW - 2).Render(inner)
 	_ = right
-	// Anchor the panel's top at the same row on every step, so the menu
-	// never moves when a card appears; centre it for the tallest step.
-	top := (m.h - 46) / 2
+	// The height depends only on the terminal, so the top stays put when a
+	// card appears or the step changes.
+	top := (m.h - lipgloss.Height(panel)) / 2
 	if top < 0 {
 		top = 0
 	}
 	b.WriteString(strings.Repeat("\n", top) + lipgloss.PlaceHorizontal(m.w, lipgloss.Center, panel))
+	// Fill below the panel ourselves: fit() keeps a view's last line at
+	// the bottom, which would pull the bottom border away from the panel.
+	if rest := m.h - top - lipgloss.Height(panel); rest > 0 {
+		b.WriteString(strings.Repeat("\n", rest) + " ")
+	}
 	return b.String()
 }
 
