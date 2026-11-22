@@ -1,136 +1,144 @@
-<div align="center">
+<p align="center"><img src="docs/assets/banner.png" alt="burner" width="100%"></p>
 
-<img src="assets/banner.png" alt="sbx-burner. A row of disposable lab boxes, each holding a small terminal, labelled pentest, malware, detection and DevSecOps." width="100%">
+**burner runs coding agents inside disposable Docker Sandboxes to work through security recipes, and hands you a report with proof.**
 
-**Disposable lab recipes for coding agents, run inside Docker Sandboxes.**
+- **Recipes.** 11 DevSecOps and 7 pentest recipes: pick one, give it a target and a scope, get findings.
+- **Sandboxes.** Each run lives in its own `sbx` VM. Burn it when the run ends, or keep it to look around.
+- **Subscriptions, not API keys.** You sign in once through `sbx run <agent>`. Credentials stay on the host.
+- **One TUI.** Setup, scope, agent, model, plan, live view and reports all happen in `burner`. Every screen has a CLI equivalent.
 
-Pick a recipe, give it a scope, let the agent work in a throwaway VM, and get a report with proof.
-
-[Quick start](#quick-start) · [Gallery](#gallery) · [Recipe format](docs/recipe-format.md) · [Write a recipe](docs/writing-a-recipe.md) · [Scope and safety](docs/scope-and-safety.md) · [Roadmap](docs/roadmap.md)
-
-</div>
-
----
-
-## Why
-
-Skill packs give agents knowledge. They usually run on your host, and the scope is a sentence in a prompt.
-
-sbx-burner adds the missing parts around the agent:
-
-- **A disposable VM.** Each recipe runs in a Docker Sandbox (`sbx`). Destroy it when the run ends.
-- **Scope enforced by the network.** Security recipes need a scope file. The sandbox network policy blocks hosts outside it. A prompt is not the only guard.
-- **A runner.** One command creates the sandbox, starts the agent, collects the output and writes the report.
-- **Evidence.** A finding needs proof: a command, its output, a request, a file. No proof, no finding.
-
-Use cases: pentest (white, grey and black box), bug bounty, malware triage, detection engineering, hardening audits, DevSecOps (secrets, SAST, SCA, SBOM, signing).
-
-This project is for defensive work and authorized testing only. See [Safety](#safety).
-
-**Status.** Pre-release. The docs and the recipe contract are written. The runner and the recipes are being built in four waves. See the [roadmap](docs/roadmap.md).
-
-## Quick start
-
-You need:
-
-- macOS 14+ on Apple silicon, Linux, or Windows 11 (the platforms `sbx` supports).
-- Python 3.11 or later. The runner uses the standard library only.
-- An agent credential stored on the host (Claude Code or Codex).
-
-Install `sbx` and sign in. On macOS:
-
-```sh
-brew trust docker/tap
-brew install docker/tap/sbx
-sbx login
-```
-
-Other platforms: see the [sbx install page](https://docs.docker.com/ai/sandboxes/install/).
-
-Install burner, the menu and CLI around the runner (macOS and Linux). The script verifies the release signature and checksum:
+## Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/BRYANN2K/sbx-burner/main/install.sh | sh
-burner setup
+burner
 ```
 
-A pinned version, Homebrew (planned) and manual download with `cosign verify-blob`: [Install](docs/install.md).
+The script checks the cosign signature and the sha256 before it installs. Other options: [docs/install.md](docs/install.md).
 
-Store a credential for your agent. It stays on the host. The sandbox only sees a placeholder.
+Requirements:
 
-```sh
-sbx run claude ~/some-folder    # Claude Code: sign in with your plan, then quit
-sbx secret set openai --oauth   # Codex
-```
+- macOS or Linux, arm64 or amd64.
+- [Docker Sandboxes (`sbx`)](https://docs.docker.com/ai/sandboxes/install/).
+- python3 3.11 or newer and git. The setup screen checks for them.
 
-Clone the repo and check a recipe without creating a sandbox:
+The first `burner` launch opens setup. It checks the machine, connects your agents and saves your defaults.
 
-```sh
-git clone https://github.com/BRYANN2K/sbx-burner.git
-cd sbx-burner
-python -m lab run devsecops/secrets-scan --target . --dry-run
-```
+## Tour
 
-`--dry-run` prints what the runner would do: the sandbox, the network policy, the agent and the output paths. Remove the flag to run it. Results land in `runs/<timestamp>-<recipe>/report.md` and `report.json`.
+### Live run
 
-More in [Getting started](docs/getting-started.md).
+![A finished webapp-blackbox run: steps on the left, agent output in the middle, findings and network status on the right.](docs/assets/run.png)
 
-## Gallery
+Steps, agent activity, findings, and which hosts are in scope or blocked, all in one view.
 
-<!-- recipes:start -->
-27 recipes. Generated from `recipes.yaml` by `scripts/gen_index.py`; do not edit by hand.
+### Home
 
-| Recipe | Category | Summary | Risk | Linux | macOS |
-| --- | --- | --- | --- | --- | --- |
-| [api-greybox](recipes/pentest/api-greybox/RECIPE.md) | pentest | Grey-box API test with a schema and two test users; proves broken authorization (BOLA, BFLA, mass assignment) with request pairs. | high | beta | planned |
-| [binary-blackbox](recipes/pentest/binary-blackbox/RECIPE.md) | pentest | Black-box analysis of a Linux binary — static triage, radare2 hypotheses, and dynamic proof of each behaviour with a crafted input. | medium | beta | planned |
-| [bug-bounty](recipes/pentest/bug-bounty/RECIPE.md) | pentest | Authorized bug-bounty testing of one program — distill the rules, bounded recon and manual checks, minimal proof, one platform-neutral report per finding. | high | beta | planned |
-| [dast-light](recipes/pentest/dast-light/RECIPE.md) | pentest | Passive OWASP ZAP baseline scan of a local web app, then triage; each kept alert is deduplicated and confirmed with one manual request. | medium | beta | planned |
-| [web-recon](recipes/pentest/web-recon/RECIPE.md) | pentest | Map the attack surface of in-scope web hosts with httpx, ffuf and low-severity nuclei templates, and write it to artifacts/surface.json. | medium | beta | planned |
-| [webapp-blackbox](recipes/pentest/webapp-blackbox/RECIPE.md) | pentest | Black-box test of an in-scope web app — map, then auth, session, access control, injection and business logic; one minimal PoC per finding. | high | beta | planned |
-| [whitebox-review](recipes/pentest/whitebox-review/RECIPE.md) | pentest | Source review with reachability; each finding has a source-to-sink trace, a concrete input, a local confirmation when possible, and a fix diff. | medium | beta | planned |
-| [container-scan](recipes/devsecops/container-scan/RECIPE.md) | devsecops | Scan the user's container image — a Dockerfile context or an image ref/tarball — with trivy and grype, then reconcile and rank fixes. | low | beta | planned |
-| [fuzzing](recipes/devsecops/fuzzing/RECIPE.md) | devsecops | Fuzz the user's C and Go harnesses for five minutes each, then deduplicate, minimise and classify every crash with its reproducer. | low | beta | planned |
-| [gate](recipes/devsecops/gate/RECIPE.md) | devsecops | Run secrets, SCA, SAST, IaC and licence checks on a codebase, merge every report into one SARIF and decide pass or fail from a read-only policy file. | low | beta | planned |
-| [iac-scan](recipes/devsecops/iac-scan/RECIPE.md) | devsecops | Scan Terraform, Kubernetes manifests and Dockerfiles for misconfigurations with trivy, then split real exposure from hygiene. | low | beta | planned |
-| [license-compliance](recipes/devsecops/license-compliance/RECIPE.md) | devsecops | Build an SBOM with syft and check every component licence against an allow / review / deny policy file. | low | beta | planned |
-| [pr-security-review](recipes/devsecops/pr-security-review/RECIPE.md) | devsecops | Review a pull request diff for security issues; report only findings with the vulnerable line, an exploit scenario and the diff hunk. | low | beta | planned |
-| [sast-semgrep](recipes/devsecops/sast-semgrep/RECIPE.md) | devsecops | Static-analyse a codebase with semgrep and a small set of bundled original rules, confirming every hit against the code before reporting. | low | beta | planned |
-| [sbom-sign](recipes/devsecops/sbom-sign/RECIPE.md) | devsecops | Build CycloneDX and SPDX SBOMs of a project with syft, sign the CycloneDX document with a throwaway cosign key pair, and verify the signature offline. | low | beta | planned |
-| [sca-osv](recipes/devsecops/sca-osv/RECIPE.md) | devsecops | Scan a project's lockfiles and manifests for known dependency vulnerabilities with osv-scanner, then report one finding per advisory group. | low | beta | planned |
-| [secrets-scan](recipes/devsecops/secrets-scan/RECIPE.md) | devsecops | Scan a repository and its git history for leaked credentials with gitleaks, then triage every hit before reporting. | low | beta | planned |
-| [supply-chain-risk](recipes/devsecops/supply-chain-risk/RECIPE.md) | devsecops | Assess a project's third-party dependencies for supply-chain risk: install scripts, floating versions, look-alike names, registry health and OpenSSF Scorecard. | low | beta | planned |
-| [ios-app-audit](recipes/apple/ios-app-audit/RECIPE.md) | apple | Audit an iOS app you own: entitlements, privacy manifest, transport security, storage and dependency risks. | medium | n/a | planned |
-| [macho-triage](recipes/apple/macho-triage/RECIPE.md) | apple | Static triage of a Mach-O sample: signature, entitlements, capabilities and YARA matches, offline. | high | n/a | planned |
-| [macos-es-detections](recipes/apple/macos-es-detections/RECIPE.md) | apple | Replay ATT&CK tests on macOS and check Endpoint Security events against expected detections. | medium | n/a | planned |
-| [macos-malware-dynamic](recipes/apple/macos-malware-dynamic/RECIPE.md) | apple | Detonate a macOS sample offline in a SIP-off VM, capture ES events and persistence changes, then destroy the VM. | high | n/a | planned |
-| [macos-mscp-audit](recipes/apple/macos-mscp-audit/RECIPE.md) | apple | Audit a macOS VM against an mSCP baseline (CIS or NIST) and report pass or fail per rule. | low | n/a | planned |
-| [notarize-sign](recipes/apple/notarize-sign/RECIPE.md) | apple | Sign and notarize a macOS app in a clean VM, with credentials injected by the host proxy only. | medium | n/a | planned |
-| [safari-qa](recipes/apple/safari-qa/RECIPE.md) | apple | Run web QA in real Safari through safaridriver in a macOS VM, with screenshots as evidence. | low | n/a | planned |
-| [swiftui-dev](recipes/apple/swiftui-dev/RECIPE.md) | apple | SwiftUI coding agent with build, simulator run and screenshot feedback in a macOS VM. | low | n/a | planned |
-| [xcode-ci](recipes/apple/xcode-ci/RECIPE.md) | apple | Build, test and archive an Xcode project in a throwaway macOS VM, with signing through the host proxy. | low | n/a | planned |
-<!-- recipes:end -->
+![Home screen with categories, recipes and agent status.](docs/assets/home.png)
 
-Categories and build order are in the [roadmap](docs/roadmap.md).
+Categories, recipes and the status of each agent.
+
+### Scope
+
+![Scope form with targets, authorization, techniques and a risky group.](docs/assets/scope.png)
+
+Targets, authorization, allowed techniques, and a separate group for risky ones.
+
+### Flow
+
+![The run flow: target, scope, agent, mode, model, permissions, notes, plan.](docs/assets/model.png)
+
+Target, scope, agent, mode, model, permissions, notes, then plan.
+
+### Plan
+
+![Dry-run plan listing the sandbox, allowed hosts and every step.](docs/assets/plan.png)
+
+A dry run of every step before anything runs. Choose burn or keep for the sandbox afterwards.
+
+## Recipes
+
+Linux variants are beta. macOS variants are planned.
+
+| Category | Recipe | What it does |
+| --- | --- | --- |
+| pentest | `web-recon` | Maps the attack surface of in-scope web hosts. |
+| pentest | `webapp-blackbox` | Black-box test of a web app: auth, session, access control, injection. |
+| pentest | `api-greybox` | Grey-box API test with two users; proves broken authorization. |
+| pentest | `whitebox-review` | Source review with reachability, a trace and a fix diff per finding. |
+| pentest | `dast-light` | Passive ZAP baseline scan, then manual confirmation of each alert. |
+| pentest | `binary-blackbox` | Black-box analysis of a Linux binary. |
+| pentest | `bug-bounty` | Authorized testing of one bug-bounty program. |
+| devsecops | `secrets-scan` | Finds leaked credentials in a repo and its history with gitleaks. |
+| devsecops | `sast-semgrep` | Static analysis with semgrep; every hit is checked against the code. |
+| devsecops | `sca-osv` | Known dependency vulnerabilities from lockfiles with osv-scanner. |
+| devsecops | `container-scan` | Scans a Dockerfile context or image with trivy and grype. |
+| devsecops | `iac-scan` | Terraform, Kubernetes and Dockerfile misconfigurations. |
+| devsecops | `sbom-sign` | CycloneDX and SPDX SBOMs, signed with a throwaway cosign key. |
+| devsecops | `license-compliance` | Checks SBOM licences against an allow, review and deny policy. |
+| devsecops | `supply-chain-risk` | Dependency risk: install scripts, floating versions, look-alikes. |
+| devsecops | `pr-security-review` | Reviews a pull request diff; reports only proven issues. |
+| devsecops | `fuzzing` | Fuzzes C and Go harnesses, then dedupes and classifies crashes. |
+| devsecops | `gate` | Runs secrets, SCA, SAST, IaC and licence checks; decides pass or fail. |
+
+Nine `apple` recipes (iOS audit, Mach-O triage, Xcode CI and others) are planned and need [macsbx](https://github.com/BRYANN2K/macsbx). Details: [docs/roadmap.md](docs/roadmap.md).
+
+## Agents
+
+Sign in once with `sbx run <agent> <folder>`, then quit. sbx keeps the credential on the host.
+
+| Agent | Sign-in | ACP live view |
+| --- | --- | --- |
+| claude | `sbx run claude <folder>`, with your plan | yes |
+| codex | `sbx run codex <folder>`, with your plan | yes |
+| cursor | `sbx run cursor <folder>`, with your plan | yes |
+| devin | `sbx run devin <folder>` | yes |
+| opencode | `sbx run opencode <folder>`, providers set in OpenCode | yes |
+
+Pass `--acp` to drive the agent over the Agent Client Protocol. `burner acp agents` lists the wired agents. Devin keeps a real token inside the sandbox; read [Scope and safety](docs/scope-and-safety.md#credentials) first.
 
 ## Safety
 
-- Every security recipe needs a [scope file](docs/scope-and-safety.md): authorization, valid dates, targets, techniques.
-- The runner turns the scope into `sbx` network policy. Hosts outside the scope are blocked.
-- Targets are labs you start yourself, unless your scope file cites written authorization.
-- Findings need [proof](docs/evidence-and-reports.md). Unproven leads go in a separate hypotheses list.
-- No live malware in this repository.
+- Pentest recipes need a scope file. burner refuses to start without one.
+- The scope says `own-lab` or `written` authorization. A third-party target needs a written reference.
+- The sandbox network is deny-all. Only the scope hosts and the agent's API host are allowed.
+- Secrets stay in sbx. The sandbox sees a placeholder.
+- burner never writes sbx credentials.
+- Findings need evidence: a command, its output, a file.
 
-Read [SECURITY.md](SECURITY.md) for the acceptable-use rules and how to report a vulnerability.
+Use burner for defensive work and authorized testing only. Full rules: [docs/scope-and-safety.md](docs/scope-and-safety.md).
 
-## Roadmap
+## CLI
 
-Linux now, macOS with [macsbx](https://github.com/BRYANN2K/macsbx). Every recipe has a Linux variant first. The macOS variants come later, and some recipes are macOS-only. See [docs/roadmap.md](docs/roadmap.md).
+The plan screen prints the exact command for the run you configured. A few more:
 
-## Contributing
+```sh
+burner run pentest/webapp-blackbox --scope scope.yaml --agent claude
+burner run devsecops/secrets-scan --target . --dry-run
+burner run devsecops/gate --target . --keep --acp
+burner list
+burner scope scope.yaml --host app.example.com
+burner sandboxes
+burner burn --kept
+burner doctor
+burner update
+```
 
-New recipes, better rules and skills, new evals and fixes are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first. Commits use Conventional Commits and a DCO sign-off.
+`burner --help` lists every flag.
 
-## Licence
+## Docs
 
-[Apache-2.0](LICENSE). Vendored third-party material keeps its own licence and is credited in `NOTICE`.
+- [Getting started](docs/getting-started.md)
+- [Install](docs/install.md)
+- [Scope and safety](docs/scope-and-safety.md)
+- [Live runs](docs/live-runs.md)
+- [Recipe format](docs/recipe-format.md) and [writing a recipe](docs/writing-a-recipe.md)
+- [Evidence and reports](docs/evidence-and-reports.md)
+- [Roadmap](docs/roadmap.md)
+
+## Project
+
+- [Contributing](CONTRIBUTING.md): Conventional Commits and a DCO sign-off.
+- [Security policy](SECURITY.md): acceptable use and how to report a vulnerability.
+- [Code of conduct](CODE_OF_CONDUCT.md).
+- License: [Apache-2.0](LICENSE).
