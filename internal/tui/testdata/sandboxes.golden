@@ -1,0 +1,40 @@
+Sandboxes · kept
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│   NAME                               RECIPE                         AGENT      AGE      STATE                        │
+│ ❯ lab-web-recon-010000               pentest/web-recon              codex      1h       running                      │
+│   lab-secrets-scan-012942            devsecops/secrets-scan         codex      3h       stopped                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter open run  │  t agent TUI  │  b burn  │  B burn all kept  │  esc back

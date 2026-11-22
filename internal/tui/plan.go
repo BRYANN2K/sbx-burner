@@ -91,7 +91,7 @@ func (m model) updatePlan(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.sc.mouse(msg)
 		return m, nil
 	case tea.KeyMsg:
-		if p.sc.key(msg.String(), true) {
+		if msg.String() != "k" && p.sc.key(msg.String(), true) {
 			return m, nil
 		}
 		switch msg.String() {
@@ -102,6 +102,13 @@ func (m model) updatePlan(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.flow.focusCmd()
 			}
 			m.scr = scrHome
+		case "k":
+			// After the run: burn or keep the sandbox; the engine plans again.
+			if !p.loading {
+				p.opts.Keep = !p.opts.Keep
+				p.loading = true
+				return m, p.start(m)
+			}
 		case "left", "right", "tab", "h", "l":
 			if p.ok() {
 				p.run = !p.run
@@ -152,7 +159,14 @@ func (m model) viewPlan() string {
 	if m.flow != nil {
 		left, right = runCrumbs(m.flow.r, p.opts), trail(m.flow.sections(), "plan")
 	}
-	b.WriteString(header(w, left, right) + "\n\n")
+	b.WriteString(header(w, left, right) + "\n")
+	chip := func(s string, on bool) string {
+		if on {
+			return sSel.Render(" " + s + " ")
+		}
+		return sDim.Render(" " + s + " ")
+	}
+	b.WriteString("  " + sDim.Render("After the run  ") + chip("burn", !p.opts.Keep) + " " + chip("keep", p.opts.Keep) + "\n")
 
 	// Fixed parts: header (2), box border (2), box title (2), and below
 	// the box: buttons (2), command (1), hints (1).
@@ -165,9 +179,9 @@ func (m model) viewPlan() string {
 			body = append(body, "")
 		}
 	default:
-		head := sBold.Render("Plan") + "  " + sDim.Render("exactly what will run, nothing has started")
+		head := sBold.Render("Plan")
 		if !p.ok() {
-			head = sBold.Render("Plan refused") + "  " + sDim.Render("the engine stopped before running anything")
+			head = sBold.Render("Plan refused")
 		}
 		body = append(body, head, "")
 		lines := strings.Split(strings.TrimRight(p.text, "\n"), "\n")
@@ -193,7 +207,7 @@ func (m model) viewPlan() string {
 		}
 		b.WriteString("\n" + strings.Repeat(" ", 10) + run + "   " + cancel + "\n")
 		b.WriteString("  " + sFaint.Render(truncate("same run without the menu: "+optsCommand(p.opts), w-4)) + "\n")
-		b.WriteString(hints("enter", "confirm", "←→", "run / cancel", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(p.sc.wrap), "esc", "back"))
+		b.WriteString(hints("enter", "confirm", "←→", "run / cancel", "k", "burn / keep", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(p.sc.wrap), "esc", "back"))
 	} else {
 		if approveAgent(p.text) != "" {
 			b.WriteString("\n\n\n" + hints("a", "approve in sbx", "esc", "back", "↑↓", "scroll", "w", wrapLabel(p.sc.wrap), "q", "quit"))

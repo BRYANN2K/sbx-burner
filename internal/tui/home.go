@@ -156,6 +156,8 @@ func (m model) updateHome(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "d":
 		m.scr = scrDoctor
 		return m, nil
+	case "s":
+		return m.openSandboxes(scrHome)
 	case "n":
 		m.newr = newNewModel()
 		m.scr = scrNew
@@ -304,7 +306,7 @@ func (m model) viewHome() string {
 		b.WriteString("  " + sAmber.Render(h.msg) + "\n")
 	}
 	// Bottom: every command in one bar, then the doctor status line.
-	keys := []string{"enter", "run", "/", "search", "d", "doctor", "n", "new recipe", "u", "update", "↑↓ ←→", "move"}
+	keys := []string{"enter", "run", "/", "search", "s", "sandboxes", "d", "doctor", "n", "new recipe", "u", "update", "↑↓ ←→", "move"}
 	quit := sSoft.Render("q") + " " + sDim.Render("quit") + " "
 	cmds := hints(keys...)
 	if lipgloss.Width(cmds)+lipgloss.Width(quit)+2 > w {

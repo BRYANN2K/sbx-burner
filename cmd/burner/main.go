@@ -17,6 +17,7 @@ import (
 	"strings"
 	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/BRYANN2K/sbx-burner/internal/acp"
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
@@ -25,6 +26,7 @@ import (
 	"github.com/BRYANN2K/sbx-burner/internal/events"
 	"github.com/BRYANN2K/sbx-burner/internal/live"
 	"github.com/BRYANN2K/sbx-burner/internal/mcp"
+	"github.com/BRYANN2K/sbx-burner/internal/sandboxes"
 	"github.com/BRYANN2K/sbx-burner/internal/scaffold"
 	"github.com/BRYANN2K/sbx-burner/internal/tui"
 	"github.com/BRYANN2K/sbx-burner/internal/update"
@@ -63,6 +65,8 @@ Usage:
                               write a scope for that recipe from the target (~/.burner/scopes)
   burner doctor [--json]
   burner answer <run-dir> <ask-id> <answer>   answer the agent from another terminal
+  burner sandboxes [--json]   sandboxes kept with --keep
+  burner burn NAME|--kept     remove a kept sandbox, or all of them
   burner approve --agent A    approve the agent's credential for lab kits (interactive)
   burner update [--check] [--install]   update recipe catalogs; check (or install) a new burner
   burner catalog add <git-url> [--name N] | list
@@ -132,6 +136,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdNew(catalogFlag, rest, stdout, stderr)
 	case "answer":
 		return cmdAnswer(rest, stderr)
+	case "sandboxes":
+		return cmdSandboxes(ctx, rest, stdout, stderr)
+	case "burn":
+		return cmdBurn(ctx, rest, stdout, stderr)
 	case "approve":
 		return cmdApprove(ctx, catalogFlag, rest, stderr)
 	case "update":
@@ -378,6 +386,9 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	}
 	if err != nil {
 		return fail(stderr, exitFailed, err)
+	}
+	if o.Keep && st != nil && st.RunID != "" {
+		recordKept(st.RunID, o, r.ID)
 	}
 	if o.ACP && st != nil && st.Done != nil && st.Done.Report != "" {
 		cacheModels(filepath.Join(filepath.Dir(st.Done.Report), acp.ModelsFile))
@@ -708,4 +719,77 @@ func runOnTerminal(argv []string) error {
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
+}
+
+// sbxLister and sbxRemover talk to sbx; tests replace them.
+var (
+	sbxLister  sandboxes.Lister  = sandboxes.SbxList
+	sbxRemover sandboxes.Remover = sandboxes.SbxRemove
+)
+
+// recordKept remembers a sandbox kept with --keep, so `burner sandboxes`
+// lists it and `burner burn` may remove it.
+func recordKept(runID string, o engine.RunOptions, recipe string) {
+	name := events.SandboxForRun(runID)
+	runs := o.RunsDir
+	if runs == "" {
+		cwd, _ := os.Getwd()
+		runs = filepath.Join(cwd, "runs")
+	}
+	_ = sandboxes.Add(catalog.Home(), sandboxes.Entry{Name: name, RunDir: filepath.Join(runs, runID), Recipe: recipe, Agent: o.Agent, Created: time.Now()})
+}
+
+func cmdSandboxes(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	asJSON := len(args) == 1 && args[0] == "--json"
+	if len(args) > 1 || (len(args) == 1 && !asJSON) {
+		fmt.Fprintln(stderr, "usage: burner sandboxes [--json]")
+		return exitUsage
+	}
+	kept, err := sandboxes.List(ctx, catalog.Home(), sbxLister)
+	if err != nil {
+		return fail(stderr, exitNotReady, err)
+	}
+	if asJSON {
+		if kept == nil {
+			kept = []sandboxes.Kept{}
+		}
+		_ = json.NewEncoder(stdout).Encode(map[string]any{"sandboxes": kept})
+		return exitOK
+	}
+	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "NAME\tRECIPE\tAGENT\tAGE\tSTATE")
+	for _, k := range kept {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", k.Name, k.Recipe, k.Agent, sandboxes.Age(k.Created, time.Now()), k.State)
+	}
+	tw.Flush()
+	return exitOK
+}
+
+func cmdBurn(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if len(args) != 1 {
+		fmt.Fprintln(stderr, "usage: burner burn NAME|--kept")
+		return exitUsage
+	}
+	home := catalog.Home()
+	names := []string{args[0]}
+	if args[0] == "--kept" {
+		kept, err := sandboxes.List(ctx, home, sbxLister)
+		if err != nil {
+			return fail(stderr, exitNotReady, err)
+		}
+		names = nil
+		for _, k := range kept {
+			names = append(names, k.Name)
+		}
+	}
+	code := exitOK
+	for _, n := range names {
+		if err := sandboxes.Burn(ctx, home, n, sbxRemover); err != nil {
+			fmt.Fprintln(stderr, "burner:", err)
+			code = exitFailed
+			continue
+		}
+		fmt.Fprintln(stdout, "burned "+n)
+	}
+	return code
 }

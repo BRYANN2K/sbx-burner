@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
+	"github.com/BRYANN2K/sbx-burner/internal/sandboxes"
 )
 
 func TestMissingInputsNamesEveryRequiredInput(t *testing.T) {
@@ -42,5 +46,28 @@ func TestScopeNewOutIsAbsolute(t *testing.T) {
 	got := absPaths("scope", []string{"new", "pentest/api-greybox", "--target-port", "3000", "--out", "rel/s.yaml"})
 	if !filepath.IsAbs(got[5]) || !strings.HasSuffix(got[5], "rel/s.yaml") {
 		t.Fatalf("--out not made absolute: %v", got)
+	}
+}
+
+func TestSandboxesAndBurnCommands(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("BURNER_HOME", home)
+	_ = sandboxes.Add(home, sandboxes.Entry{Name: "lab-a-000001", Recipe: "devsecops/secrets-scan", Agent: "codex", Created: time.Now()})
+	_ = sandboxes.Add(home, sandboxes.Entry{Name: "lab-b-000002", Recipe: "pentest/web-recon", Agent: "codex", Created: time.Now()})
+	live := map[string]string{"lab-a-000001": "stopped", "lab-b-000002": "running"}
+	var removed []string
+	origL, origR := sbxLister, sbxRemover
+	defer func() { sbxLister, sbxRemover = origL, origR }()
+	sbxLister = func(context.Context) (map[string]string, error) { return live, nil }
+	sbxRemover = func(_ context.Context, n string) error { removed = append(removed, n); delete(live, n); return nil }
+	var out, errb bytes.Buffer
+	if code := cmdSandboxes(context.Background(), []string{"--json"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "lab-a-000001") {
+		t.Fatalf("sandboxes: %d %s %s", code, out.String(), errb.String())
+	}
+	if code := cmdBurn(context.Background(), []string{"claude-x"}, &out, &errb); code == 0 {
+		t.Fatal("burned a sandbox burner did not keep")
+	}
+	if code := cmdBurn(context.Background(), []string{"--kept"}, &out, &errb); code != 0 || len(removed) != 2 {
+		t.Fatalf("burn --kept: %d %v", code, removed)
 	}
 }

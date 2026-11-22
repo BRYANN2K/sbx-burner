@@ -21,6 +21,7 @@ import (
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
 	"github.com/BRYANN2K/sbx-burner/internal/events"
+	"github.com/BRYANN2K/sbx-burner/internal/sandboxes"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
@@ -1149,5 +1150,77 @@ func TestScopeFormAsksWrittenAuthorizationForRiskyTechniques(t *testing.T) {
 	f.auth, f.ref = "written", "SOW-42"
 	if len(f.problems()) != 0 {
 		t.Fatalf("written authorization refused: %v", f.problems())
+	}
+}
+
+func TestPlanKeepToggleReplans(t *testing.T) {
+	eng := &fakeEngine{plan: "Plan for devsecops/secrets-scan\\n"}
+	m := testModel(t, eng)
+	m.plan = newPlan(engine.RunOptions{Recipe: "devsecops/secrets-scan", Agent: "codex", RunsDir: "/runs"})
+	m.scr = scrPlan
+	nm, _ := m.Update(planMsg{text: eng.plan})
+	m = nm.(model)
+	nm, cmd := m.Update(keyMsg("k"))
+	m = nm.(model)
+	if !m.plan.opts.Keep || !m.plan.loading || cmd == nil {
+		t.Fatal("k did not switch to keep and plan again")
+	}
+	nm, _ = m.Update(cmd())
+	m = nm.(model)
+	golden(t, "plan-keep", m)
+	if !strings.Contains(strings.Join(m.plan.opts.Args(), " "), "--keep") {
+		t.Fatal("--keep not passed to the engine")
+	}
+}
+
+func TestSandboxesScreenListsOpensAndBurns(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("BURNER_HOME", home)
+	now := time.Date(2026, 11, 22, 1, 29, 42, 0, time.UTC)
+	runDir := filepath.Join(t.TempDir(), "20261122-012942-secrets-scan")
+	os.MkdirAll(runDir, 0o700)
+	os.WriteFile(filepath.Join(runDir, "report.json"), []byte(`{"counts":{"findings":0},"gate":{}}`), 0o600)
+	os.WriteFile(filepath.Join(runDir, "report.md"), []byte("# r\\n"), 0o600)
+	sandboxes.Add(home, sandboxes.Entry{Name: "lab-secrets-scan-012942", RunDir: runDir, Recipe: "devsecops/secrets-scan", Agent: "codex", Created: now.Add(-3 * time.Hour)})
+	sandboxes.Add(home, sandboxes.Entry{Name: "lab-web-recon-010000", RunDir: runDir, Recipe: "pentest/web-recon", Agent: "codex", Created: now.Add(-time.Hour)})
+	live := map[string]string{"lab-secrets-scan-012942": "stopped", "lab-web-recon-010000": "running", "claude-x": "running"}
+	var removed []string
+	origL, origR := sbxList, sbxRemove
+	defer func() { sbxList, sbxRemove = origL, origR }()
+	sbxList = func(context.Context) (map[string]string, error) { return live, nil }
+	sbxRemove = func(_ context.Context, n string) error { removed = append(removed, n); delete(live, n); return nil }
+	m := testModel(t, &fakeEngine{})
+	nm, cmd := m.Update(keyMsg("s"))
+	m = nm.(model)
+	nm, _ = m.Update(cmd())
+	m = nm.(model)
+	if m.scr != scrSandboxes || len(m.sbx.list) != 2 || m.sbx.list[0].Name != "lab-web-recon-010000" {
+		t.Fatalf("sandboxes: %+v", m.sbx)
+	}
+	golden(t, "sandboxes", m)
+	nm, cmd = m.Update(keyMsg("b"))
+	m = nm.(model)
+	nm, cmd = m.Update(cmd())
+	m = nm.(model)
+	nm, _ = m.Update(cmd())
+	m = nm.(model)
+	if len(removed) != 1 || removed[0] != "lab-web-recon-010000" || len(m.sbx.list) != 1 {
+		t.Fatalf("burn: removed %v list %+v", removed, m.sbx.list)
+	}
+	m = press(t, m, "enter")
+	if m.scr != scrReport {
+		t.Fatal("enter did not open the run")
+	}
+}
+
+func TestKeptRunIsRecorded(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("BURNER_HOME", home)
+	l := newLive(engine.RunOptions{Recipe: "devsecops/secrets-scan", Agent: "codex", Keep: true, RunsDir: "/runs"}, time.Now())
+	l.add(events.Event{Type: "step", Name: "create", Status: "start", RunID: "20261122-012942-secrets-scan"})
+	recordKept(context.Background(), l)
+	list, _ := sandboxes.Load(home)
+	if len(list) != 1 || list[0].Name != "lab-secrets-scan-012942" || list[0].RunDir != "/runs/20261122-012942-secrets-scan" {
+		t.Fatalf("recorded %+v", list)
 	}
 }

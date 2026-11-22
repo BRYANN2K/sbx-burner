@@ -343,6 +343,7 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case runEndMsg:
 		l.finish, l.exit, l.err, l.ended = true, msg.code, msg.err, m.cfg.Now()
+		recordKept(m.ctx, l)
 		l.asks = nil
 		m.out.Code = msg.code
 		if l.done != nil {
@@ -415,6 +416,8 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "h":
 				m.scr = scrHome
 				return m, nil
+			case "s":
+				return m.openSandboxes(scrLive)
 			case "l":
 				if step := l.lastStep(); step != "" {
 					m.logv = newLogView(step, stepLogPath(l.runDir(), step))
