@@ -1,0 +1,28 @@
+# burner release: darwin + linux, arm64 + amd64, checksums signed keyless
+# with cosign (GitHub OIDC). `burner update` verifies both.
+version: 2
+project_name: burner
+builds:
+  - main: ./cmd/burner
+    binary: burner
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux]
+    goarch: [arm64, amd64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{.Tag}}"]
+archives:
+  - formats: [tar.gz]
+    name_template: "burner_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE, NOTICE, THIRD_PARTY_NOTICES.csv]
+checksum:
+  name_template: checksums.txt
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args: ["sign-blob", "--yes", "--output-signature=${signature}", "--output-certificate=${certificate}", "${artifact}"]
+    artifacts: checksum
+sboms:
+  - artifacts: archive
+changelog:
+  use: github
