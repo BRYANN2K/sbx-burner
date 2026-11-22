@@ -4,6 +4,7 @@ category: devsecops
 summary: Fuzz the user's C and Go harnesses for five minutes each, then deduplicate, minimise and classify every crash with its reproducer.
 risk: low
 time: 20m
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned

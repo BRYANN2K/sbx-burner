@@ -4,6 +4,7 @@ category: devsecops
 summary: Static-analyse a codebase with semgrep and a small set of bundled original rules, confirming every hit against the code before reporting.
 risk: low
 time: 15m
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned

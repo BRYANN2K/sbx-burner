@@ -4,6 +4,7 @@ category: devsecops
 summary: Assess a project's third-party dependencies for supply-chain risk: install scripts, floating versions, look-alike names, registry health and OpenSSF Scorecard.
 risk: low
 time: 15m
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned

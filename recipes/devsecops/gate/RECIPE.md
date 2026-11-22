@@ -4,6 +4,7 @@ category: devsecops
 summary: Run secrets, SCA, SAST, IaC and licence checks on a codebase, merge every report into one SARIF and decide pass or fail from a read-only policy file.
 risk: low
 time: 45m
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned
