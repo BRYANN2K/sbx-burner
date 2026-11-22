@@ -105,6 +105,9 @@ type bridge struct {
 	tapW   *bufio.Writer
 	tapN   int64
 	client *Client
+	toolMu sync.Mutex
+	tools  map[string]bool // tool calls already shown with a real title
+	think  strings.Builder
 }
 
 // MaxTranscript caps the raw transcript on disk.
@@ -396,22 +399,66 @@ func (b *bridge) Update(u Update) {
 		if long {
 			b.flush()
 		}
-	case "tool_call":
-		b.flush()
-		tool := u.ToolKind
-		if tool == "" {
-			tool = "tool"
+	case "agent_thought_chunk":
+		// Thinking is shown as one short line when it ends (at the next
+		// tool call or message), so the screen says what the agent is doing.
+		b.bufMu.Lock()
+		if b.think.Len() < 4000 {
+			b.think.WriteString(u.Text)
 		}
-		title := u.Title
-		if title == "" {
-			title = "tool call"
+		b.bufMu.Unlock()
+	case "tool_call", "tool_call_update":
+		b.flushThought()
+		if u.Kind == "tool_call" {
+			b.flush()
 		}
-		b.event("agent.tool", map[string]string{"tool": tool, "summary": title})
-	case "tool_call_update":
-		if u.Status == "failed" && u.Title != "" {
-			b.event("agent.tool", map[string]string{"tool": "failed", "summary": u.Title})
+		b.toolMu.Lock()
+		if b.tools == nil {
+			b.tools = map[string]bool{}
+		}
+		shown := b.tools[u.ToolID]
+		// Adapters often open a tool call with a generic title ("Terminal",
+		// "Read") and send the real one (the command, the file) in an update.
+		real := u.Title != "" && !genericTitle(u.Title)
+		if real && !shown {
+			b.tools[u.ToolID] = true
+		}
+		b.toolMu.Unlock()
+		switch {
+		case real && !shown:
+			b.event("agent.tool", map[string]string{"tool": u.ToolKind, "summary": u.Title})
+		case u.Status == "failed":
+			t := u.Title
+			if t == "" {
+				t = "tool call"
+			}
+			b.event("agent.tool", map[string]string{"tool": "failed", "summary": t})
 		}
 	}
+}
+
+// genericTitle reports a placeholder title an adapter sends before the
+// real one.
+func genericTitle(t string) bool {
+	switch strings.ToLower(strings.TrimSpace(t)) {
+	case "terminal", "bash", "read", "write", "edit", "fetch", "search", "grep", "glob", "tool", "tool call", "execute", "think":
+		return true
+	}
+	return false
+}
+
+func (b *bridge) flushThought() {
+	b.bufMu.Lock()
+	t := strings.TrimSpace(b.think.String())
+	b.think.Reset()
+	b.bufMu.Unlock()
+	if t == "" {
+		return
+	}
+	if i := strings.IndexAny(t, ".\n"); i > 0 && i < 200 {
+		t = t[:i]
+	}
+	b.event("agent.tool", map[string]string{"tool": "thinking", "summary": t})
 }
 
 func (b *bridge) flush() {

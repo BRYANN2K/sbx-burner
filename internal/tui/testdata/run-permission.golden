@@ -3,7 +3,7 @@ webapp-blackbox · codex · gpt-6-luna · ACP · http://localhost:3000          
 │ STEPS                       │ codex                                                 │ FINDINGS                       │
 │ ✓ create                    │ I'll map the app first.                               │ ◆ basket-idor             high │
 │ ⠋ agent                     │                                                       │                                │
-│   tools                     │ › exec curl -s http://localhost:3000/openapi.yaml     │ NETWORK                        │
+│   tools                     │ › curl -s http://localhost:3000/openapi.yaml          │ NETWORK                        │
 │                             │ ◆ basket-idor  high  GET /api/baskets/:id             │ chatgpt.com:443        allowed │
 │                             │ ╭──────────────────────────────────────────────────╮  │ localhost:3000         allowed │
 │                             │ │ codex wants to run                               │  │                                │

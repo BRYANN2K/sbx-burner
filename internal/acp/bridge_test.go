@@ -357,3 +357,18 @@ func TestBridgeUnlistedModel(t *testing.T) {
 		t.Fatalf("cursor unlisted accepted: exit %d", code)
 	}
 }
+
+// Adapters open a tool call with a placeholder title and send the command in
+// an update; only the real title is shown.
+func TestGenericToolTitles(t *testing.T) {
+	for _, g := range []string{"Terminal", "bash", "Read", "tool call"} {
+		if !genericTitle(g) {
+			t.Errorf("%q should be generic", g)
+		}
+	}
+	for _, r := range []string{"curl -s http://localhost:3000/openapi.yaml", "Read .lab/scope.json"} {
+		if genericTitle(r) {
+			t.Errorf("%q should be shown", r)
+		}
+	}
+}
