@@ -671,7 +671,16 @@ func (l *liveModel) renderEntry(m model, e entry2, w int) []string {
 			}
 			out = append(out, "")
 		case "agent.tool":
-			out = append(out, sDim.Render("› ")+sText.Render(ev.Tool+" "+ev.Summary))
+			switch ev.Tool {
+			case "thinking":
+				out = append(out, sDim.Render("… "+ev.Summary))
+			case "failed":
+				out = append(out, sAmber.Render("✗ ")+sText.Render(ev.Summary))
+			case "permission":
+				out = append(out, sDim.Render("› permission ")+sText.Render(ev.Summary))
+			default:
+				out = append(out, sDim.Render("› ")+sText.Render(ev.Summary))
+			}
 		case "finding":
 			sev := sSoft.Render(ev.Severity)
 			if ev.Severity == "critical" {
