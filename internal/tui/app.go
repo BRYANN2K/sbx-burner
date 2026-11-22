@@ -94,6 +94,8 @@ const (
 )
 
 type model struct {
+	term *embTerm // embedded terminal for commands burner runs for the user
+
 	ctx context.Context
 	cfg Config
 	eng Engine
@@ -235,6 +237,9 @@ func (m model) releaseNote() string {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if nm, cmd, ok := m.updateTerm(msg); ok {
+		return nm, cmd
+	}
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
@@ -304,6 +309,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	if m.w < minW || m.h < minH {
 		return paintBG(sDim.Render("Terminal too small: burner needs 60×20.")+"\n"+sDim.Render("q quit"), m.w)
+	}
+	if m.term != nil {
+		return m.term.view(m.w, m.h)
 	}
 	var v string
 	switch m.scr {

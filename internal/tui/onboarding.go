@@ -121,7 +121,7 @@ func execSetup(what string, argv []string) tea.Cmd {
 	if len(argv) == 0 {
 		return nil
 	}
-	return tea.ExecProcess(exec.Command(argv[0], argv[1:]...), func(err error) tea.Msg { return setupExecDoneMsg{what, err} })
+	return termCmd(what, argv, func(err error) tea.Msg { return setupExecDoneMsg{what, err} })
 }
 
 func (m model) setupApprovalRows() []doctor.Result {
@@ -251,6 +251,9 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if c, ok := m.check("policy"); ok && c.Level != doctor.OK && !s.busy {
 				s.busy = true
+				if c.Fix == doctor.SbxLoginCommand {
+					return m, execSetup("sbx login", strings.Fields(doctor.SbxLoginCommand))
+				}
 				return m, execSetup("sbx policy init", strings.Fields(doctor.PolicyInitCommand))
 			}
 		case "s", "n":
@@ -505,9 +508,14 @@ func (m model) viewSetup() string {
 		}
 		keys = []string{"n", "next"}
 		if c, ok := m.check("policy"); ok && c.Level != doctor.OK {
-			L = append(L, "", card(sBold.Render("Global network policy"), sSoft.Render("$ "+doctor.PolicyInitCommand),
-				sAmber.Render("applies to every sbx sandbox on this Mac, not only burner's"), "",
-				btn("enter", "run", true)+"  "+btn("s", "skip", false)))
+			if c.Fix == doctor.SbxLoginCommand {
+				L = append(L, "", card(sBold.Render("Sign in to Docker Sandboxes"), sSoft.Render("$ "+doctor.SbxLoginCommand), "",
+					btn("enter", "sign in", true)+"  "+btn("s", "skip", false)))
+			} else {
+				L = append(L, "", card(sBold.Render("Global network policy"), sSoft.Render("$ "+doctor.PolicyInitCommand),
+					sAmber.Render("applies to every sbx sandbox on this Mac, not only burner's"), "",
+					btn("enter", "run", true)+"  "+btn("s", "skip", false)))
+			}
 			keys = []string{"enter", "run the command", "s", "skip", "n", "next"}
 		}
 	case setupAgents:
@@ -537,6 +545,8 @@ func (m model) viewSetup() string {
 		c, ok := m.check("agent-" + a)
 		keys = []string{"↑↓", "move", "s", "skip", "n", "next", "esc", "back"}
 		switch _, blocked := doctor.Blocked[a]; {
+		case a == "opencode" && ok && c.Level == doctor.OK:
+			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
 		case a == "opencode":
 			L = append(L, "", card(sBold.Render("Configure OpenCode"), sSoft.Render("$ sbx run opencode "+tildify(sampleDir())), "",
 				btn("o", "open OpenCode", true)+"  "+btn("s", "skip", false)))
@@ -756,10 +766,22 @@ func (m model) viewSetup() string {
 	logo := sAmber.Render(strings.Join(m.logoLines(), "\n"))
 	head := lipgloss.JoinHorizontal(lipgloss.Center, logo, "    ", strings.Join(title, "\n"))
 	rule := sFaint.Render(strings.Repeat("─", w))
+	// A fixed content height keeps the panel still when a card appears or
+	// the step changes.
+	const contentH = 20
+	for len(L) < contentH {
+		L = append(L, "")
+	}
 	inner := head + "\n\n" + rule + "\n\n" + strings.Join(L, "\n") + "\n\n" + rule + "\n" + strings.TrimLeft(hints(keys...), " ")
 	panel := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colLine).Padding(1, 2).Width(panelW - 2).Render(inner)
 	_ = right
-	b.WriteString(lipgloss.Place(m.w, m.h, lipgloss.Center, lipgloss.Center, panel))
+	// Anchor the panel's top at the same row on every step, so the menu
+	// never moves when a card appears; centre it for the tallest step.
+	top := (m.h - 46) / 2
+	if top < 0 {
+		top = 0
+	}
+	b.WriteString(strings.Repeat("\n", top) + lipgloss.PlaceHorizontal(m.w, lipgloss.Center, panel))
 	return b.String()
 }
 
