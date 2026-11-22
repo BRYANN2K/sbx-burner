@@ -9,6 +9,8 @@ require (
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/term v0.2.1
+	github.com/creack/pty v1.1.24
+	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02
 	github.com/muesli/termenv v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )

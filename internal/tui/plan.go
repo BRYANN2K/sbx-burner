@@ -2,7 +2,6 @@ package tui
 
 import (
 	"os"
-	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -54,7 +53,7 @@ func approveCmd(agent string) tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return approveDoneMsg{err: err} }
 	}
-	return tea.ExecProcess(exec.Command(self, "approve", "--agent", agent), func(err error) tea.Msg {
+	return termCmd("Approve the "+agent+" kit in sbx", []string{self, "approve", "--agent", agent}, func(err error) tea.Msg {
 		return approveDoneMsg{err: err}
 	})
 }

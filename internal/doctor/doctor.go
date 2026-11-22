@@ -61,6 +61,9 @@ func KnownAgents() []string {
 	return names
 }
 
+// SbxLoginCommand signs the user in to Docker Sandboxes.
+const SbxLoginCommand = "sbx login"
+
 // Blocked agents cannot run in sbx today, whatever their credential says.
 var Blocked = map[string]string{
 	"devin": "blocked by sbx (docker/sbx-releases#906)",
@@ -347,6 +350,10 @@ func policyCheck(ctx context.Context, run Runner) Result {
 	r := Result{ID: "policy", Title: "Global network policy"}
 	out, err := run(ctx, "sbx", "policy", "ls", "--json")
 	if err != nil {
+		if strings.Contains(out, "not signed in") || strings.Contains(out, "sbx login") {
+			r.Level, r.Detail, r.Fix = Warn, "sign in to Docker Sandboxes first", SbxLoginCommand
+			return r
+		}
 		r.Level, r.Detail, r.Fix = Warn, "could not read: "+firstLine(out, err), PolicyInitCommand
 		return r
 	}

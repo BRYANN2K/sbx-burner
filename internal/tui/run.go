@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
@@ -183,7 +182,7 @@ func (m model) onAsk(e events.Event) tea.Cmd {
 		}
 		argv := l.handoff
 		l.log = append(l.log, entry2{kind: "note", text: l.opts.Agent + "'s own TUI is open"})
-		return tea.ExecProcess(exec.Command(argv[0], argv[1:]...), func(err error) tea.Msg { return handoffDoneMsg{ask: e, err: err} })
+		return termCmd("Agent TUI", argv, func(err error) tea.Msg { return handoffDoneMsg{ask: e, err: err} })
 	case isTurnAsk(e) && len(l.queue) > 0:
 		return l.flushQueue(e)
 	}
@@ -224,7 +223,7 @@ func (l *liveModel) agentTUI() tea.Cmd {
 		return nil
 	}
 	argv := append([]string{"exec", "-it", name, "--"}, l.tuiCmd...)
-	return tea.ExecProcess(exec.Command("sbx", argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
+	return termCmd("Agent TUI", append([]string{"sbx"}, argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
 }
 
 // keyRun handles the run screen's keys while the run is going. It returns
