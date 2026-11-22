@@ -1,0 +1,6 @@
+recipe: devsecops/sast-semgrep
+summary: Express + Flask apps with SQLi, path traversal and SSRF, plus parameterized/allowlisted look-alikes
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-sast-semgrep/project"]
+cost: medium

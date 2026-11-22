@@ -1,0 +1,6 @@
+recipe: devsecops/sca-osv
+summary: Node + Python apps pinning versions with public advisories; manifests and lockfiles only, nothing vendored
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/devsecops-sca-osv/project"]
+cost: small

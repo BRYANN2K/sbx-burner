@@ -1,0 +1,4 @@
+# generated at run time by folder build.sh scripts
+.build/
+# real-run results are written locally; committed only deliberately
+results/*.tmp

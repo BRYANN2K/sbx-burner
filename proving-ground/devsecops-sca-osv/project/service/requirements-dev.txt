@@ -1,0 +1,2 @@
+# dev-only tools, never shipped with the service
+black==22.3.0

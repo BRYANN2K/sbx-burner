@@ -83,3 +83,17 @@ jobs:
       - uses: actions/checkout@v4
       - run: python -m pip install --quiet "yamllint==1.35.1"
       - run: yamllint -c scripts/yamllint.yml .
+
+  proving-ground:
+    name: proving-ground (dry run)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Validates every target.yaml/EXPECTED.yaml and plans each run through
+      # `python3 -m lab run --dry-run`. A folder is skipped only when its
+      # recipe directory is absent (recipe PR not merged yet); a folder whose
+      # recipe exists must validate and plan, or the job fails.
+      - run: python proving-ground/run.py

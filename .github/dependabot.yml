@@ -1,0 +1,12 @@
+# Dependabot is configured for the repository's own automation only.
+#
+# proving-ground/** intentionally declares known-vulnerable dependencies in
+# manifests and lockfiles — that is the whole point of those targets. There
+# is deliberately no package-ecosystem entry for proving-ground/, so
+# Dependabot never opens update PRs against the planted pins.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

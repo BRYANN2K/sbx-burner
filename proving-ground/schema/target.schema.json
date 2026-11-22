@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "proving-ground target.yaml",
+  "type": "object",
+  "required": ["recipe"],
+  "additionalProperties": false,
+  "properties": {
+    "recipe": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+      "description": "<category>/<name>, matching recipes/<category>/<name>/"
+    },
+    "summary": {"type": "string"},
+    "build": {
+      "type": "string",
+      "description": "optional build script in this folder; idempotent, set -euo pipefail"
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/run"},
+      "description": "each entry's kind must be in the recipe's run.targets"
+    },
+    "runs_pending": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/run"},
+      "description": "same shape as runs; skipped until the recipe declares the kind"
+    },
+    "scope": {
+      "type": "string",
+      "description": "optional scope file in this folder, passed as --scope"
+    },
+    "needs": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["docker", "git", "node", "python3", "gcc", "network"]},
+      "description": "host needs for build/run; docker or network disables build in --dry-run"
+    },
+    "cost": {"type": "string", "enum": ["small", "medium", "large"]}
+  },
+  "$defs": {
+    "run": {
+      "type": "object",
+      "required": ["kind", "args"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["path", "repo", "app", "image", "port", "url", "demo"]},
+        "args": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

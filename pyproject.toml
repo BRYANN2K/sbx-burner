@@ -31,7 +31,7 @@ addopts = "-q"
 [tool.ruff]
 line-length = 140
 target-version = "py311"
-extend-exclude = ["runs", "template/evals", "recipes/*/*/evals/fixtures", "recipes/*/*/fixtures"]
+extend-exclude = ["runs", "template/evals", "recipes/*/*/evals/fixtures", "recipes/*/*/fixtures", "proving-ground/**/project"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S"]
