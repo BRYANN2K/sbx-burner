@@ -1,0 +1,27 @@
+agent-lab-sbx
+Copyright 2026 The agent-lab-sbx authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This file lists third-party material that is copied or adapted into this
+repository, as required by its licences. Tools that recipes download and run
+at run time (including GPL, LGPL and AGPL tools such as trufflehog, Lynis,
+AFL++, semgrep and DVWA) are not part of this repository: they are installed
+by each recipe's tools/install.sh and keep their own licences.
+
+Material that is linked but never copied: trailofbits/skills (CC BY-SA 4.0),
+the Semgrep Registry rules (Semgrep Rules License), HackTricks.
+
+-------------------------------------------------------------------------------
+Docker Sandbox Kit specification examples
+  https://github.com/docker/sandbox-kit-spec  (Apache-2.0)
+  Copyright Docker, Inc.
+  Adapted in: kits/agent-codex/ (from examples/codex-mixin).
+
+Docker documentation
+  https://github.com/docker/docs  (Apache-2.0)
+  Copyright Docker, Inc.
+  Adapted in: kits/agent-claude/ (from the tool-mixins guide).
+-------------------------------------------------------------------------------
+
+Recipes that adapt third-party skills or prompts add their own entry below.

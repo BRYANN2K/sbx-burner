@@ -1,0 +1,2 @@
+{"schema_version": "1", "type": "agent.message", "seq": 0, "ts": "2026-11-21T10:30:00Z", "run_id": "20261121-103000-demo", "agent": "claude", "text": "done \u001b]52;c;ZXZpbA==\u0007 and \u001b[2J"}
+{"schema_version": "1", "type": "agent.message", "seq": 1, "ts": "2026-11-21T10:30:01Z", "run_id": "20261121-103000-demo", "agent": "claude", "text": "csi \u009b2J clear"}

@@ -1,0 +1,19 @@
+# yamllint config: yamllint -c scripts/yamllint.yml .
+extends: default
+ignore: |
+  runs/
+  .venv/
+  node_modules/
+rules:
+  line-length:
+    max: 160
+  document-start: disable
+  truthy:
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  indentation:
+    indent-sequences: consistent
+  braces:
+    max-spaces-inside: 1

@@ -1,0 +1,17 @@
+# syntax=docker/sandbox-kit:3
+# Shared helper overlay for lab recipes: ships the pinned-install helper used
+# by every recipe's tools/install.sh. It grants no network access on its own;
+# each recipe lists its download hosts in recipe.yaml (run.network.install_allow,
+# open only for the tools step) and the hosts the agent needs while it works
+# (run.network.allow); the runner turns them into a per-sandbox allow-list.
+# TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
+schemaVersion: "3"
+kind: mixin
+displayName: agent-lab-sbx tools helper
+description: Install helper for pinned, checksum-verified lab tools.
+sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+licenses: [Apache-2.0]
+
+provides: ["agent-lab-tools@0.1.0"]
+
+dockerfile: lab-tools.dockerfile

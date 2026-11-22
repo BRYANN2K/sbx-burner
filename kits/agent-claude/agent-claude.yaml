@@ -1,0 +1,39 @@
+# syntax=docker/sandbox-kit:3
+# Claude Code as a mixin, for workloads that are not Docker's built-in claude
+# agent (the Kali, REMnux and Ubuntu bases in this directory).
+# Adapted from the "Package a tool as a mixin" guide in the Docker Sandboxes
+# docs (docs.docker.com/ai/sandboxes/customize/author/tool-mixins).
+# TODO(verify): not built or run yet; needs sbx >= 0.45 and Docker Buildx.
+schemaVersion: "3"
+kind: mixin
+displayName: Claude Code (agent-lab-sbx)
+description: Claude Code native binary with a proxy-managed Anthropic credential.
+sourceUrl: https://github.com/BRYANN2K/agent-lab-sbx
+
+args:
+  version:
+    default: "2.1.278"
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    buildArg: CLAUDE_VERSION
+
+provides: ["claude@${{ kit.args.version }}"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          - api.anthropic.com:443
+  - type: com.docker.sandbox/credential@1
+    config:
+      service: anthropic
+      phase: runtime
+      apiKey:
+        name: ANTHROPIC_API_KEY
+        proxyManaged: true
+        inject:
+          - domain: api.anthropic.com
+            header: x-api-key
+            format: "%s"
+
+dockerfile: agent-claude.dockerfile

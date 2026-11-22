@@ -1,0 +1,3 @@
+# Index source for the README gallery (scripts/gen_index.py).
+# One entry per recipe; `python -m lab lint` checks it against each RECIPE.md.
+recipes: []

@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "recipe": "__CATEGORY__/__NAME__",
+  "summary": "Golden fixture: the evidence a correct run of this recipe is expected to produce.",
+  "tools_run": [
+    {"name": "example-tool", "version": "1.2.3", "command": "example-tool --json .", "exit_code": 0, "output": "artifacts/example.json"}
+  ],
+  "findings": [],
+  "hypotheses": [],
+  "artifacts": [
+    {"path": "artifacts/example.json", "description": "Raw tool output"}
+  ]
+}
