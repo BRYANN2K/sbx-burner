@@ -22,6 +22,34 @@ from . import sbx
 from .recipe import REPO_ROOT
 
 
+def run_until_bound(argv: list[str], needs, run=subprocess.call, interval: float = 1.0) -> int:
+    """Run sbx create, and stop it as soon as the binding is recorded.
+
+    The approval is all burner needs from the throwaway sandbox: once sbx
+    has written the binding there is no reason to wait for the sandbox to
+    finish starting. Tests pass their own `run`, which is called as is.
+    """
+    if run is not subprocess.call:
+        return run(argv)
+    proc = subprocess.Popen(argv)
+    while True:
+        try:
+            return proc.wait(timeout=interval)
+        except subprocess.TimeoutExpired:
+            pass
+        try:
+            bound = not sbx.binding_gaps(needs)
+        except sbx.BindingUnreadable:
+            bound = False
+        if bound:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            return 0
+
+
 # The burner-approve-* sandbox runs no agent under the user's global sbx policy
 # and is removed right after sbx records the approval.
 def approve(
@@ -54,7 +82,7 @@ def approve(
     workspace = tempfile.mkdtemp(prefix="burner-approve-")
     try:
         print(f"approving {agent.secret_service} in sbx — answer the prompt below (a throwaway sandbox is used)", file=out)
-        code = run(sbx.create(name, "shell", workspace, kits=[str(kit)]))
+        code = run_until_bound(sbx.create(name, "shell", workspace, kits=[str(kit)]), needs, run)
         if code:
             print(f"sbx create failed ({code}); nothing was approved", file=out)
             return code
