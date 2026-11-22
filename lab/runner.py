@@ -74,6 +74,11 @@ TEARDOWN_TIMEOUT = 300
 ACP_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,127}$")
 # Bridge → runner message types the runner acts on; everything else is dropped.
 ACP_EVENT_TYPES = {"agent.message": ("text",), "agent.tool": ("tool", "summary")}
+# Optional bridge fields: the tool call's id (updates attach to one action
+# line), its command and its status. Capped and sanitised by EventWriter.
+ACP_EVENT_OPTIONAL = {"agent.tool": ("detail", "id", "status")}
+ACP_TOOL_STATUS = ("pending", "in_progress", "completed", "failed")
+_ACP_TOOL_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 # Host steps call sources.py standalone (it has no lab imports, so a plain
 # interpreter + absolute path always works, whatever the cwd).
 _SOURCES_PY = str(Path(__file__).resolve().with_name("sources.py"))
@@ -1487,6 +1492,15 @@ def _acp_line_handler(
             if len(fields) != len(fields_allowed):
                 skipped[0] += 1
                 return
+            for k in ACP_EVENT_OPTIONAL.get(str(msg.get("type")), ()):
+                v = data.get(k)
+                if not isinstance(v, str) or not v:
+                    continue
+                if k == "id" and not _ACP_TOOL_ID_RE.match(v):
+                    continue
+                if k == "status" and v not in ACP_TOOL_STATUS:
+                    continue
+                fields[k] = v[:2000]
             emit(str(msg["type"]), agent=agent, **fields)
         elif kind == "ask":
             ask_id = str(msg.get("id", ""))

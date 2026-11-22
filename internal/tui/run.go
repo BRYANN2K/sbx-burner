@@ -291,6 +291,12 @@ func (m model) keyRun(k tea.KeyMsg) (model, tea.Cmd, bool) {
 			l.chatOn = true
 			return m, l.chat.Focus(), true
 		}
+	case "o":
+		l.toggleAction()
+		return m, nil, true
+	case "O":
+		l.toggleAll()
+		return m, nil, true
 	case "l":
 		if step := l.lastStep(); step != "" {
 			m.logv = newLogView(step, stepLogPath(l.runDir(), step))
@@ -448,6 +454,9 @@ func (l *liveModel) runHints() string {
 	if l.opts.ACP {
 		k = append(k, "enter", "send")
 	}
+	if n, _, _ := l.activity(); n > 0 {
+		k = append(k, "o", "open / close action", "O", "open all")
+	}
 	return hints(append(k, "l", "log", "ctrl+c", "stop")...)
 }
 
@@ -547,6 +556,15 @@ func (l *liveModel) sideColumn(w int) string {
 		if e.kind == "blocked" {
 			lines = append(lines, sFaint.Render(kv("⊘ "+e.ev.Host, "blocked", sFaint)))
 		}
+	}
+	if n, done, failed := l.activity(); n > 0 || l.opts.ACP {
+		lines = append(lines, "", sDim.Render("ACTIVITY"))
+		lines = append(lines, kv("actions", fmt.Sprintf("%d · %d done", n, done), sDim))
+		fs := sDim
+		if failed > 0 {
+			fs = sAmber
+		}
+		lines = append(lines, kv("failed", fmt.Sprint(failed), fs))
 	}
 	if l.opts.ACP {
 		lines = append(lines, "", sDim.Render("PERMISSIONS"))

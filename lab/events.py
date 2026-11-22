@@ -30,6 +30,8 @@ _FIELD_LIMITS = {
     "title": sanitize.TEXT_LIMIT,
     "value": sanitize.TEXT_LIMIT,
     "tool": 256,
+    "id": 128,
+    "status": 20,
     "report": sanitize.TEXT_LIMIT,
 }
 # Fields that may carry secrets the agent saw: redact before emit (patterns,

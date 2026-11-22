@@ -1,19 +1,19 @@
 webapp-blackbox · codex · gpt-6-luna · ACP · http://localhost:3000                                      waiting for you
 ╭─────────────────────────────┬───────────────────────────────────────────────────────┬────────────────────────────────╮
-│ STEPS                       │ codex                                                 │ FINDINGS                       │
-│ ✓ create                    │ I'll map the app first.                               │ ◆ basket-idor             high │
+│ STEPS                       │ ▎ codex                                               │ FINDINGS                       │
+│ ✓ create                    │ ▎ I'll map the app first.                             │ ◆ basket-idor             high │
 │ ⠋ agent                     │                                                       │                                │
 │   tools                     │ › curl -s http://localhost:3000/openapi.yaml          │ NETWORK                        │
 │                             │ ◆ basket-idor  high  GET /api/baskets/:id             │ chatgpt.com:443        allowed │
 │                             │ ╭──────────────────────────────────────────────────╮  │ localhost:3000         allowed │
 │                             │ │ codex wants to run                               │  │                                │
-│                             │ │                                                  │  │ PERMISSIONS                    │
-│                             │ │ curl -s 'http://localhost:3000/api/search?q=x'   │  │ auto-allowed        1 · logged │
-│                             │ │                                                  │  │ asked you            1 waiting │
+│                             │ │                                                  │  │ ACTIVITY                       │
+│                             │ │ curl -s 'http://localhost:3000/api/search?q=x'   │  │ actions             0 · 0 done │
+│                             │ │                                                  │  │ failed                       0 │
 │                             │ │ a allow once   r reject   m message              │  │                                │
-│                             │ ╰──────────────────────────────────────────────────╯  │                                │
-│                             │                                                       │                                │
-│                             │                                                       │                                │
+│                             │ ╰──────────────────────────────────────────────────╯  │ PERMISSIONS                    │
+│                             │                                                       │ auto-allowed        1 · logged │
+│                             │                                                       │ asked you            1 waiting │
 │                             │                                                       │                                │
 │                             │                                                       │                                │
 │                             │                                                       │                                │

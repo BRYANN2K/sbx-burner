@@ -106,7 +106,7 @@ type bridge struct {
 	tapN   int64
 	client *Client
 	toolMu sync.Mutex
-	tools  map[string]bool // tool calls already shown with a real title
+	tools  map[string]*toolState // tool calls by id: what was last shown
 	think  strings.Builder
 }
 
@@ -412,33 +412,141 @@ func (b *bridge) Update(u Update) {
 		if u.Kind == "tool_call" {
 			b.flush()
 		}
-		b.toolMu.Lock()
-		if b.tools == nil {
-			b.tools = map[string]bool{}
-		}
-		shown := b.tools[u.ToolID]
-		// Adapters often open a tool call with a generic title ("Terminal",
-		// "Read") and send the real one (the command, the file) in an update.
-		real := u.Title != "" && !genericTitle(u.Title)
-		if real && !shown {
-			b.tools[u.ToolID] = true
-		}
-		b.toolMu.Unlock()
-		switch {
-		case real && !shown:
-			b.event("agent.tool", map[string]string{"tool": u.ToolKind, "summary": u.Title})
-		case u.Status == "failed":
-			t := u.Title
-			if t == "" {
-				t = "tool call"
-			}
-			b.event("agent.tool", map[string]string{"tool": "failed", "summary": t})
-		}
+		b.tool(u)
 	}
 }
 
-// genericTitle reports a placeholder title an adapter sends before the
-// real one.
+// toolState is one tool call as the run screen shows it.
+type toolState struct {
+	summary, detail, status, title string
+	sent                           string // the last emitted summary/detail/status
+	delta                          string // codex: the terminal output so far (last 16 KiB)
+	shown, output                  bool
+}
+
+// MaxOutputLines is how much of a tool's output the run screen gets.
+const MaxOutputLines = 6
+
+// tool turns tool_call / tool_call_update into agent.tool events with the
+// call's id, so the run screen updates one action line: summary is the
+// agent's description (else the real title, else the command), detail the
+// command, status pending | in_progress | completed | failed. A completed
+// call's output follows as tool "output" with its last lines.
+func (b *bridge) tool(u Update) {
+	b.toolMu.Lock()
+	if b.tools == nil {
+		b.tools = map[string]*toolState{}
+	}
+	t := b.tools[u.ToolID]
+	if t == nil {
+		if len(b.tools) >= 4096 {
+			b.toolMu.Unlock()
+			return
+		}
+		t = &toolState{status: "pending"}
+		b.tools[u.ToolID] = t
+	}
+	if u.Title != "" && !genericTitle(u.Title) {
+		t.title = b.stripCd(u.Title)
+	}
+	if u.Command != "" {
+		t.detail = b.stripCd(u.Command)
+	}
+	if u.Delta != "" {
+		t.delta += u.Delta
+		if len(t.delta) > 16<<10 {
+			t.delta = t.delta[len(t.delta)-16<<10:]
+		}
+	}
+	done := u.Status == "completed" || u.Status == "failed"
+	var out string
+	switch {
+	case done && u.Content == "" && u.Output == "" && t.delta != "":
+		out = t.delta
+	case done && u.Content != "":
+		out = u.Content
+	case done && u.Output != "":
+		out = u.Output
+	case u.Content != "" && !strings.Contains(u.Content, "\n") && !strings.HasPrefix(u.Content, "```"):
+		t.summary = sanitize.Line(u.Content, 300) // claude: the agent's one-line description
+	}
+	if u.Status != "" {
+		t.status = u.Status
+	}
+	// No description: a title that is the command (claude's) reads as the
+	// command, once; a real title (a file, "Run tests") keeps the command
+	// under it.
+	summary := t.summary
+	if summary == "" && t.title != "" && !sameCommand(t.title, t.detail) {
+		summary = t.title
+	}
+	if summary == "" {
+		summary = t.detail
+	}
+	if summary == "" {
+		summary = t.title
+	}
+	fields := map[string]string{"tool": nz(u.ToolKind, "execute"), "summary": summary, "detail": t.detail, "id": u.ToolID, "status": t.status}
+	if t.detail == summary {
+		fields["detail"] = ""
+	}
+	// A placeholder title alone is never shown; an unchanged line is not
+	// sent again.
+	sig := summary + "\x00" + fields["detail"] + "\x00" + t.status
+	emit := summary != "" && sig != t.sent
+	if emit {
+		t.shown, t.sent = true, sig
+	}
+	showOut := done && out != "" && !t.output && t.shown
+	if showOut {
+		t.output = true
+	}
+	b.toolMu.Unlock()
+	if emit {
+		b.event("agent.tool", fields)
+	}
+	if showOut {
+		b.event("agent.tool", map[string]string{"tool": "output", "summary": lastLines(out, MaxOutputLines), "id": u.ToolID})
+	}
+}
+
+func nz(s, d string) string {
+	if s == "" {
+		return d
+	}
+	return s
+}
+
+// stripCd drops the "cd <workspace>;" (or &&) the adapter prefixes.
+func (b *bridge) stripCd(cmd string) string {
+	if b.o.Cwd == "" {
+		return cmd
+	}
+	for _, sep := range []string{";", " &&"} {
+		if p := "cd " + b.o.Cwd + sep; strings.HasPrefix(cmd, p) {
+			return strings.TrimSpace(cmd[len(p):])
+		}
+	}
+	return cmd
+}
+
+// lastLines keeps the last n non-empty lines of a tool's output, without a
+// markdown fence, each cut to 200 characters.
+func lastLines(s string, n int) string {
+	var keep []string
+	for _, l := range strings.Split(s, "\n") {
+		t := strings.TrimRight(l, " \t\r")
+		if strings.TrimSpace(t) == "" || strings.HasPrefix(strings.TrimSpace(t), "```") {
+			continue
+		}
+		keep = append(keep, sanitize.Line(t, 200))
+	}
+	if len(keep) > n {
+		keep = keep[len(keep)-n:]
+	}
+	return strings.Join(keep, "\n")
+}
+
 func genericTitle(t string) bool {
 	switch strings.ToLower(strings.TrimSpace(t)) {
 	case "terminal", "bash", "read", "write", "edit", "fetch", "search", "grep", "glob", "tool", "tool call", "execute", "think":
@@ -455,9 +563,7 @@ func (b *bridge) flushThought() {
 	if t == "" {
 		return
 	}
-	if i := strings.IndexAny(t, ".\n"); i > 0 && i < 200 {
-		t = t[:i]
-	}
+	t = firstSentence(t)
 	b.event("agent.tool", map[string]string{"tool": "thinking", "summary": t})
 }
 
@@ -557,4 +663,30 @@ func hasValue(o ConfigOption, v string) bool {
 		}
 	}
 	return false
+}
+
+// firstSentence is the text up to the first sentence end or line break,
+// at most 200 characters.
+func firstSentence(t string) string {
+	end := len(t)
+	if i := strings.Index(t, "\n"); i >= 0 && i < end {
+		end = i
+	}
+	for _, p := range []string{". ", "? ", "! "} {
+		if i := strings.Index(t, p); i >= 0 && i+1 < end {
+			end = i + 1
+		}
+	}
+	// Codex titles its reasoning in markdown bold: "**Starting the scan**".
+	return sanitize.Line(strings.Trim(strings.TrimSuffix(strings.TrimSpace(t[:end]), "."), "*_ "), 200)
+}
+
+// sameCommand reports whether a tool title is the command itself, maybe
+// cut short by the adapter.
+func sameCommand(title, cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+	t := strings.TrimSuffix(strings.TrimSuffix(title, "…"), "...")
+	return t == cmd || (len(t) >= 20 && strings.Contains(cmd, strings.Trim(t, "' "))) || strings.HasPrefix(t, cmd)
 }

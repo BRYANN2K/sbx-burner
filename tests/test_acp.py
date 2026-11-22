@@ -7,6 +7,7 @@ import json
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -416,3 +417,31 @@ def test_claude_model_goes_through_set_config_option_only(make_recipe, repo, tmp
     agent = plan.agent_step.argv
     assert "--model=claude-mythos-5-2" in agent
     assert not any(a.startswith("CODEX_CONFIG") or a.startswith("ANTHROPIC_MODEL") for a in agent)
+
+
+def test_tool_events_keep_id_detail_and_status(tmp_path):
+    from lab import events as events_mod
+    from lab import jsonschema_lite
+
+    out = tmp_path / "events.ndjson"
+    w = events_mod.EventWriter(out, "20261122-194453-secrets-scan")
+    handle = runner._acp_line_handler("claude", w.emit, _Bridge("Allow"), lambda _m: None, [0])
+    fields = {"tool": "execute", "summary": "Run gitleaks", "detail": "gitleaks git .", "id": "toolu_01K7", "status": "completed"}
+    handle(json.dumps({"t": "event", "type": "agent.tool", "fields": fields}), lambda _r: None)
+    handle(
+        json.dumps({"t": "event", "type": "agent.tool", "fields": {"tool": "output", "summary": "a\nb", "id": "toolu_01K7"}}),
+        lambda _r: None,
+    )
+    # A bad id or status is dropped, the line is kept.
+    bad = {"tool": "execute", "summary": "x", "id": "../../etc", "status": "exploded"}
+    handle(json.dumps({"t": "event", "type": "agent.tool", "fields": bad}), lambda _r: None)
+    w.close()
+    evs = [json.loads(line) for line in out.read_text().splitlines()]
+    assert evs[0]["id"] == "toolu_01K7" and evs[0]["detail"] == "gitleaks git ." and evs[0]["status"] == "completed"
+    assert evs[1]["summary"] == "a\nb"
+    assert "id" not in evs[2] and "status" not in evs[2]
+    schema = json.loads((Path(runner.__file__).parent / "schema" / "events.schema.json").read_text())
+    for e in evs:
+        sub = dict(schema["$defs"][e["type"]])
+        sub["$defs"] = schema["$defs"]
+        assert not jsonschema_lite.validate(e, sub), e

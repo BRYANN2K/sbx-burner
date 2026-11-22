@@ -2,6 +2,7 @@ package acp
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -370,5 +371,73 @@ func TestGenericToolTitles(t *testing.T) {
 		if genericTitle(r) {
 			t.Errorf("%q should be shown", r)
 		}
+	}
+}
+
+func TestToolEventsFollowOneCall(t *testing.T) {
+	var buf bytes.Buffer
+	b := &bridge{o: BridgeOptions{Out: &buf, Cwd: "/w"}}
+	b.tool(Update{Kind: "tool_call", ToolID: "t1", Title: "Terminal", ToolKind: "execute", Status: "pending"})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "t1", Title: "cd /w; gitleaks git .", Command: "cd /w; gitleaks git ."})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "t1", Command: "cd /w; gitleaks git .", Content: "Run gitleaks on the history"})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "t1", Status: "completed", Content: "```console\nscanning\n\n1 commit\nleaks found: 3\n```"})
+	var got []map[string]string
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		var m struct {
+			Fields map[string]string `json:"fields"`
+		}
+		_ = json.Unmarshal([]byte(line), &m)
+		got = append(got, m.Fields)
+	}
+	if len(got) != 4 {
+		t.Fatalf("events %v", got)
+	}
+	if got[0]["summary"] != "gitleaks git ." || got[0]["id"] != "t1" {
+		t.Fatalf("first: %v (placeholder must not show, cd stripped)", got[0])
+	}
+	if got[1]["summary"] != "Run gitleaks on the history" || got[1]["detail"] != "gitleaks git ." {
+		t.Fatalf("description: %v", got[1])
+	}
+	if got[2]["status"] != "completed" || got[3]["tool"] != "output" || got[3]["summary"] != "scanning\n1 commit\nleaks found: 3" {
+		t.Fatalf("completed: %v %v", got[2], got[3])
+	}
+}
+
+func TestFirstSentence(t *testing.T) {
+	if got := firstSentence("Checking the target is a git repo before scanning history. Then I will."); got != "Checking the target is a git repo before scanning history" {
+		t.Fatal(got)
+	}
+}
+
+func TestToolTitleThatIsTheCommandShowsOnce(t *testing.T) {
+	var buf bytes.Buffer
+	b := &bridge{o: BridgeOptions{Out: &buf, Cwd: "/w"}}
+	long := "W=$LAB_WORKSPACE; mkdir -p $W/evidence/artifacts; A=$W/evidence/artifacts; cd /home/agent/target; gitleaks git --redact ."
+	b.tool(Update{Kind: "tool_call_update", ToolID: "t1", Title: long[:60], Command: long})
+	var m struct {
+		Fields map[string]string `json:"fields"`
+	}
+	_ = json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &m)
+	if m.Fields["summary"] != long || m.Fields["detail"] != "" {
+		t.Fatalf("fields %v", m.Fields)
+	}
+}
+
+func TestCodexTerminalOutputAndBoldThought(t *testing.T) {
+	var buf bytes.Buffer
+	b := &bridge{o: BridgeOptions{Out: &buf, Cwd: "/w"}}
+	b.tool(Update{Kind: "tool_call", ToolID: "e1", Title: "gitleaks git .", Command: "gitleaks git .", ToolKind: "execute", Status: "in_progress"})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "e1", Delta: "scanning\n"})
+	b.tool(Update{Kind: "tool_call_update", ToolID: "e1", Status: "completed", Delta: "leaks found: 3\n"})
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	var last struct {
+		Fields map[string]string `json:"fields"`
+	}
+	_ = json.Unmarshal([]byte(lines[len(lines)-1]), &last)
+	if last.Fields["tool"] != "output" || last.Fields["summary"] != "scanning\nleaks found: 3" {
+		t.Fatalf("output %v", last.Fields)
+	}
+	if got := firstSentence("**Starting Gitleaks scan**"); got != "Starting Gitleaks scan" {
+		t.Fatal(got)
 	}
 }

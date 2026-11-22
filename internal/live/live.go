@@ -184,7 +184,17 @@ func Render(w io.Writer, e events.Event) {
 			fmt.Fprintln(w, "  "+l)
 		}
 	case "agent.tool":
-		fmt.Fprintln(w, ToolLine(e.Tool, e.Summary, Width()))
+		// An ACP tool call (with an id) prints once, when it ends; its
+		// output stays in the TUI.
+		switch {
+		case e.ID == "":
+			fmt.Fprintln(w, ToolLine(e.Tool, e.Summary, Width()))
+		case e.Tool == "output":
+		case e.Status == "completed":
+			fmt.Fprintln(w, ToolLine(e.Tool, e.Summary, Width()))
+		case e.Status == "failed":
+			fmt.Fprintln(w, ToolLine("failed", e.Summary, Width()))
+		}
 	case "finding":
 		extra := e.Severity
 		if e.CVSS != "" {
