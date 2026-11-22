@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/fuzzing",
+  "summary": "Triaged the two bundled targets on the Debian stable toolchain (clang 19.1.7, go 1.24.4): a libFuzzer run on c-record hit the off-by-one stack-buffer-overflow in lab_parse_records (record.c:28) after 20334 execs, minimized to a 20-byte reproducer and replayed through the ASan+UBSan build; `go test -fuzz` caught the index-out-of-range panic in ParseField (field.go:24) and minimised the input to the corpus file \"0:\". Two unique crashes, one per track.",
+  "tools_run": [
+    {
+      "name": "clang",
+      "version": "19.1.7",
+      "command": "clang -g -O1 -fsanitize=fuzzer,address,undefined fixtures/c-target/fuzz_record.c fixtures/c-target/record.c -o work/c/fuzz_record",
+      "exit_code": 0
+    },
+    {
+      "name": "libFuzzer",
+      "version": "clang 19.1.7",
+      "command": "./work/c/fuzz_record work/corpus -max_total_time=120 -artifact_prefix=$PWD/evidence/artifacts/ -print_final_stats=1",
+      "exit_code": 1,
+      "output": "artifacts/c-fuzz-log.txt"
+    },
+    {
+      "name": "clang",
+      "version": "19.1.7",
+      "command": "./work/c/fuzz_record -minimize_crash=1 -runs=10000 evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e -exact_artifact_path=evidence/artifacts/crash-c-record.bin && clang -g -O1 -fsanitize=address,undefined fixtures/c-target/main.c fixtures/c-target/record.c -o work/c/record_asan && ./work/c/record_asan evidence/artifacts/crash-c-record.bin",
+      "exit_code": 1,
+      "output": "artifacts/c-record-stack.txt"
+    },
+    {
+      "name": "go",
+      "version": "1.24.4",
+      "command": "cd fixtures/go-target && go test -fuzz=FuzzParseField -fuzztime=90s .",
+      "exit_code": 1,
+      "output": "artifacts/go-fuzz-log.txt"
+    },
+    {
+      "name": "go",
+      "version": "1.24.4",
+      "command": "cd fixtures/go-target && go test -run=FuzzParseField/f350e10888894dcf .",
+      "exit_code": 1,
+      "output": "artifacts/go-parsefield-stack.txt"
+    }
+  ],
+  "findings": [
+    {
+      "id": "FUZZ-001",
+      "title": "Off-by-one stack-buffer-overflow in lab_parse_records",
+      "severity": "medium",
+      "cwe": "CWE-787",
+      "target": "c-target",
+      "location": "fixtures/c-target/record.c:28",
+      "tool": "libFuzzer",
+      "rule": "stack-buffer-overflow",
+      "description": "The timed libFuzzer campaign reached a type-1 record with a 16-byte name: rlen > sizeof(name) is 16 > 16, false, memcpy fills name[0..15] and the terminator write name[16] lands one byte past the buffer. ASan reports WRITE of size 1 at record.c:28 overflowing 'name'; UBSan flags the same line first. Minimised reproducer is 20 bytes.",
+      "proof": {
+        "poc": "./work/c/record_asan evidence/artifacts/crash-c-record.bin",
+        "artifacts": [
+          "artifacts/crash-c-record.bin",
+          "artifacts/c-record-stack.txt",
+          "artifacts/c-fuzz-log.txt"
+        ]
+      },
+      "remediation": "Change the bounds check to rlen >= sizeof(name) so a 16-byte name is rejected before memcpy, keeping the terminator inside the buffer."
+    },
+    {
+      "id": "FUZZ-002",
+      "title": "ParseField panics on a line ending with the separator",
+      "severity": "medium",
+      "cwe": "CWE-129",
+      "target": "go-target",
+      "location": "fixtures/go-target/field.go:24",
+      "tool": "go-fuzz",
+      "rule": "panic:index-out-of-range",
+      "description": "ParseField(\"0:\") finds the ':' at index 1, leaves rest empty, then reads rest[0] and panics with index out of range. `go test -fuzz` found a 38-byte failing input and minimised it to the corpus entry \"0:\".",
+      "proof": {
+        "poc": "cd fixtures/go-target && go test -run=FuzzParseField/f350e10888894dcf .",
+        "artifacts": [
+          "artifacts/crash-go-parsefield.txt",
+          "artifacts/go-parsefield-stack.txt",
+          "artifacts/go-fuzz-log.txt"
+        ]
+      },
+      "remediation": "Check len(rest) before indexing: treat a line ending in ':' as a field with an empty value or as ErrNoSeparator, and add 'Name:' to the seed corpus."
+    }
+  ],
+  "hypotheses": [],
+  "artifacts": [
+    {
+      "path": "artifacts/crash-c-record.bin",
+      "description": "Minimised input reproducing the C stack-buffer-overflow, produced by the libFuzzer run and -minimize_crash"
+    },
+    {
+      "path": "artifacts/c-record-stack.txt",
+      "description": "ASan+UBSan report for the C crash, replayed on Debian stable (ld-linux frames)"
+    },
+    {
+      "path": "artifacts/c-fuzz-log.txt",
+      "description": "libFuzzer campaign log: corpus stats, crash write and -minimize_crash step"
+    },
+    {
+      "path": "artifacts/crash-go-parsefield.txt",
+      "description": "Go corpus file reproducing the ParseField panic"
+    },
+    {
+      "path": "artifacts/go-parsefield-stack.txt",
+      "description": "Panic trace and re-run instructions for the Go crash, from the Debian golang toolchain"
+    },
+    {
+      "path": "artifacts/go-fuzz-log.txt",
+      "description": "go test -fuzz output: baseline, failing input written to testdata"
+    },
+    {
+      "path": "artifacts/fuzz-stats.json",
+      "description": "Executions, seconds and unique crashes per target"
+    }
+  ],
+  "metrics": {
+    "execs": 20334,
+    "unique_crashes": 2
+  }
+}

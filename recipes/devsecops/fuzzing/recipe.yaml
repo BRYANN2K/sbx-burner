@@ -1,0 +1,38 @@
+schema_version: "1"
+name: fuzzing
+category: devsecops
+# Fuzzing is fully local after the Debian tool installs: no scope file.
+scope: none
+
+variants:
+  linux:
+    status: beta
+    kit: kits/lab-tools
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  timeout_minutes: 30
+  # required: the user's harness+source via --target or --target-repo, or
+  # the bundled toy parsers via --demo.
+  target: required
+  # path: user code mounted read-only at /home/agent/target.
+  # repo: a repository cloned on the host with the user's own git login,
+  # then mounted like a path.
+  # demo: the bundled fixtures/c-target + fixtures/go-target (run.demo).
+  targets: [path, repo, demo]
+  demo: fixtures/demo.sh
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    # Fuzzing itself needs no network; nothing is allowed while the agent
+    # runs.
+    allow: []
+    # Opened for the tools step only; closed before the agent starts.
+    # Debian apt for clang, Go and AFL++.
+    install_allow:
+      - deb.debian.org:80
+      - security.debian.org:80

@@ -1,0 +1,51 @@
+fixtures/c-target/record.c:28:7: runtime error: index 16 out of bounds for type 'char[16]'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior fixtures/c-target/record.c:28:7 
+=================================================================
+==4353==ERROR: AddressSanitizer: stack-buffer-overflow on address 0xe83950f00070 at pc 0xc0c5cc3272ac bp 0xfffff426f490 sp 0xfffff426f488
+WRITE of size 1 at 0xe83950f00070 thread T0
+    #0 0xc0c5cc3272a8 in lab_parse_records /work/fixtures/c-target/record.c:28:18
+    #1 0xc0c5cc326a2c in main /work/fixtures/c-target/main.c:24:7
+    #2 0xe839530b2258  (/lib/aarch64-linux-gnu/libc.so.6+0x22258) (BuildId: dfbd3ffa068e3f5fc228d6716b4ff3f0f61eb82c)
+    #3 0xe839530b2338 in __libc_start_main (/lib/aarch64-linux-gnu/libc.so.6+0x22338) (BuildId: dfbd3ffa068e3f5fc228d6716b4ff3f0f61eb82c)
+    #4 0xc0c5cc24472c in _start (/work/work/c/record_asan+0x3472c) (BuildId: 65a6f1a6956ad1d7e66c81d9026da4971d265f58)
+
+Address 0xe83950f00070 is located in stack of thread T0 at offset 48 in frame
+    #0 0xc0c5cc326c1c in lab_parse_records /work/fixtures/c-target/record.c:5
+
+  This frame has 1 object(s):
+    [32, 48) 'name' (line 6) <== Memory access at offset 48 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /work/fixtures/c-target/record.c:28:18 in lab_parse_records
+Shadow bytes around the buggy address:
+  0xe83950effd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950effe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950effe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950efff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950efff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0xe83950f00000: f1 f1 f1 f1 00 04 f3 f3 f1 f1 f1 f1 00 00[f3]f3
+  0xe83950f00080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950f00100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950f00180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950f00200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0xe83950f00280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==4353==ABORTING

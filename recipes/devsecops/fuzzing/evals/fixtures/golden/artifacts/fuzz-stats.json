@@ -1,0 +1,16 @@
+{
+  "c-record": {
+    "tool": "libFuzzer",
+    "seconds": 1,
+    "execs": 20334,
+    "unique_crashes": 1,
+    "note": "real -max_total_time=120 run on Debian clang 19.1.7; crash hit after 20334 execs, minimized with -minimize_crash -exact_artifact_path"
+  },
+  "go-parsefield": {
+    "tool": "go-fuzz",
+    "seconds": 1,
+    "execs": 0,
+    "unique_crashes": 1,
+    "note": "crash found while minimizing a 38-byte failing input right after seed baseline; go prints no exec counter"
+  }
+}

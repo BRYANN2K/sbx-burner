@@ -1,0 +1,36 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/3 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 3/3 completed, now fuzzing with 2 workers
+fuzz: minimizing 38-byte failing input file
+fuzz: elapsed: 0s, minimizing
+--- FAIL: FuzzParseField (0.06s)
+    --- FAIL: FuzzParseField (0.00s)
+        testing.go:1693: panic: runtime error: index out of range [0] with length 0
+            goroutine 62 [running]:
+            runtime/debug.Stack()
+            	/usr/lib/go-1.24/src/runtime/debug/stack.go:26 +0xc4
+            testing.tRunner.func1()
+            	/usr/lib/go-1.24/src/testing/testing.go:1693 +0x21c
+            panic({0x240800?, 0x400013c2d0?})
+            	/usr/lib/go-1.24/src/runtime/panic.go:792 +0x124
+            example.test/labfuzz.ParseField({0x400000e356, 0x2})
+            	/work/fixtures/go-target/field.go:24 +0x240
+            example.test/labfuzz.FuzzParseField.func1(0x400015b500, {0x400000e356?, 0x0?})
+            	/work/fixtures/go-target/field_test.go:22 +0x5c
+            reflect.Value.call({0x217760?, 0x264288?, 0x400013be38?}, {0x253464, 0x4}, {0x400007a630, 0x2, 0x164a10?})
+            	/usr/lib/go-1.24/src/reflect/value.go:584 +0x978
+            reflect.Value.Call({0x217760?, 0x264288?, 0x400658de78?}, {0x400007a630?, 0x2522e0?, 0x2c1f33?})
+            	/usr/lib/go-1.24/src/reflect/value.go:368 +0x94
+            testing.(*F).Fuzz.func1.1(0x400015b500?)
+            	/usr/lib/go-1.24/src/testing/fuzz.go:340 +0x258
+            testing.tRunner(0x400015b500, 0x4000012ab0)
+            	/usr/lib/go-1.24/src/testing/testing.go:1792 +0xe4
+            created by testing.(*F).Fuzz.func1 in goroutine 18
+            	/usr/lib/go-1.24/src/testing/fuzz.go:327 +0x4e4
+            
+    
+    Failing input written to testdata/fuzz/FuzzParseField/f350e10888894dcf
+    To re-run:
+    go test -run=FuzzParseField/f350e10888894dcf
+FAIL
+exit status 1
+FAIL	example.test/labfuzz	0.066s

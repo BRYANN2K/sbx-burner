@@ -1,0 +1,161 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 487433854
+INFO: Loaded 1 modules   (48 inline 8-bit counters): 48 [0xc8d1813330c0, 0xc8d1813330f0), 
+INFO: Loaded 1 PC tables (48 PCs): 48 [0xc8d1813330f0,0xc8d1813333f0), 
+INFO:        3 files found in work/corpus
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 3 min: 2b max: 7b total: 15b rss: 31Mb
+#4	INITED cov: 23 ft: 24 corp: 3/15b exec/s: 0 rss: 32Mb
+#5	NEW    cov: 24 ft: 26 corp: 4/17b lim: 7 exec/s: 0 rss: 32Mb L: 2/7 MS: 1 ChangeByte-
+#6	NEW    cov: 25 ft: 27 corp: 5/22b lim: 7 exec/s: 0 rss: 32Mb L: 5/7 MS: 1 EraseBytes-
+#15	NEW    cov: 26 ft: 28 corp: 6/23b lim: 7 exec/s: 0 rss: 32Mb L: 1/7 MS: 4 ChangeBit-ShuffleBytes-ShuffleBytes-EraseBytes-
+#33	REDUCE cov: 26 ft: 28 corp: 6/22b lim: 7 exec/s: 0 rss: 32Mb L: 4/7 MS: 3 CrossOver-InsertByte-CrossOver-
+#64	NEW    cov: 29 ft: 33 corp: 7/29b lim: 7 exec/s: 0 rss: 33Mb L: 7/7 MS: 1 InsertByte-
+#181	REDUCE cov: 29 ft: 33 corp: 7/27b lim: 7 exec/s: 0 rss: 33Mb L: 2/7 MS: 2 ChangeBit-EraseBytes-
+#509	NEW    cov: 29 ft: 36 corp: 8/36b lim: 9 exec/s: 0 rss: 33Mb L: 9/9 MS: 3 ChangeBinInt-ChangeByte-CrossOver-
+#541	NEW    cov: 29 ft: 38 corp: 9/45b lim: 9 exec/s: 0 rss: 33Mb L: 9/9 MS: 2 CopyPart-InsertRepeatedBytes-
+#652	NEW    cov: 29 ft: 41 corp: 10/54b lim: 9 exec/s: 0 rss: 33Mb L: 9/9 MS: 1 CopyPart-
+#885	REDUCE cov: 29 ft: 41 corp: 10/53b lim: 9 exec/s: 0 rss: 33Mb L: 8/9 MS: 3 ChangeByte-CopyPart-EraseBytes-
+#925	NEW    cov: 30 ft: 42 corp: 11/62b lim: 9 exec/s: 0 rss: 33Mb L: 9/9 MS: 5 ChangeBit-ChangeByte-ShuffleBytes-ShuffleBytes-CopyPart-
+#1107	NEW    cov: 30 ft: 47 corp: 12/71b lim: 9 exec/s: 0 rss: 33Mb L: 9/9 MS: 2 ChangeByte-ChangeBit-
+#1124	NEW    cov: 30 ft: 53 corp: 13/80b lim: 9 exec/s: 0 rss: 33Mb L: 9/9 MS: 2 CrossOver-ChangeBit-
+#1495	NEW    cov: 30 ft: 55 corp: 14/90b lim: 12 exec/s: 0 rss: 33Mb L: 10/10 MS: 1 InsertByte-
+#1543	NEW    cov: 30 ft: 58 corp: 15/101b lim: 12 exec/s: 0 rss: 33Mb L: 11/11 MS: 3 ChangeBit-ChangeByte-CrossOver-
+#1599	NEW    cov: 30 ft: 59 corp: 16/112b lim: 12 exec/s: 0 rss: 33Mb L: 11/11 MS: 1 CrossOver-
+#2010	REDUCE cov: 30 ft: 59 corp: 16/111b lim: 15 exec/s: 0 rss: 33Mb L: 8/11 MS: 1 EraseBytes-
+#2134	NEW    cov: 30 ft: 65 corp: 17/120b lim: 15 exec/s: 0 rss: 33Mb L: 9/11 MS: 4 CrossOver-ChangeBinInt-InsertByte-InsertByte-
+#2331	NEW    cov: 30 ft: 66 corp: 18/134b lim: 15 exec/s: 0 rss: 33Mb L: 14/14 MS: 2 InsertByte-CrossOver-
+#2411	NEW    cov: 30 ft: 71 corp: 19/148b lim: 15 exec/s: 0 rss: 33Mb L: 14/14 MS: 5 CMP-CopyPart-ChangeBinInt-ShuffleBytes-CrossOver- DE: "\001\000\000\000\000\000\000\012"-
+#2637	REDUCE cov: 30 ft: 71 corp: 19/147b lim: 15 exec/s: 0 rss: 33Mb L: 8/14 MS: 1 CrossOver-
+#2984	NEW    cov: 30 ft: 72 corp: 20/161b lim: 18 exec/s: 0 rss: 34Mb L: 14/14 MS: 2 CopyPart-CopyPart-
+#3050	REDUCE cov: 30 ft: 72 corp: 20/159b lim: 18 exec/s: 0 rss: 34Mb L: 12/14 MS: 1 CrossOver-
+#3286	REDUCE cov: 30 ft: 77 corp: 21/175b lim: 18 exec/s: 0 rss: 34Mb L: 16/16 MS: 1 CopyPart-
+#3382	NEW    cov: 30 ft: 81 corp: 22/193b lim: 18 exec/s: 0 rss: 34Mb L: 18/18 MS: 1 CopyPart-
+#3383	NEW    cov: 30 ft: 82 corp: 23/211b lim: 18 exec/s: 0 rss: 34Mb L: 18/18 MS: 1 CrossOver-
+#3772	REDUCE cov: 30 ft: 88 corp: 24/228b lim: 18 exec/s: 0 rss: 34Mb L: 17/18 MS: 4 EraseBytes-CrossOver-CrossOver-CrossOver-
+#4028	REDUCE cov: 30 ft: 88 corp: 24/227b lim: 18 exec/s: 0 rss: 34Mb L: 15/18 MS: 1 CrossOver-
+#4604	NEW    cov: 30 ft: 89 corp: 25/242b lim: 22 exec/s: 0 rss: 34Mb L: 15/18 MS: 1 CopyPart-
+#4755	NEW    cov: 30 ft: 90 corp: 26/263b lim: 22 exec/s: 0 rss: 34Mb L: 21/21 MS: 1 InsertRepeatedBytes-
+#4767	REDUCE cov: 30 ft: 90 corp: 26/260b lim: 22 exec/s: 0 rss: 34Mb L: 9/21 MS: 2 PersAutoDict-EraseBytes- DE: "\001\000\000\000\000\000\000\012"-
+#4913	REDUCE cov: 30 ft: 90 corp: 26/259b lim: 22 exec/s: 0 rss: 34Mb L: 8/21 MS: 1 EraseBytes-
+#5661	NEW    cov: 30 ft: 92 corp: 27/278b lim: 26 exec/s: 0 rss: 34Mb L: 19/21 MS: 3 CrossOver-ShuffleBytes-ShuffleBytes-
+#6317	REDUCE cov: 30 ft: 97 corp: 28/307b lim: 30 exec/s: 0 rss: 34Mb L: 29/29 MS: 1 CopyPart-
+#6933	REDUCE cov: 30 ft: 97 corp: 28/305b lim: 34 exec/s: 0 rss: 35Mb L: 12/29 MS: 1 EraseBytes-
+#6964	REDUCE cov: 30 ft: 97 corp: 28/299b lim: 34 exec/s: 0 rss: 35Mb L: 8/29 MS: 1 EraseBytes-
+#7490	REDUCE cov: 30 ft: 103 corp: 29/334b lim: 39 exec/s: 0 rss: 35Mb L: 35/35 MS: 1 InsertRepeatedBytes-
+#7571	REDUCE cov: 30 ft: 103 corp: 29/323b lim: 39 exec/s: 0 rss: 35Mb L: 18/35 MS: 1 EraseBytes-
+#7690	NEW    cov: 30 ft: 108 corp: 30/361b lim: 39 exec/s: 0 rss: 35Mb L: 38/38 MS: 4 ChangeByte-ChangeByte-ChangeBit-InsertRepeatedBytes-
+#7697	REDUCE cov: 30 ft: 108 corp: 30/358b lim: 39 exec/s: 0 rss: 35Mb L: 32/38 MS: 2 ChangeBit-CrossOver-
+#7778	REDUCE cov: 30 ft: 108 corp: 30/356b lim: 39 exec/s: 0 rss: 35Mb L: 7/38 MS: 1 EraseBytes-
+#7814	REDUCE cov: 30 ft: 108 corp: 30/355b lim: 39 exec/s: 0 rss: 35Mb L: 6/38 MS: 1 EraseBytes-
+#8164	REDUCE cov: 30 ft: 108 corp: 30/352b lim: 39 exec/s: 0 rss: 35Mb L: 15/38 MS: 5 ChangeBit-InsertByte-ChangeBinInt-CrossOver-EraseBytes-
+#8176	REDUCE cov: 30 ft: 108 corp: 30/350b lim: 39 exec/s: 0 rss: 35Mb L: 17/38 MS: 2 ChangeBinInt-EraseBytes-
+#8227	REDUCE cov: 30 ft: 108 corp: 30/347b lim: 39 exec/s: 0 rss: 35Mb L: 35/35 MS: 1 EraseBytes-
+#8529	REDUCE cov: 31 ft: 109 corp: 31/379b lim: 39 exec/s: 0 rss: 35Mb L: 32/35 MS: 2 PersAutoDict-CopyPart- DE: "\001\000\000\000\000\000\000\012"-
+#8621	REDUCE cov: 31 ft: 109 corp: 31/377b lim: 39 exec/s: 0 rss: 35Mb L: 30/35 MS: 2 ChangeByte-EraseBytes-
+#8645	REDUCE cov: 31 ft: 109 corp: 31/376b lim: 39 exec/s: 0 rss: 35Mb L: 29/35 MS: 4 ChangeBit-CopyPart-CrossOver-EraseBytes-
+#8722	REDUCE cov: 31 ft: 109 corp: 31/374b lim: 39 exec/s: 0 rss: 35Mb L: 19/35 MS: 2 CopyPart-EraseBytes-
+#9130	REDUCE cov: 31 ft: 109 corp: 31/368b lim: 39 exec/s: 0 rss: 35Mb L: 23/35 MS: 3 ShuffleBytes-ChangeBit-EraseBytes-
+#9437	REDUCE cov: 31 ft: 109 corp: 31/367b lim: 39 exec/s: 0 rss: 35Mb L: 31/35 MS: 2 ChangeBit-CrossOver-
+#10745	REDUCE cov: 31 ft: 109 corp: 31/366b lim: 49 exec/s: 0 rss: 35Mb L: 7/35 MS: 3 InsertByte-CopyPart-EraseBytes-
+#11153	REDUCE cov: 31 ft: 109 corp: 31/364b lim: 49 exec/s: 0 rss: 35Mb L: 16/35 MS: 3 EraseBytes-ChangeBinInt-CopyPart-
+#11346	REDUCE cov: 31 ft: 109 corp: 31/363b lim: 49 exec/s: 0 rss: 35Mb L: 30/35 MS: 3 ChangeByte-InsertRepeatedBytes-EraseBytes-
+#12447	REDUCE cov: 31 ft: 109 corp: 31/362b lim: 59 exec/s: 0 rss: 36Mb L: 16/35 MS: 1 EraseBytes-
+#12578	REDUCE cov: 31 ft: 109 corp: 31/360b lim: 59 exec/s: 0 rss: 36Mb L: 13/35 MS: 1 EraseBytes-
+#12709	REDUCE cov: 31 ft: 109 corp: 31/358b lim: 59 exec/s: 0 rss: 36Mb L: 28/35 MS: 1 EraseBytes-
+#12995	REDUCE cov: 31 ft: 109 corp: 31/356b lim: 59 exec/s: 0 rss: 36Mb L: 7/35 MS: 1 EraseBytes-
+#14122	REDUCE cov: 31 ft: 114 corp: 32/425b lim: 70 exec/s: 0 rss: 36Mb L: 69/69 MS: 2 InsertRepeatedBytes-InsertRepeatedBytes-
+#15378	NEW    cov: 31 ft: 119 corp: 33/474b lim: 82 exec/s: 0 rss: 36Mb L: 49/69 MS: 1 InsertRepeatedBytes-
+#15909	REDUCE cov: 31 ft: 119 corp: 33/472b lim: 82 exec/s: 0 rss: 36Mb L: 5/69 MS: 1 EraseBytes-
+#16003	NEW    cov: 31 ft: 125 corp: 34/549b lim: 82 exec/s: 0 rss: 36Mb L: 77/77 MS: 4 InsertRepeatedBytes-ChangeBinInt-InsertByte-ChangeByte-
+#16275	REDUCE cov: 31 ft: 125 corp: 34/541b lim: 82 exec/s: 0 rss: 36Mb L: 69/69 MS: 2 ChangeBinInt-EraseBytes-
+#16768	NEW    cov: 31 ft: 130 corp: 35/621b lim: 82 exec/s: 0 rss: 36Mb L: 80/80 MS: 3 CopyPart-ChangeByte-PersAutoDict- DE: "\001\000\000\000\000\000\000\012"-
+#17146	REDUCE cov: 31 ft: 130 corp: 35/617b lim: 82 exec/s: 0 rss: 36Mb L: 65/80 MS: 3 ChangeBinInt-InsertRepeatedBytes-EraseBytes-
+#17169	REDUCE cov: 31 ft: 130 corp: 35/612b lim: 82 exec/s: 0 rss: 36Mb L: 60/80 MS: 3 ChangeBit-CopyPart-EraseBytes-
+#17620	REDUCE cov: 31 ft: 130 corp: 35/611b lim: 82 exec/s: 17620 rss: 36Mb L: 5/80 MS: 1 EraseBytes-
+#17681	REDUCE cov: 31 ft: 130 corp: 35/609b lim: 82 exec/s: 17681 rss: 37Mb L: 10/80 MS: 1 EraseBytes-
+#17682	REDUCE cov: 31 ft: 130 corp: 35/608b lim: 82 exec/s: 17682 rss: 37Mb L: 4/80 MS: 1 EraseBytes-
+#19147	REDUCE cov: 31 ft: 130 corp: 35/606b lim: 94 exec/s: 19147 rss: 37Mb L: 58/80 MS: 5 InsertByte-InsertByte-ChangeBit-InsertRepeatedBytes-EraseBytes-
+fixtures/c-target/record.c:28:7: runtime error: index 16 out of bounds for type 'char[16]'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior fixtures/c-target/record.c:28:7 
+=================================================================
+==4331==ERROR: AddressSanitizer: stack-buffer-overflow on address 0xfa0ef397b6f0 at pc 0xc8d1812d0974 bp 0xffffec409c50 sp 0xffffec409c48
+WRITE of size 1 at 0xfa0ef397b6f0 thread T0
+    #0 0xc8d1812d0970 in lab_parse_records /work/fixtures/c-target/record.c:28:18
+    #1 0xc8d1812cfe0c in LLVMFuzzerTestOneInput /work/fixtures/c-target/fuzz_record.c:9:3
+    #2 0xc8d1811d48bc in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) (/work/work/c/fuzz_record+0x548bc) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+    #3 0xc8d1811d3f64 in fuzzer::Fuzzer::RunOne(unsigned char const*, unsigned long, bool, fuzzer::InputInfo*, bool, bool*) (/work/work/c/fuzz_record+0x53f64) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+    #4 0xc8d1811d5a04 in fuzzer::Fuzzer::MutateAndTestOne() (/work/work/c/fuzz_record+0x55a04) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+    #5 0xc8d1811d6680 in fuzzer::Fuzzer::Loop(std::vector<fuzzer::SizedFile, std::allocator<fuzzer::SizedFile>>&) (/work/work/c/fuzz_record+0x56680) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+    #6 0xc8d1811c3f0c in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) (/work/work/c/fuzz_record+0x43f0c) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+    #7 0xc8d1811edc88 in main (/work/work/c/fuzz_record+0x6dc88) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+    #8 0xfa0ef5bb2258  (/lib/aarch64-linux-gnu/libc.so.6+0x22258) (BuildId: dfbd3ffa068e3f5fc228d6716b4ff3f0f61eb82c)
+    #9 0xfa0ef5bb2338 in __libc_start_main (/lib/aarch64-linux-gnu/libc.so.6+0x22338) (BuildId: dfbd3ffa068e3f5fc228d6716b4ff3f0f61eb82c)
+    #10 0xc8d1811b97ac in _start (/work/work/c/fuzz_record+0x397ac) (BuildId: addbac03a31595053fab09141b5b547f6ca217ee)
+
+Address 0xfa0ef397b6f0 is located in stack of thread T0 at offset 48 in frame
+    #0 0xc8d1812cfef8 in lab_parse_records /work/fixtures/c-target/record.c:5
+
+  This frame has 1 object(s):
+    [32, 48) 'name' (line 6) <== Memory access at offset 48 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /work/fixtures/c-target/record.c:28:18 in lab_parse_records
+Shadow bytes around the buggy address:
+  0xfa0ef397b400: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b480: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b500: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b580: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b600: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+=>0xfa0ef397b680: f1 f1 f1 f1 00 04 f3 f3 f1 f1 f1 f1 00 00[f3]f3
+  0xfa0ef397b700: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b780: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b800: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b880: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+  0xfa0ef397b900: f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5 f5
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==4331==ABORTING
+MS: 2 CrossOver-ChangeBit-; base unit: cf3bdd8360f7e0fe37bbf5d215167dd0851a63d3
+0x4c,0x52,0x1,0x10,0x1,0x0,0x1,0x2,0x1,0x5a,0x1,0x2,0x4c,0x53,0x4c,0x52,0x2,0x1,0x0,0x3d,
+LR\001\020\001\000\001\002\001Z\001\002LSLR\002\001\000=
+artifact_prefix='/work/evidence/artifacts/'; Test unit written to /work/evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e
+Base64: TFIBEAEAAQIBWgECTFNMUgIBAD0=
+stat::number_of_executed_units: 20334
+stat::average_exec_per_sec:     20334
+stat::new_units_added:          70
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              38
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2325061559
+INFO: Loaded 1 modules   (48 inline 8-bit counters): 48 [0xbb4e642e30c0, 0xbb4e642e30f0), 
+INFO: Loaded 1 PC tables (48 PCs): 48 [0xbb4e642e30f0,0xbb4e642e33f0), 
+CRASH_MIN: minimizing crash input: 'evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e' (20 bytes)
+CRASH_MIN: executing: ./work/c/fuzz_record -runs=10000 evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e 2>&1
+CRASH_MIN: 'evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e' (20 bytes) caused a crash. Will try to minimize it further
+CRASH_MIN: executing: ./work/c/fuzz_record -runs=10000 evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e -minimize_crash_internal_step=1 -exact_artifact_path=evidence/artifacts/crash-c-record.bin 2>&1
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2905537603
+INFO: Loaded 1 modules   (48 inline 8-bit counters): 48 [0xc66ae29130c0, 0xc66ae29130f0), 
+INFO: Loaded 1 PC tables (48 PCs): 48 [0xc66ae29130f0,0xc66ae29133f0), 
+INFO: Starting MinimizeCrashInputInternalStep: 20
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 20 bytes
+INFO: Done MinimizeCrashInputInternalStep, no crashes found
+CRASH_MIN: failed to minimize beyond evidence/artifacts/crash-c-record.bin (20 bytes), exiting
