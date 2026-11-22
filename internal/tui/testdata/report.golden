@@ -1,0 +1,40 @@
+■ done · exit 0 · 06:02
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Findings  1 proven · 0 demoted                                                                                       │
+│                                                                                                                      │
+│ critical   aws-credential-a5c1cc1     AWS access key pair committed in .env                                          │
+│   .env:2@a5c1cc1 · gitleaks · aws-access-token                                                                       │
+│                                                                                                                      │
+│ Hypotheses  unproven, not findings                                                                                   │
+│                                                                                                                      │
+│   test-api-key-q51j          Generic API key pattern in test fixture                                                 │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  report.md · report.json · evidence/artifacts (gitleaks.json) · redactions 0
+  /runs/20261122-012942-secrets-scan
+  ↑↓ scroll  │  o open report.md  │  f reveal run folder  │  r run again  │  enter recipes  │  shift+drag select text  │

@@ -1,0 +1,40 @@
+devsecops › secrets-scan                                                                              step ▰▰▰▱▱  agent
+
+  Where is your target?  Local folder or files
+  Folder or files to test  This folder (/tmp/burner-tui-golden)
+  Agent  Codex
+  Mode  ACP
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Model  listed by codex                                                                                               │
+│                                                                                                                      │
+│ ❯ Agent default                 gpt-6.2-sol                                                                          │
+│   gpt-6.2-sol                   6.2 Sol  (default)                                                                   │
+│   gpt-6-luna                    6 Luna                                                                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter select  │  esc back  │  ctrl+c quit

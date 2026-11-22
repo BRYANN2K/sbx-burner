@@ -483,6 +483,34 @@ def test_operator_notes_plan_task_and_report(make_recipe, repo, tmp_path, scope_
     assert meta["asks"] == []
 
 
+class _GonePipe:
+    """An event stream whose reader went away after a few events."""
+
+    def __init__(self, after):
+        self.after, self.n = after, 0
+
+    def write(self, data):
+        self.n += 1
+        if self.n > self.after:
+            raise BrokenPipeError(32, "Broken pipe")
+        return len(data)
+
+    def flush(self):
+        pass
+
+
+def test_broken_event_pipe_still_destroys_the_sandbox(make_recipe, repo, tmp_path, monkeypatch):
+    plan = _plan(make_recipe(), repo, tmp_path)
+    fake = _Exec(plan, evidence=_evidence())
+    monkeypatch.setattr(runner, "_events_writer", lambda p, e: events_mod.EventWriter("-", p.run_id, stream=_GonePipe(after=3)))
+
+    def gone_log(_):
+        raise BrokenPipeError(32, "Broken pipe")
+
+    runner.execute_plan(plan, execute=fake, events="-", log=gone_log)
+    assert any(argv[1:2] == ["rm"] for argv in fake.calls), "destroy did not run after the pipe broke"
+
+
 def test_events_dash_stdout_only_ndjson(make_recipe, repo, tmp_path, capsys):
     plan = _plan(make_recipe(), repo, tmp_path)
     fake = _Exec(plan, evidence=_evidence())

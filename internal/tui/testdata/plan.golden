@@ -1,0 +1,40 @@
+devsecops › secrets-scan › codex                                                                       step ▰▰▰▰▱  plan
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Plan  exactly what will run, nothing has started                                                                     │
+│                                                                                                                      │
+│ Plan for devsecops/secrets-scan (dry run: nothing is executed)                                                       │
+│   agent:     codex                                                                                                   │
+│                                                                                                                      │
+│ Steps:                                                                                                               │
+│   1. create: create the sandbox                                                                                      │
+│      $ sbx create --name lab-secrets-scan-012942                                                                     │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+            Run       Cancel
+  same run without the menu: burner run devsecops/secrets-scan --agent=codex --target=/tmp/burner-tui-golden/repo '--…
+  enter confirm  │  ←→ run / cancel  │  ↑↓ pgup pgdn scroll  │  w wrap lines  │  esc back
