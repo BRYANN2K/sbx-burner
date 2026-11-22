@@ -11,6 +11,7 @@ import base64
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -23,7 +24,12 @@ _CONTAINER_ID = re.compile(r"containers/([0-9a-f]{64})")
 
 
 def state_dir() -> Path | None:
-    """sbx's daemon state folder ($LAB_SBX_STATE_DIR overrides)."""
+    """sbx's daemon state folder ($LAB_SBX_STATE_DIR overrides).
+
+    None on Linux (and anything but macOS) until sbx's state folder there is
+    known: the diagnosis is then skipped and the step log stays as sbx wrote
+    it.
+    """
     env = os.environ.get("LAB_SBX_STATE_DIR")
     if env:
         return Path(env)
@@ -33,16 +39,22 @@ def state_dir() -> Path | None:
 
 
 def _tail(path: Path, limit: int) -> str:
+    """The last ``limit`` bytes of a regular file; symlinks are never followed."""
     try:
-        if not path.is_file() or path.is_symlink():
-            return ""
-        with path.open("rb") as fh:
-            size = path.stat().st_size
-            if size > limit:
-                fh.seek(size - limit)
-            return fh.read(limit).decode("utf-8", errors="replace")
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError:
         return ""
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            return ""
+        if st.st_size > limit:
+            os.lseek(fd, st.st_size - limit, os.SEEK_SET)
+        return os.read(fd, limit).decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+    finally:
+        os.close(fd)
 
 
 def _one_line(text: str, limit: int = 400) -> str:
@@ -60,7 +72,7 @@ def _container_lines(root: Path, cid: str) -> list[str]:
             except (ValueError, TypeError, AttributeError):
                 continue
             if rec.get("stream") == 2 and text.strip():
-                out.append("container: " + _one_line(text))
+                out.append("container stderr (from the guest, untrusted): " + _one_line(text))
     return out[-2:]
 
 
