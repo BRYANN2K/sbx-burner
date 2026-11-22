@@ -85,6 +85,13 @@ On top of them:
 - `--model ID` picks one of the models the agent offers. Without it, burner
   asks at the start (attended runs) or keeps the agent's default (`--yes`).
   `burner models --agent codex` shows the last list the agent sent.
+  `burner models --agent codex --refresh` asks the agent itself, in about a
+  minute: a throwaway sandbox on the agent's built-in workload (no recipe,
+  no target; the global policy, the agent's API hosts, and the ACP adapter's
+  install hosts during the install window only), the ACP handshake with no
+  prompt, then the sandbox is removed, whatever happens. The Model question
+  and setup do this on their own when nothing is cached; "Agent default"
+  stays selectable meanwhile.
 - `--permission auto|ask`: `auto` (default) allows every request inside the
   sandbox and logs each one; `ask` sends each request to you as a question.
 - When the agent ends a turn, burner asks for a follow-up note. Pick Finish
