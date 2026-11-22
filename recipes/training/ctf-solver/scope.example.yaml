@@ -1,0 +1,33 @@
+# Copy to scope.yaml, set owner and dates, then:
+#   python -m lab run training/ctf-solver --scope scope.yaml --demo
+# or: python -m lab run training/ctf-solver --scope scope.yaml --target ./my-challenges
+schema_version: "1"
+id: ctf-solver-local
+owner: Your Name
+authorization:
+  # own-lab: challenges you run yourself. For a hosted CTF use type "written"
+  # with a reference to the event rules, and list its hosts below.
+  type: own-lab
+valid:
+  not_before: "2026-11-01"
+  not_after: "2026-12-31"
+targets:
+  - name: ctf-web-challenges
+    hosts:
+      - localhost:8081
+    notes: >-
+      The web-idor challenge started inside the sandbox (--demo, or a
+      lab-style --target)
+  - name: ctf-files
+    paths:
+      - /home/agent/target
+    notes: Challenge handouts mounted by --target (not needed for --demo)
+network:
+  # strict: only the hosts in this file, the agent API and the recipe's tool
+  # hosts are reachable (needs the global sbx policy set to deny-all).
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  allowed: [ctf, exploit-poc]
+  forbidden: [dos, brute-force, social-engineering, data-destruction, attack-infrastructure]

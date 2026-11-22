@@ -1,0 +1,4 @@
+web-idor stopped
+reset: build directory absent (/home/agent/workspace/ctf-build)
+reset: port 8081 closed
+reset ok
