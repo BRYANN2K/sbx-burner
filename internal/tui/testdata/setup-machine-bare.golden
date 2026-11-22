@@ -1,0 +1,40 @@
+                    ╭──────────────────────────────────────────────────────────────────────────────╮
+                    │                                                                              │
+                    │  ⠀⠀⠀⠀⠀⠀⣀⣀⣀⡀⠀⠀⣀⠀⠸⠿                                                            │
+                    │  ⠀⠀⢀⣤⣶⣿⣿⡿⠿⠀⣤⡼⠿⠃⠀⠀                                                            │
+                    │  ⠀⣰⣿⡿⠛⠉⠀⢠⣤⡀⠛⠃⠀⠀⠸⠿    burner  dev                                             │
+                    │  ⣰⣿⡟⠀⠀⢀⣀⣨⣏⣀⠀⠀⠸⠿⠇⠀                                                            │
+                    │  ⠛⠋⢀⣀⣾⡿⠿⠿⠿⠿⣿⣆⡀⠀⣶⣿    Setup                                                   │
+                    │  ⣶⣦⢸⣿⡇⢤⣄⠀⢀⣠⠄⣿⡿⢀⣿⣿    Machine  1 of 5                                         │
+                    │  ⠸⣿⣦⠘⢧⣈⣉⣀⣈⣉⣠⠟⢀⣾⣿⠇    ▰▱▱▱▱                                                   │
+                    │  ⠀⠘⢿⣷⣤⣈⠉⠉⠉⠉⣀⣤⡀⠙⠃⠀                                                            │
+                    │  ⠀⠀⠀⠉⠻⠿⣿⣿⣿⣿⠿⠛⠉⠀⠀⠀                                                            │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │                                                                              │
+                    │  ✗  Homebrew                 not installed                                   │
+                    │  ✗  sbx                      sbx not found on PATH                           │
+                    │  !  Container runtime        none running (needed to build recipe kits)      │
+                    │  ✗  Docker buildx            docker CLI not found; sbx needs docker bui…     │
+                    │  ✗  git                      not installed                                   │
+                    │  ✗  python3                  not installed (3.11 or newer)                   │
+                    │  !  GitHub login             gh not found (needed only for private repo…     │
+                    │  !  Free disk                6 GB free                                       │
+                    │                                                                              │
+                    │  ╭────────────────────────────────────────────────────────────────────────╮  │
+                    │  │ Homebrew                                                               │  │
+                    │  │ $ /bin/bash -c "$(curl -fsSL                                           │  │
+                    │  │ https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"   │  │
+                    │  │ the installer asks for your password here                              │  │
+                    │  │                                                                        │  │
+                    │  │  enter install    n next                                               │  │
+                    │  ╰────────────────────────────────────────────────────────────────────────╯  │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    ╰──────────────────────────────────────────────────────────────────────────────╯

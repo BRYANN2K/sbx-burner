@@ -58,6 +58,8 @@ type setupModel struct {
 	sample    string
 	awaitRun  bool
 	result    string
+	chip      int  // the chosen action of a machine line with choices
+	advance   bool // move to the next red machine line when the checks return
 }
 
 type setupExecDoneMsg struct {
@@ -90,7 +92,38 @@ func newSetup(p Prefs) *setupModel {
 	if p.RunsDir == "" {
 		p.RunsDir = "~/.burner/runs"
 	}
-	return &setupModel{step: setupMachine, prefs: p}
+	return &setupModel{step: setupMachine, cursor: -1, prefs: p, advance: true}
+}
+
+// machineCursor resolves the machine step's cursor: -1 means the first
+// line that needs action.
+func (s *setupModel) machineCursor(rows []doctor.Result) int {
+	if len(rows) == 0 {
+		return 0
+	}
+	if s.cursor < 0 || s.cursor >= len(rows) {
+		s.cursor = nextRed(rows, 0)
+	}
+	return s.cursor
+}
+
+// setupChecksDone moves the machine cursor to the next line that needs
+// action once the checks return after a fix.
+func (m model) setupChecksDone() {
+	s := m.setup
+	if s == nil || s.step != setupMachine || !s.advance {
+		return
+	}
+	rows := m.machineRows()
+	if len(rows) == 0 {
+		return
+	}
+	s.advance = false
+	from := s.cursor
+	if from < 0 || from >= len(rows) {
+		from = 0
+	}
+	s.cursor, s.chip = nextRed(rows, from), 0
 }
 
 func (m model) check(id string) (doctor.Result, bool) {
@@ -247,14 +280,33 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return next()
 		}
 	case setupMachine:
+		rows := m.machineRows()
+		cur := s.machineCursor(rows)
 		switch key {
-		case "enter":
-			if c, ok := m.check("policy"); ok && c.Level != doctor.OK && !s.busy {
-				s.busy = true
-				if c.Fix == doctor.SbxLoginCommand {
-					return m, execSetup("sbx login", strings.Fields(doctor.SbxLoginCommand))
+		case "up", "k":
+			if cur > 0 {
+				s.cursor, s.chip = cur-1, 0
+			}
+		case "down", "j":
+			if cur < len(rows)-1 {
+				s.cursor, s.chip = cur+1, 0
+			}
+		case "left", "right":
+			if cur < len(rows) && len(rows[cur].Actions) > 1 {
+				d := 1
+				if key == "left" {
+					d = -1
 				}
-				return m, execSetup("sbx policy init", strings.Fields(doctor.PolicyInitCommand))
+				n := len(rows[cur].Actions)
+				s.chip = (s.chip + d + n) % n
+			}
+		case "enter":
+			if cur >= len(rows) || s.busy {
+				return m, nil
+			}
+			if a, ok := pickAction(rows[cur], s.chip); ok && len(a.Argv) > 0 {
+				s.busy, s.advance = true, true
+				return m, execSetup(machineTitle(rows[cur].ID), a.Argv)
 			}
 		case "s", "n":
 			return next()
@@ -262,6 +314,10 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			s.step--
 		}
 	case setupAgents:
+		if key == "esc" {
+			s.step, s.cursor = setupMachine, -1
+			return m, nil
+		}
 		switch key {
 		case "up":
 			if s.cursor > 0 {
@@ -273,9 +329,6 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			a := setupAgentsList[s.cursor]
-			if _, blocked := doctor.Blocked[a]; blocked {
-				return m, nil
-			}
 			if a != "opencode" && !s.busy {
 				_ = os.MkdirAll(sampleDir(), 0o755)
 				s.busy = true
@@ -488,14 +541,11 @@ func (m model) viewSetup() string {
 	var keys []string
 	switch s.step {
 	case setupMachine:
-		names := map[string]string{"sbx": "sbx", "runtime": "Container runtime", "buildx": "Docker buildx", "policy": "Global network policy", "disk": "Free disk", "git-login": "GitHub login"}
-		for _, id := range []string{"sbx", "runtime", "buildx", "policy", "disk", "git-login"} {
-			c, ok := m.check(id)
-			if !ok {
-				continue
-			}
-			v := c.Detail
-			if id == "sbx" && c.Level == doctor.OK {
+		rows := m.machineRows()
+		cur := s.machineCursor(rows)
+		for i, c := range rows {
+			v := truncate(c.Detail, w-31)
+			if c.ID == "sbx" && c.Level == doctor.OK {
 				if f := sbxVersionRE.FindString(v); f != "" {
 					v = f
 				}
@@ -504,19 +554,47 @@ func (m model) viewSetup() string {
 			if c.Level != doctor.OK {
 				vs = sSoft.Render(v)
 			}
-			L = append(L, row(id == "policy" && c.Level != doctor.OK, mark(c.Level), names[id], vs, ""))
+			L = append(L, row(i == cur, mark(c.Level), machineTitle(c.ID), vs, ""))
 		}
-		keys = []string{"n", "next"}
-		if c, ok := m.check("policy"); ok && c.Level != doctor.OK {
-			if c.Fix == doctor.SbxLoginCommand {
-				L = append(L, "", card(sBold.Render("Sign in to Docker Sandboxes"), sSoft.Render("$ "+doctor.SbxLoginCommand), "",
-					btn("enter", "sign in", true)+"  "+btn("s", "skip", false)))
-			} else {
-				L = append(L, "", card(sBold.Render("Global network policy"), sSoft.Render("$ "+doctor.PolicyInitCommand),
-					sAmber.Render("applies to every sbx sandbox on this Mac, not only burner's"), "",
-					btn("enter", "run", true)+"  "+btn("s", "skip", false)))
+		keys = []string{"↑↓", "move", "n", "next", "esc", "back"}
+		if cur < len(rows) {
+			if a, ok := pickAction(rows[cur], s.chip); ok {
+				c := rows[cur]
+				body := []string{sBold.Render(machineTitle(c.ID))}
+				if len(c.Actions) > 1 {
+					var chips []string
+					for i, o := range c.Actions {
+						if i == s.chip {
+							chips = append(chips, sSel.Render(" "+o.Label+" "))
+						} else {
+							chips = append(chips, sDim.Render(" "+o.Label+" "))
+						}
+					}
+					body = append(body, strings.Join(chips, " "))
+				}
+				wrap := lipgloss.NewStyle().Width(cardW - 4)
+				switch {
+				case len(a.Argv) > 0:
+					body = append(body, sSoft.Render(wrap.Render("$ "+actionLine(a))))
+				case a.URL != "":
+					body = append(body, sSoft.Render(wrap.Render(a.URL)))
+				}
+				if a.Note != "" {
+					note := sDim.Render(a.Note)
+					if c.ID == "policy" {
+						note = sAmber.Render(a.Note)
+					}
+					body = append(body, note)
+				}
+				if len(a.Argv) > 0 {
+					body = append(body, "", btn("enter", a.Label, true)+"  "+btn("n", "next", false))
+					keys = []string{"↑↓", "move", "enter", a.Label, "n", "next", "esc", "back"}
+				}
+				if len(c.Actions) > 1 {
+					keys = append([]string{"←→", "choose"}, keys...)
+				}
+				L = append(L, "", card(body...))
 			}
-			keys = []string{"enter", "run the command", "s", "skip", "n", "next"}
 		}
 	case setupAgents:
 		for i, a := range setupAgentsList {
@@ -551,8 +629,7 @@ func (m model) viewSetup() string {
 			L = append(L, "", card(sBold.Render("Configure OpenCode"), sSoft.Render("$ sbx run opencode "+tildify(sampleDir())), "",
 				btn("o", "open OpenCode", true)+"  "+btn("s", "skip", false)))
 			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
-		case blocked:
-		case !ok || c.Level != doctor.OK:
+		case !ok || c.Level != doctor.OK || blocked:
 			if argv := connectCommand(a); len(argv) > 0 {
 				L = append(L, "", card(sBold.Render("Connect "+setupAgentName[a]), sSoft.Render("$ "+tildify(strings.Join(argv, " "))), "",
 					btn("enter", "connect", true)+"  "+btn("s", "skip", false)))
@@ -722,7 +799,7 @@ func (m model) viewSetup() string {
 			first = "skipped"
 		}
 		machineMark := sDim.Render("✓")
-		for _, id := range []string{"sbx", "runtime", "buildx", "policy", "disk"} {
+		for _, id := range []string{"brew", "sbx", "runtime", "buildx", "git", "python", "sbx-login", "policy", "disk"} {
 			if c, ok := m.check(id); ok && c.Level != doctor.OK {
 				machineMark = sAmber.Render("!")
 			}

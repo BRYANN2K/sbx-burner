@@ -1334,7 +1334,8 @@ func TestDoctorApprovesAKitAndHomeSaysSo(t *testing.T) {
 func setupChecks() []doctor.Result {
 	c := checks()
 	c = append(c,
-		doctor.Result{ID: "policy", Title: "Global network policy", Level: doctor.Warn, Detail: "not initialized", Fix: doctor.PolicyInitCommand},
+		doctor.Result{ID: "policy", Title: "Global network policy", Level: doctor.Warn, Detail: "not initialized", Fix: doctor.PolicyInitCommand,
+			Actions: []doctor.Action{{Label: "run", Argv: strings.Fields(doctor.PolicyInitCommand), Note: "applies to every sbx sandbox on this Mac, not only burner's"}}},
 		doctor.Result{ID: "git-login", Title: "GitHub login", Level: doctor.OK, Detail: "signed in"},
 	)
 	return append(c, doctor.ApprovalResults([]engine.Approval{
