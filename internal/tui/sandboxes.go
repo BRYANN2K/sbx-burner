@@ -116,7 +116,7 @@ func (m model) updateSandboxes(msg tea.Msg) (tea.Model, tea.Cmd) {
 				k := s.list[s.cursor]
 				if tui := m.tuis[k.Agent]; len(tui) > 0 {
 					argv := append([]string{"exec", "-it", k.Name, "--"}, tui...)
-					return m, termCmd("Agent TUI", append([]string{"sbx"}, argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
+					return m, termCmd("Agent TUI · a separate session in the sandbox (the run goes on behind)", append([]string{"sbx"}, argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
 				}
 			}
 		case "b":

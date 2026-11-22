@@ -223,7 +223,7 @@ func (l *liveModel) agentTUI() tea.Cmd {
 		return nil
 	}
 	argv := append([]string{"exec", "-it", name, "--"}, l.tuiCmd...)
-	return termCmd("Agent TUI", append([]string{"sbx"}, argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
+	return termCmd("Agent TUI · a separate session in the sandbox (the run goes on behind)", append([]string{"sbx"}, argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
 }
 
 // keyRun handles the run screen's keys while the run is going. It returns
