@@ -1,0 +1,39 @@
+# python -m lab eval devsecops/iac-scan                  # golden fixture (CI)
+# python -m lab eval devsecops/iac-scan --run runs/<id>  # after a run on evals/make-target.sh
+# The golden artifacts are trimmed from a real trivy 0.76.2 run on the
+# make-target.sh output (embedded checks, --skip-check-update).
+description: >-
+  Against the planted repository, the agent reports the SSH rule open to the
+  internet and the privileged container with the host filesystem as high
+  exposures, groups the hygiene hits instead of listing all 32, and keeps the
+  missing S3 public access block as a lead.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: trivy
+  - type: artifact_exists
+    path: artifacts/trivy-config.json
+  - type: artifact_contains
+    path: artifacts/trivy-config.sarif
+    pattern: '"version": ?"2\.1\.0"'
+  - type: min_findings
+    count: 1
+    where: {tool: trivy, rule: ".*AWS-0107.*", location: "terraform/main\\.tf:.*", severity: "high|critical"}
+  - type: min_findings
+    count: 1
+    where: {rule: ".*KSV-0017.*", location: "k8s/deployment\\.yaml:.*", severity: "high|critical"}
+  - type: max_findings
+    count: 8
+  - type: max_findings
+    count: 0
+    where: {rule: ".*DS-0026.*", severity: "high|critical"}
+  - type: max_findings
+    count: 0
+    where: {rule: ".*AWS-0086.*"}
+  - type: min_hypotheses
+    count: 1
+    where: {title: ".*public access block.*"}
+  - type: metric
+    name: exposures
+    min: 2
+  - type: no_demotions

@@ -1,0 +1,434 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "/home/agent/target",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "app/Dockerfile",
+      "Class": "config",
+      "Type": "dockerfile",
+      "MisconfSummary": {
+        "Successes": 23,
+        "Failures": 4
+      },
+      "Misconfigurations": [
+        {
+          "ID": "DS-0001",
+          "Title": "':latest' tag used",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Add a tag to the image in the 'FROM' statement",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 1,
+            "EndLine": 1
+          }
+        },
+        {
+          "ID": "DS-0002",
+          "Title": "Image user should not be 'root'",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Add 'USER <non root user name>' line to the Dockerfile",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": null,
+            "EndLine": null
+          }
+        },
+        {
+          "ID": "DS-0026",
+          "Title": "No HEALTHCHECK defined",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Add HEALTHCHECK instruction in Dockerfile",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": null,
+            "EndLine": null
+          }
+        },
+        {
+          "ID": "DS-0029",
+          "Title": "'apt-get' missing '--no-install-recommends'",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Add '--no-install-recommends' flag to 'apt-get'",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 2,
+            "EndLine": 2
+          }
+        }
+      ]
+    },
+    {
+      "Target": "k8s/deployment.yaml",
+      "Class": "config",
+      "Type": "kubernetes",
+      "MisconfSummary": {
+        "Successes": 79,
+        "Failures": 19
+      },
+      "Misconfigurations": [
+        {
+          "ID": "KSV-0001",
+          "Title": "Can elevate its own privileges",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Set 'set containers[].securityContext.allowPrivilegeEscalation' to 'false'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0003",
+          "Title": "Default capabilities: some containers do not drop all",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Add 'ALL' to containers[].securityContext.capabilities.drop.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0004",
+          "Title": "Default capabilities: some containers do not drop any",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Specify at least one unneeded capability in 'containers[].securityContext.capabilities.drop'",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0011",
+          "Title": "CPU not limited",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set a limit value under 'containers[].resources.limits.cpu'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0012",
+          "Title": "Runs as root user",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Set 'containers[].securityContext.runAsNonRoot' to true.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0014",
+          "Title": "Root file system is not read-only",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Change 'containers[].securityContext.readOnlyRootFilesystem' to 'true'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0015",
+          "Title": "CPU requests not specified",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set 'containers[].resources.requests.cpu'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0016",
+          "Title": "Memory requests not specified",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set 'containers[].resources.requests.memory'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0017",
+          "Title": "Privileged",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Change 'containers[].securityContext.privileged' to 'false'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0018",
+          "Title": "Memory not limited",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set a limit value under 'containers[].resources.limits.memory'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0020",
+          "Title": "Runs with UID <= 10000",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set 'containers[].securityContext.runAsUser' to an integer > 10000.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0021",
+          "Title": "Runs with GID <= 10000",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set 'containers[].securityContext.runAsGroup' to an integer > 10000.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0023",
+          "Title": "hostPath volumes mounted",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Do not set 'spec.volumes[*].hostPath'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 6,
+            "EndLine": 27
+          }
+        },
+        {
+          "ID": "KSV-0030",
+          "Title": "Runtime/Default Seccomp profile not set",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set 'spec.securityContext.seccompProfile.type', 'spec.containers[*].securityContext.seccompProfile' and 'spec.initContainers[*].securityContext.seccompProfile' to 'RuntimeDefault' or undefined.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0104",
+          "Title": "Seccomp policies disabled",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Specify seccomp either by annotation or by seccomp profile type having allowed values as per pod security standards",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0106",
+          "Title": "Container capabilities must only include NET_BIND_SERVICE",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Set 'spec.containers[*].securityContext.capabilities.drop' to 'ALL' and only add 'NET_BIND_SERVICE' to 'spec.containers[*].securityContext.capabilities.add'.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        },
+        {
+          "ID": "KSV-0118",
+          "Title": "Default security context configured",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "To enhance security, it is strongly recommended not to rely on the default security context. Instead, it is advisable to explicitly define the required security parameters (such as runAsNonRoot, capabilities, readOnlyRootFilesystem, etc.) within the security context.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 15,
+            "EndLine": 27
+          }
+        },
+        {
+          "ID": "KSV-0121",
+          "Title": "Kubernetes resource with disallowed volumes mounted",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Do not Set 'spec.volumes[*].hostPath.path' to any of the disallowed volumes.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 6,
+            "EndLine": 27
+          }
+        },
+        {
+          "ID": "KSV-0125",
+          "Title": "Restrict container images to trusted registries",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Use images from trusted registries.",
+          "CauseMetadata": {
+            "Resource": null,
+            "StartLine": 17,
+            "EndLine": 23
+          }
+        }
+      ]
+    },
+    {
+      "Target": "terraform",
+      "Class": "config",
+      "Type": "terraform",
+      "MisconfSummary": {
+        "Successes": 72,
+        "Failures": 0
+      },
+      "Misconfigurations": []
+    },
+    {
+      "Target": "terraform/main.tf",
+      "Class": "config",
+      "Type": "terraform",
+      "MisconfSummary": {
+        "Successes": 0,
+        "Failures": 9
+      },
+      "Misconfigurations": [
+        {
+          "ID": "AWS-0086",
+          "Title": "S3 Access block should block public ACL",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Enable blocking any PUT calls with a public ACL specified",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0087",
+          "Title": "S3 Access block should block public policy",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Prevent policies that allow public access being PUT",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0089",
+          "Title": "S3 Bucket Logging",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Add a logging block to the resource to enable access logging",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0090",
+          "Title": "S3 Data should be versioned",
+          "Severity": "MEDIUM",
+          "Status": "FAIL",
+          "Resolution": "Enable versioning to protect against accidental/malicious removal or modification",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0091",
+          "Title": "S3 Access Block should Ignore Public ACL",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Enable ignoring the application of public ACLs in PUT calls",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0093",
+          "Title": "S3 Access block should restrict public bucket to limit access",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Limit the access to public buckets to only the owner or AWS Services (eg; CloudFront)",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0094",
+          "Title": "S3 buckets should each define an aws_s3_bucket_public_access_block",
+          "Severity": "LOW",
+          "Status": "FAIL",
+          "Resolution": "Define a aws_s3_bucket_public_access_block for the given bucket to control public access policies",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        },
+        {
+          "ID": "AWS-0107",
+          "Title": "Security groups should not allow unrestricted ingress to SSH or RDP from any IP address.",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Set a more restrictive CIDR range",
+          "CauseMetadata": {
+            "Resource": "aws_security_group.bastion",
+            "StartLine": 10,
+            "EndLine": 10
+          }
+        },
+        {
+          "ID": "AWS-0132",
+          "Title": "S3 encryption should use Customer Managed Keys",
+          "Severity": "HIGH",
+          "Status": "FAIL",
+          "Resolution": "Use SSE-KMS with a customer managed key (CMK)",
+          "CauseMetadata": {
+            "Resource": "aws_s3_bucket.logs",
+            "StartLine": 14,
+            "EndLine": 16
+          }
+        }
+      ]
+    }
+  ]
+}
