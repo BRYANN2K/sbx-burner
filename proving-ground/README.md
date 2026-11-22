@@ -56,6 +56,25 @@ that give the answer away).
 | pentest-whitebox-review | pentest/whitebox-review | `project/` Python service | command injection + SQLi, confirmable on localhost; decoys: unrouted `dead.py`, allowlisted `/report` | medium |
 | devsecops-gate | devsecops/gate | `project/` + generated secret | secrets + vulnerable pin + SAST flaw the gate must block | medium |
 
+## Folders (group C)
+
+All five share `shared/vuln-node-app/` (corner-shop-api), run only in the
+sandbox via `--target-image` + `--target-port`; `build.sh` also copies the
+source into `.build/<folder>/app` for path mounts.
+
+| folder | recipe | target | planted issues | cost |
+| --- | --- | --- | --- | --- |
+| pentest-web-recon | pentest/web-recon | shared app image (port run) | `/backup/` directory listing (finding); missing CSP in surface.json (artifact) | small |
+| pentest-webapp-blackbox | pentest/webapp-blackbox | shared app image (port run) | same three, all must_find | medium |
+| pentest-dast-light | pentest/dast-light | shared app image (port run) | baseline header issues the scanner provably reports | medium |
+| pentest-api-greybox | pentest/api-greybox | image+port and path runs (`credentials.json` with two generated accounts) | schema-vs-live gap + basket access check | medium |
+| pentest-bug-bounty | pentest/bug-bounty | **runs_pending only** | url is its only declared kind and a host URL is not sandbox-reachable | medium |
+
+`url` runs across group C sit in `runs_pending`: a host-listening URL is not
+reachable from inside the sandbox until `--target-host-port` (or an
+equivalent) lands. `pentest-bug-bounty` declares only the url kind, so its
+folder has no active `runs:` at all — it unblocks with the same feature.
+
 ## Run
 
 ```sh
