@@ -215,17 +215,6 @@ func (m model) sendChat(text string) tea.Cmd {
 	return nil
 }
 
-// agentTUI opens the agent's own TUI in the same sandbox; burner resumes
-// when it exits.
-func (l *liveModel) agentTUI() tea.Cmd {
-	name := l.sandboxName()
-	if name == "" || len(l.tuiCmd) == 0 {
-		return nil
-	}
-	argv := append([]string{"exec", "-it", name, "--"}, l.tuiCmd...)
-	return termCmd("Agent TUI · a separate session in the sandbox (the run goes on behind)", append([]string{"sbx"}, argv...), func(err error) tea.Msg { return agentTUIDoneMsg{err} })
-}
-
 // keyRun handles the run screen's keys while the run is going. It returns
 // handled=false for keys the caller handles (scroll, stop).
 func (m model) keyRun(k tea.KeyMsg) (model, tea.Cmd, bool) {
@@ -302,8 +291,6 @@ func (m model) keyRun(k tea.KeyMsg) (model, tea.Cmd, bool) {
 			l.chatOn = true
 			return m, l.chat.Focus(), true
 		}
-	case "t":
-		return m, l.agentTUI(), true
 	case "l":
 		if step := l.lastStep(); step != "" {
 			m.logv = newLogView(step, stepLogPath(l.runDir(), step))
@@ -460,9 +447,6 @@ func (l *liveModel) runHints() string {
 	k := []string{}
 	if l.opts.ACP {
 		k = append(k, "enter", "send")
-	}
-	if len(l.tuiCmd) > 0 {
-		k = append(k, "t", l.opts.Agent+" TUI")
 	}
 	return hints(append(k, "l", "log", "ctrl+c", "stop")...)
 }
