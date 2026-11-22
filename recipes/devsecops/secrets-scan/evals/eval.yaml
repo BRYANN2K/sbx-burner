@@ -1,0 +1,29 @@
+# python -m lab eval devsecops/secrets-scan                  # golden fixture (CI)
+# python -m lab eval devsecops/secrets-scan --run runs/<id>  # after a run on evals/make-target.sh
+description: >-
+  Against the planted repository, the agent finds the cloud key that only
+  lives in history and the token in HEAD, keeps the test-fixture false
+  positive out of the findings, and the raw report is masked.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: gitleaks
+  - type: artifact_exists
+    path: artifacts/gitleaks.json
+  - type: min_findings
+    count: 1
+    where: {tool: gitleaks, rule: "aws-access-token", severity: critical}
+  - type: min_findings
+    count: 1
+    where: {rule: "github-pat", location: "scripts/release\\.sh:.*"}
+  - type: max_findings
+    count: 2
+  - type: min_hypotheses
+    count: 1
+  - type: no_demotions
+  - type: artifact_contains
+    path: artifacts/gitleaks.json
+    pattern: REDACTED
+  - type: artifact_contains
+    path: artifacts/gitleaks.json
+    pattern: generic-api-key

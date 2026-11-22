@@ -1,0 +1,67 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/secrets-scan",
+  "summary": "Scanned the full git history (5 commits) and the working tree of leaky-repo with gitleaks 8.30.1. Two real credentials leaked: an AWS access key pair that is removed from HEAD but still in history, and a GitHub token in scripts/release.sh. One hit is a random key planted as a test fixture, dismissed as a false positive.",
+  "tools_run": [
+    {
+      "name": "gitleaks",
+      "version": "8.30.1",
+      "command": "gitleaks git --redact --report-format json --report-path evidence/artifacts/gitleaks.json --exit-code 1 .",
+      "exit_code": 1,
+      "output": "artifacts/gitleaks.json"
+    },
+    {
+      "name": "gitleaks",
+      "version": "8.30.1",
+      "command": "gitleaks git --redact --report-format sarif --report-path evidence/artifacts/gitleaks.sarif --exit-code 0 .",
+      "exit_code": 0,
+      "output": "artifacts/gitleaks.sarif"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SEC-001",
+      "title": "AWS access key pair committed in .env (still in git history)",
+      "severity": "critical",
+      "cwe": "CWE-798",
+      "target": "leaky-repo",
+      "location": ".env:1@1716f94",
+      "tool": "gitleaks",
+      "rule": "aws-access-token",
+      "description": "An AWS access key ID (AKIA************) and its secret key were committed in .env by commit 1716f94 and deleted in the next commit. The pair is still readable in history by anyone with a clone.",
+      "proof": {
+        "poc": "gitleaks git --redact --report-format json --report-path gitleaks.json . && jq '.[] | select(.RuleID==\"aws-access-token\") | {File, StartLine, Commit}' gitleaks.json",
+        "artifacts": ["artifacts/gitleaks.json"]
+      },
+      "remediation": "Deactivate and rotate the key pair in IAM now, review CloudTrail for its use, then purge .env from history and add a gitleaks pre-commit hook."
+    },
+    {
+      "id": "SEC-002",
+      "title": "GitHub personal access token hardcoded in scripts/release.sh",
+      "severity": "high",
+      "cwe": "CWE-798",
+      "target": "leaky-repo",
+      "location": "scripts/release.sh:2@fb2e620",
+      "tool": "gitleaks",
+      "rule": "github-pat",
+      "description": "A GitHub personal access token (ghp_************) is passed in an Authorization header in scripts/release.sh and is present in HEAD.",
+      "proof": {
+        "poc": "gitleaks git --redact --report-format json --report-path gitleaks.json . && jq '.[] | select(.RuleID==\"github-pat\") | {File, StartLine, Commit}' gitleaks.json",
+        "artifacts": ["artifacts/gitleaks.json"]
+      },
+      "remediation": "Revoke the token in GitHub settings, read it from the environment or a secret store, and add a gitleaks pre-commit hook."
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "FP-001",
+      "title": "generic-api-key hit in tests/test_client.py",
+      "rationale": "gitleaks reports a generic-api-key on a random value planted in tests/test_client.py; the file marks it as a dummy credential for the mocked transport. It is not a real credential.",
+      "next_step": "None. Dismissed as a test fixture."
+    }
+  ],
+  "artifacts": [
+    {"path": "artifacts/gitleaks.json", "description": "Raw gitleaks report, redacted"},
+    {"path": "artifacts/gitleaks.sarif", "description": "gitleaks report as SARIF"}
+  ]
+}
