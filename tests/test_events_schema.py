@@ -19,7 +19,7 @@ def test_schema_lists_every_event_type_once():
     assert (
         sorted(refs)
         == sorted(SCHEMA["$defs"])
-        == sorted(["step", "agent.message", "agent.tool", "finding", "blocked", "ask", "answer", "done"])
+        == sorted(["step", "agent.message", "agent.tool", "finding", "blocked", "ask", "answer", "handoff", "done"])
     )
 
 

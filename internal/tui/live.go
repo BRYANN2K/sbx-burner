@@ -11,7 +11,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
 	"github.com/BRYANN2K/sbx-burner/internal/events"
@@ -53,6 +52,21 @@ type liveModel struct {
 	finds   map[string]string
 	blocked int
 	warn    string
+
+	// Run screen v2.
+	planText  string          // the engine's dry run, for steps, image and network
+	chat      textinput.Model // messages to the agent over ACP
+	chatOn    bool            // the chat input has the keyboard
+	queue     []int           // log indexes of "you" messages not sent yet
+	handoff   []string        // checked argv of the agent's own TUI (--interactive)
+	tuiCmd    []string        // the agent's own TUI command, for t
+	approval  *approvalCard   // credential binding to approve before the run starts
+	autoAllow int             // ACP permissions auto-allowed (logged by the bridge)
+	asked     int             // ACP permissions asked to the operator
+	scopeHost []string        // hosts the scope file names
+	scopeMode string
+
+	inlineSteps bool // steps in the conversation (narrow terminals, no steps column)
 }
 
 type entry2 struct {
@@ -63,6 +77,7 @@ type entry2 struct {
 	closeTotal, closeDone, closeFail int // folded policy-close steps
 
 	errLine string // a failed step's last error line
+	queued  bool   // a "you" message waiting for the turn boundary
 
 	cache  []string // rendered lines for cacheW
 	cacheW int
@@ -94,6 +109,11 @@ func newLive(o engine.RunOptions, now time.Time) *liveModel {
 	n.Placeholder = "note for the agent, sent mid-run"
 	n.CharLimit = 8192
 	l.note = n
+	c := textinput.New()
+	c.Prompt = "❯ "
+	c.Placeholder = "Message " + o.Agent + "…"
+	c.CharLimit = 8192
+	l.chat = c
 	return l
 }
 
@@ -123,10 +143,31 @@ func waitCh(ch chan tea.Msg) tea.Cmd {
 }
 
 func (l *liveModel) add(e events.Event) {
-	if e.RunID != "" {
+	// The run id is pinned by the first event and never updated: every
+	// later check (handoff, sandbox name) compares against it.
+	if l.runID == "" && e.RunID != "" {
 		l.runID = e.RunID
 	}
 	defer l.trim()
+	// The bridge logs every auto-allowed permission as a tool line: count
+	// it for the side panel instead of filling the conversation.
+	if e.Type == "agent.tool" && e.Tool == "permission" {
+		if strings.HasPrefix(e.Summary, "auto-allowed") {
+			l.autoAllow++
+		}
+		return
+	}
+	if e.Type == "handoff" {
+		if argv, err := events.HandoffArgv(e, l.runID, events.SandboxForRun(l.runID), filepath.Join(l.runsDir, l.runID, "workspace")); err == nil {
+			l.handoff = argv
+		} else {
+			l.warn = "refused handoff: " + err.Error()
+		}
+		return
+	}
+	if e.Type == "ask" && strings.HasPrefix(e.AskID, "acp-perm-") {
+		l.asked++
+	}
 	// Agents report a tool call when it starts and when it ends.
 	if e.Type == "agent.tool" && len(l.log) > 0 {
 		last := l.log[len(l.log)-1]
@@ -257,7 +298,49 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case eventMsg:
 		l.add(msg.ev)
+		if msg.ev.Type == "ask" {
+			return m, tea.Batch(waitCh(l.ch), m.onAsk(msg.ev))
+		}
 		return m, waitCh(l.ch)
+	case handoffDoneMsg:
+		note := l.opts.Agent + "'s own TUI closed"
+		if msg.err != nil {
+			note += ": " + sanitize.Line(msg.err.Error(), 200)
+		}
+		l.log = append(l.log, entry2{kind: "note", text: note})
+		l.handoff = nil
+		return m, l.send(msg.ask, "done")
+	case agentTUIDoneMsg:
+		if msg.err != nil {
+			l.warn = "agent TUI: " + sanitize.Line(msg.err.Error(), 200)
+		}
+		return m, nil
+	case approveDoneMsg:
+		if l.approval == nil {
+			return m, nil
+		}
+		ctx, eng, o := m.ctx, m.eng, l.opts
+		return m, func() tea.Msg {
+			t, c, err := eng.Plan(ctx, o)
+			return replanMsg{text: t, code: c, err: err}
+		}
+	case replanMsg:
+		if l.approval == nil {
+			return m, nil
+		}
+		l.approval.busy = false
+		if msg.err == nil && msg.code == 0 {
+			l.approval = nil
+			l.planText = sanitize.Text(msg.text, 64*1024)
+			return m, l.start(m)
+		}
+		if c := approvalFromPlan(msg.text); c != nil {
+			c.err = "the binding is still missing"
+			l.approval = c
+		} else {
+			l.approval.err = "the plan is still refused; esc to read it"
+		}
+		return m, nil
 	case runEndMsg:
 		l.finish, l.exit, l.err, l.ended = true, msg.code, msg.err, m.cfg.Now()
 		l.asks = nil
@@ -329,6 +412,17 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			switch k {
+			case "h":
+				m.scr = scrHome
+				return m, nil
+			case "l":
+				if step := l.lastStep(); step != "" {
+					m.logv = newLogView(step, stepLogPath(l.runDir(), step))
+					m.scr = scrLog
+				}
+				return m, nil
+			}
+			switch k {
 			case "enter", "r":
 				if l.done != nil {
 					m.report = newReport(l.done.Report, l.runDir(), l.runsDir, l.exit, l.ended.Sub(l.started))
@@ -347,8 +441,8 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		if len(l.asks) > 0 && !l.stop {
-			return m, l.keyAsk(msg)
+		if nm, cmd, handled := m.keyRun(msg); handled {
+			return nm, cmd
 		}
 		if l.notes && !l.stop {
 			if k == "enter" {
@@ -445,74 +539,6 @@ func (l *liveModel) send(a events.Event, v string) tea.Cmd {
 	}
 }
 
-func (m model) viewLive() string {
-	l := m.live
-	w := m.w
-	var b strings.Builder
-
-	title := recipeName(l.opts.Recipe)
-	if l.opts.Agent != "" {
-		title += " · " + l.opts.Agent
-	}
-	var right string
-	switch {
-	case l.finish && l.done != nil:
-		right = sBold.Render("■ done") + sDim.Render(fmt.Sprintf(" · exit %d · %s", l.exit, clock(l.ended.Sub(l.started))))
-	case l.finish:
-		right = sAmber.Render(fmt.Sprintf("stopped · exit %d", l.exit))
-	case l.stop:
-		right = sAmber.Render(m.spin()) + sDim.Render(" stopping, destroying the sandbox…")
-	default:
-		right = sAmber.Render(m.spin()) + sDim.Render(" running "+clock(m.cfg.Now().Sub(l.started)))
-	}
-	b.WriteString(header(w, crumb(title), right) + "\n\n")
-
-	// Bottom parts first, so the log gets the remaining height.
-	var bottom []string
-	if len(l.asks) > 0 && !l.finish && !l.stop {
-		bottom = append(bottom, l.askBox(w))
-	}
-	if l.notes && !l.finish {
-		bottom = append(bottom, sBox.Width(w-2).Render(l.note.View()))
-	}
-	if l.confirm && !l.finish {
-		bottom = append(bottom, box(w, sAmber.Render("Leave without waiting?")+"  "+sSoft.Render("The runner is destroying the sandbox; if you leave now it may remain.")))
-	}
-	for _, line := range l.leftover() {
-		bottom = append(bottom, "  "+sAmber.Render(line))
-	}
-	if l.warn != "" {
-		bottom = append(bottom, "  "+sAmber.Render("! "+l.warn))
-	}
-	status := header(w-2, "  "+sDim.Render(truncate(l.runDir(), w/2)), sDim.Render(l.counts()))
-	bottom = append(bottom, status)
-	switch {
-	case l.finish && l.done != nil && l.failed != "":
-		bottom = append(bottom, hints("enter", "report", "l", "failed step log", "↑↓ pgup pgdn", "scroll", "q", "quit"))
-	case l.finish && l.done != nil:
-		bottom = append(bottom, hints("enter", "report", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "shift+drag", "select text", "q", "quit"))
-	case l.finish && l.failed != "":
-		bottom = append(bottom, hints("enter", "full log", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "q", "quit"))
-	case l.finish:
-		bottom = append(bottom, hints("↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "q", "quit"))
-	case l.confirm:
-		bottom = append(bottom, hints("ctrl+c", "leave now", "esc", "keep waiting"))
-	case l.stop:
-		bottom = append(bottom, hints("pgup/pgdn", "scroll", "ctrl+c", "leave (asks first)"))
-	case len(l.asks) > 0:
-		bottom = append(bottom, hints("↑↓", "choose", "enter", "answer", "pgup/pgdn", "scroll", "ctrl+c", "stop + destroy"))
-	default:
-		bottom = append(bottom, hints("↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "ctrl+c", "stop + destroy"))
-	}
-	bottomStr := strings.Join(bottom, "\n")
-
-	logH := m.h - 2 - lipgloss.Height(bottomStr)
-	view := l.sc.view(l.render(m, w), w, logH)
-	b.WriteString(strings.Join(view, "\n") + "\n")
-	b.WriteString(bottomStr)
-	return b.String()
-}
-
 func (l *liveModel) counts() string {
 	cand, proven := 0, 0
 	for _, s := range l.finds {
@@ -596,6 +622,9 @@ func (l *liveModel) renderEntry(m model, e entry2, w int) []string {
 	{
 		switch e.kind {
 		case "step":
+			if !l.inlineSteps {
+				break
+			}
 			mark := map[string]string{"ok": sDim.Render("✓"), "fail": sAmber.Render("✗"), "skip": sDim.Render("–")}[ev.Status]
 			if ev.Status == "start" {
 				mark = sAmber.Render(m.spin())
@@ -612,23 +641,45 @@ func (l *liveModel) renderEntry(m model, e entry2, w int) []string {
 				out = append(out, "    "+sDim.Render("└ ")+sAmber.Render(e.errLine))
 			}
 		case "agent.message":
-			for _, t := range wrap(ev.Text, w-4) {
-				out = append(out, "  "+sSoft.Render(t))
+			who := ev.Agent
+			if who == "" {
+				who = l.opts.Agent
 			}
+			out = append(out, sDim.Render(who))
+			for _, t := range wrap(ev.Text, w-2) {
+				out = append(out, sSoft.Render(t))
+			}
+			out = append(out, "")
+		case "you":
+			head := sDim.Render("you")
+			if e.queued {
+				head += "  " + sAmber.Render("queued")
+			}
+			out = append(out, head)
+			for _, t := range wrap(e.text, w-2) {
+				out = append(out, sText.Render(t))
+			}
+			out = append(out, "")
 		case "agent.tool":
-			out = append(out, "  "+sDim.Render("›")+" "+sDim.Render(ev.Tool)+" "+sText.Render(ev.Summary))
+			out = append(out, sDim.Render("› ")+sText.Render(ev.Tool+" "+ev.Summary))
 		case "finding":
 			sev := sSoft.Render(ev.Severity)
 			if ev.Severity == "critical" {
 				sev = sRed.Render(ev.Severity)
 			}
-			line := "  " + sAmber.Render("◆") + " " + sText.Render(ev.ID) + "  " + sDim.Render(ev.Status) + "  " + sev + "  " + sText.Render(ev.Title)
+			line := sAmber.Render("◆") + " " + sBold.Render(ev.ID) + "  " + sev + "  " + sDim.Render(ev.Title)
 			out = append(out, line)
 		case "blocked":
-			out = append(out, "  "+sFaint.Render("⊘ blocked "+ev.Host+"  (not in scope)"))
+			// shown in the side panel
 		case "ask":
+			if hostAsk(ev.AskID) {
+				break
+			}
 			out = append(out, "  "+sBlue.Render("?")+" "+sDim.Render(ev.AskID+": ")+sText.Render(firstLineOf(ev.Question)))
 		case "answer":
+			if hostAsk(ev.AskID) && ev.By != "forged" {
+				break
+			}
 			v := "no answer"
 			if ev.Value != nil {
 				v = *ev.Value

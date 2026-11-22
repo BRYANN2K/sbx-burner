@@ -15,6 +15,7 @@ type AgentInfo struct {
 	SecretService string   `json:"secret_service"`
 	SetupCommands []string `json:"setup_commands"`
 	OwnWorkloadOK bool     `json:"own_workload_ok"`
+	TUI           []string `json:"tui"` // the agent's own TUI command in the sandbox
 }
 
 var agentNameRE = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)

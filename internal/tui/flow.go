@@ -128,12 +128,55 @@ func newFlow(r catalog.Recipe, cwd string, checks []doctor.Result, agents, acp [
 }
 
 // sections in order, for the step dots.
+// sections is the header trail: only the steps that apply to this recipe
+// and to the answers so far.
 func (f *flowModel) sections() []string {
-	s := []string{"recipe", "target"}
+	s := []string{"target"}
 	if f.r.Scope != "none" && f.r.Scope != "" {
 		s = append(s, "scope")
 	}
-	return append(s, "agent", "plan", "run")
+	s = append(s, "agent", "mode")
+	o, _ := f.script(&walker{ans: f.answers})
+	acpOK := contains(f.acp, o.Agent)
+	if acpOK && (o.ACP || o.Interactive || !f.modeAnswered()) {
+		s = append(s, "model")
+	}
+	if o.ACP || (acpOK && !f.modeAnswered()) {
+		s = append(s, "permissions")
+	}
+	return append(s, "notes", "plan")
+}
+
+// modeAnswered reports whether the Mode question is behind us.
+func (f *flowModel) modeAnswered() bool {
+	for _, a := range f.answers {
+		if a.title == "Mode" {
+			return true
+		}
+	}
+	return false
+}
+
+// trail renders the header trail, the current step in amber.
+func trail(steps []string, cur string) string {
+	idx := -1
+	for i, s := range steps {
+		if s == cur {
+			idx = i
+		}
+	}
+	parts := make([]string, len(steps))
+	for i, s := range steps {
+		switch {
+		case i == idx:
+			parts[i] = sAmber.Render(s)
+		case i < idx:
+			parts[i] = sSoft.Render(s)
+		default:
+			parts[i] = sFaint.Render(s)
+		}
+	}
+	return strings.Join(parts, sFaint.Render(" › "))
 }
 
 func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
@@ -223,60 +266,56 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		o.Agent = v
 	}
 
-	// Mode, model and permissions: only for agents burner drives over ACP.
-	if contains(f.acp, o.Agent) {
-		v, ok := w.ask(question{section: "agent", title: "Mode", kind: qSelect, options: []option{
-			{label: "ACP", value: "acp", note: "live view, permissions, model choice"},
-			{label: "Headless", value: "headless", note: "one prompt, no conversation"},
+	// Mode: ACP when burner can drive the agent, Interactive (the agent's
+	// own TUI) always, Headless when ACP is not wired for it.
+	acpOK := contains(f.acp, o.Agent)
+	var mopts []option
+	if acpOK {
+		mopts = append(mopts, option{label: "ACP", value: "acp", note: "burner drives the agent, live view and chat"})
+	} else {
+		mopts = append(mopts, option{label: "Headless", value: "headless", note: "one prompt, live view"})
+	}
+	mopts = append(mopts, option{label: "Interactive", value: "interactive", note: "the agent's own TUI in the sandbox"})
+	mode, ok := w.ask(question{section: "mode", title: "Mode", kind: qSelect, options: mopts})
+	if !ok {
+		return
+	}
+	o.ACP, o.Interactive = mode == "acp", mode == "interactive"
+	if acpOK && (o.ACP || o.Interactive) {
+		if f.modelsFor != o.Agent || f.modelsLoading {
+			w.ask(question{section: "model", title: "Model", loader: "models", loading: "asking " + o.Agent + " for its models…"})
+			return
+		}
+		ml := f.models
+		def := "default"
+		if ml.Current != "" {
+			def = ml.Current
+		}
+		mo := []option{{label: "Agent default", value: "", note: def}}
+		for _, md := range ml.Values {
+			if md.Value != "" {
+				mo = append(mo, option{label: md.Value, value: md.Value, note: md.Name})
+			}
+		}
+		mdl, ok := w.ask(question{section: "model", title: "Model", kind: qSelect, options: mo})
+		if !ok {
+			return
+		}
+		o.Model = mdl
+	}
+	if o.ACP {
+		perm, ok := w.ask(question{section: "permissions", title: "Permissions", kind: qSelect, options: []option{
+			{label: "auto", value: "auto", note: "allow once, every grant logged"},
+			{label: "ask me", value: "ask"},
 		}})
 		if !ok {
 			return
 		}
-		if v == "acp" {
-			o.ACP = true
-			if f.modelsFor != o.Agent || f.modelsLoading {
-				w.ask(question{section: "agent", title: "Model", loader: "models", loading: "asking " + o.Agent + " for its models…"})
-				return
-			}
-			ml := f.models
-			def := "the agent's default"
-			if ml.Current != "" {
-				def = ml.Current
-			}
-			mo := []option{{label: "Agent default", value: "", note: def}}
-			for _, md := range ml.Values {
-				if md.Value == "" {
-					continue
-				}
-				label := md.Value
-				note := md.Name
-				if md.Value == ml.Current {
-					note += "  (default)"
-				}
-				mo = append(mo, option{label: label, value: md.Value, note: note})
-			}
-			hint := "listed by " + o.Agent
-			if !ml.Known {
-				hint = o.Agent + " has not listed its models yet; it uses its default"
-			}
-			mdl, ok := w.ask(question{section: "agent", title: "Model", hint: hint, kind: qSelect, options: mo})
-			if !ok {
-				return
-			}
-			o.Model = mdl
-			perm, ok := w.ask(question{section: "agent", title: "Permissions", kind: qSelect, options: []option{
-				{label: "Auto", value: "auto", note: "allow inside the sandbox, every decision logged"},
-				{label: "Ask me", value: "ask", note: "you approve each action here"},
-			}})
-			if !ok {
-				return
-			}
-			o.Permission = perm
-		}
+		o.Permission = perm
 	}
 
 	// Notes.
-	v, ok := w.ask(question{section: "agent", title: "Notes for the agent (optional)", kind: qNotes})
+	v, ok := w.ask(question{section: "notes", title: "Notes for the agent", kind: qNotes})
 	if !ok {
 		return
 	}
@@ -784,19 +823,12 @@ func (m model) viewFlow() string {
 	f := m.flow
 	w := m.w
 	var b strings.Builder
-	secs := f.sections()
 	cur := "plan"
 	if f.q != nil {
 		cur = f.q.section
 	}
-	idx := 0
-	for i, s := range secs {
-		if s == cur {
-			idx = i
-		}
-	}
-	parts := []string{catalog.DisplayCategory(f.r), f.r.Name}
-	b.WriteString(header(w, crumb(parts...), stepDots(idx+1, len(secs), cur)) + "\n\n")
+	o, _ := f.script(&walker{ans: f.answers})
+	b.WriteString(header(w, runCrumbs(f.r, o), trail(f.sections(), cur)) + "\n\n")
 
 	for _, a := range f.answers {
 		if a.value == "browse" || a.value == "type" {
@@ -926,4 +958,36 @@ func existsFile(s string) error {
 		return errors.New("file not found")
 	}
 	return nil
+}
+
+// runCrumbs is the header's left side: category/recipe · target · agent.
+func runCrumbs(r catalog.Recipe, o engine.RunOptions) string {
+	out := sBold.Render(catalog.DisplayCategory(r) + "/" + r.Name)
+	if t := targetLabelOf(o); t != "" {
+		out += sDim.Render(" · " + t)
+	}
+	if o.Agent != "" {
+		out += sDim.Render(" · " + o.Agent)
+	}
+	return out
+}
+
+// targetLabelOf names the chosen target in one short phrase.
+func targetLabelOf(o engine.RunOptions) string {
+	switch {
+	case o.TargetURL != "":
+		return o.TargetURL
+	case o.TargetApp != "":
+		return tildify(o.TargetApp)
+	case o.TargetImage != "":
+		if o.TargetPort != "" {
+			return o.TargetImage + " :" + o.TargetPort
+		}
+		return o.TargetImage
+	case o.TargetRepo != "":
+		return o.TargetRepo
+	case o.Target != "":
+		return tildify(o.Target)
+	}
+	return ""
 }

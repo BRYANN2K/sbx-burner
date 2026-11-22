@@ -7,7 +7,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
 	"github.com/BRYANN2K/sbx-burner/internal/sanitize"
 )
@@ -111,11 +110,24 @@ func (m model) updatePlan(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if p.loading {
 				return m, nil
 			}
+			if !p.ok() {
+				// A missing credential binding is approved from the run
+				// screen; the run starts once the plan passes.
+				if c := approvalFromPlan(p.text); c != nil {
+					m.live = newLive(p.opts, m.cfg.Now())
+					m.live.initRun(p.text, m.tuis[p.opts.Agent])
+					m.live.approval = c
+					m.out.Command = optsCommand(p.opts)
+					m.scr = scrLive
+				}
+				return m, nil
+			}
 			if !p.run {
 				m.scr = scrHome
 				return m, nil
 			}
 			m.live = newLive(p.opts, m.cfg.Now())
+			m.live.initRun(p.text, m.tuis[p.opts.Agent])
 			m.out.Command = optsCommand(p.opts)
 			m.scr = scrLive
 			return m, m.live.start(m)
@@ -136,18 +148,11 @@ func (m model) viewPlan() string {
 	p := m.plan
 	w := m.w
 	var b strings.Builder
-	parts := []string{}
+	left, right := crumb(recipeName(p.opts.Recipe)), ""
 	if m.flow != nil {
-		parts = append(parts, catalog.DisplayCategory(m.flow.r), m.flow.r.Name)
-		if p.opts.Agent != "" {
-			parts = append(parts, p.opts.Agent)
-		}
+		left, right = runCrumbs(m.flow.r, p.opts), trail(m.flow.sections(), "plan")
 	}
-	total := 5
-	if m.flow != nil {
-		total = len(m.flow.sections())
-	}
-	b.WriteString(header(w, crumb(parts...), stepDots(total-1, total, "plan")) + "\n\n")
+	b.WriteString(header(w, left, right) + "\n\n")
 
 	// Fixed parts: header (2), box border (2), box title (2), and below
 	// the box: buttons (2), command (1), hints (1).

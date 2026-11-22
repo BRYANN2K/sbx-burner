@@ -41,6 +41,15 @@ class Agent:
     acp: tuple[str, ...] = ()
     acp_install: str = ""
     acp_install_hosts: tuple[str, ...] = ()
+    # Interactive (--interactive): the agent's own TUI, started with the task
+    # prompt as its first message; tui_model_flag passes --model to it.
+    # TODO(verify): every CLI takes a positional first prompt in TUI mode.
+    tui: tuple[str, ...] = ()
+    tui_model_flag: str = ""
+
+    @property
+    def tui_command(self) -> tuple[str, ...]:
+        return self.tui or (self.name,)
 
 
 # Every repo base kit (base-kali/base-ubuntu/base-remnux) grants the agent
@@ -70,6 +79,8 @@ AGENTS: dict[str, Agent] = {
         skills_dir=".claude/skills",
         context_file="CLAUDE.md",
         mixin_kit="kits/agent-claude",
+        tui=("claude", "--dangerously-skip-permissions"),
+        tui_model_flag="--model",
         interactive_login_note=(
             "Claude Code can also sign in with a subscription through /login inside the sandbox. "
             "That flow is interactive, so unattended runs need a stored key: sbx secret set anthropic"
@@ -86,6 +97,8 @@ AGENTS: dict[str, Agent] = {
         # TODO(verify): `exec --json` emits the JSONL event stream the runner
         # normalizes (lab/agent_stream.py); the flag is not re-confirmed here.
         headless=("codex", "exec", "--dangerously-bypass-approvals-and-sandbox", "--json"),
+        tui=("codex", "--dangerously-bypass-approvals-and-sandbox"),
+        tui_model_flag="-m",
         hosts=("api.openai.com:443", "auth.openai.com:443", "chatgpt.com:443"),
         skills_dir=".agents/skills",
         context_file="AGENTS.md",
@@ -315,14 +328,18 @@ def exec_(
     workdir: str | None = None,
     env: dict[str, str] | None = None,
     interactive: bool = False,
+    tty: bool = False,
 ) -> list[str]:
     """``sbx exec [flags] SANDBOX -- COMMAND``; exit status is the command's.
 
     ``interactive`` adds ``-i`` (stdin kept open, no TTY) for stdio protocols
-    such as ACP.
+    such as ACP; ``tty`` adds ``-it`` for an agent's own TUI on the
+    operator's terminal.
     """
     argv = [SBX, "exec"]
-    if interactive:
+    if tty:
+        argv.append("-it")
+    elif interactive:
         argv.append("-i")
     if workdir:
         argv += ["--workdir", workdir]

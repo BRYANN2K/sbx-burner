@@ -1,0 +1,40 @@
+devsecops/secrets-scan · /tmp/burner-tui-golden/repo · codex                       target › agent › mode › notes › plan
+
+  Where is your target?  Local folder or files
+  Folder or files to test  /tmp/burner-tui-golden/repo
+  Agent  Codex
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Mode                                                                                                                 │
+│                                                                                                                      │
+│ ❯ Headless                      one prompt, live view                                                                │
+│   Interactive                   the agent's own TUI in the sandbox                                                   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ↑↓ move  │  enter select  │  esc back  │  ctrl+c quit

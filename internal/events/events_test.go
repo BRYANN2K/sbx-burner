@@ -21,7 +21,7 @@ func TestDecodesRunnerFixture(t *testing.T) {
 	if err := Read(f, func(e Event) { got = append(got, e) }); err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 13 || got[0].Type != "step" || got[12].Type != "done" {
+	if len(got) != 14 || got[0].Type != "step" || got[13].Type != "done" || got[9].Type != "handoff" || len(got[9].Argv) < 4 {
 		t.Fatalf("decoded %d events", len(got))
 	}
 	for i, e := range got {
@@ -139,5 +139,42 @@ func TestSocketPathRejectsTraversal(t *testing.T) {
 	}
 	if err := Answer(SocketPath("/runs", ".."), "a1", "x"); err == nil {
 		t.Fatal("answer to invalid run id accepted")
+	}
+}
+
+func TestHandoffArgvOnlyRunsSbxExecForThisSandbox(t *testing.T) {
+	const run, sb, ws = "20261122-012942-x", "lab-x-012942", "/runs/20261122-012942-x/workspace"
+	ok := Event{Type: "handoff", Name: "agent", RunID: run, Argv: []string{"sbx", "exec", "-it", "--workdir", ws, "--env", "LAB_TARGET_KIND=path", sb, "--", "codex", "Read AGENTS.md"}}
+	if _, err := HandoffArgv(ok, run, sb, ws); err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string][]string{
+		"not sbx":       {"sh", "exec", "-it", sb, "--", "codex"},
+		"no tty":        {"sbx", "exec", "-i", sb, "--", "codex"},
+		"env-file":      {"sbx", "exec", "-it", "--env-file", "/Users/me/.aws/credentials", sb, "--", "codex"},
+		"cloud":         {"sbx", "exec", "-it", "--cloud", sb, "--", "codex"},
+		"user root":     {"sbx", "exec", "-it", "-u", "root", sb, "--", "codex"},
+		"detach":        {"sbx", "exec", "-it", "-D", sb, "--", "codex"},
+		"second name":   {"sbx", "exec", "-it", "other-sb", sb, "--", "codex"},
+		"other sandbox": {"sbx", "exec", "-it", "lab-other-1", "--", "codex"},
+		"bad workdir":   {"sbx", "exec", "-it", "--workdir", "/", sb, "--", "codex"},
+		"two workdirs":  {"sbx", "exec", "-it", "--workdir", ws, "--workdir", ws, sb, "--", "codex"},
+		"bad env":       {"sbx", "exec", "-it", "--env", "lower=x", sb, "--", "codex"},
+		"no command":    {"sbx", "exec", "-it", "--workdir", ws, sb, "--"},
+	}
+	for name, argv := range cases {
+		e := ok
+		e.Argv = argv
+		if _, err := HandoffArgv(e, run, sb, ws); err == nil {
+			t.Errorf("%s accepted: %v", name, argv)
+		}
+	}
+	other := ok
+	other.RunID = "20261122-999999-evil"
+	if _, err := HandoffArgv(other, run, sb, ws); err == nil {
+		t.Error("a handoff for another run id was accepted")
+	}
+	if _, err := HandoffArgv(Event{Type: "step", Name: "agent", RunID: run, Argv: ok.Argv}, run, sb, ws); err == nil {
+		t.Error("a non-handoff event was accepted")
 	}
 }

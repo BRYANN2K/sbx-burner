@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"time"
 
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
@@ -38,6 +39,8 @@ type Engine interface {
 	Caps() Caps
 	// Agents lists every agent the runner can launch (python -m lab agents).
 	Agents(ctx context.Context) ([]string, error)
+	// AgentTUIs maps each agent to its own TUI command in the sandbox.
+	AgentTUIs(ctx context.Context) (map[string][]string, error)
 	// ACPAgents lists the agents burner can drive over ACP.
 	ACPAgents(ctx context.Context) ([]string, error)
 	// Models lists the models an ACP agent offers.
@@ -86,6 +89,26 @@ func (e realEngine) Agents(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return engine.AgentNames(table), nil
+}
+
+var tuiArgRE = regexp.MustCompile(`^[A-Za-z0-9._/=-]{1,128}$`)
+
+func (e realEngine) AgentTUIs(ctx context.Context) (map[string][]string, error) {
+	table, err := engine.Agents(ctx, e.root)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]string{}
+	for _, a := range table {
+		ok := len(a.TUI) > 0 && len(a.TUI) <= 8
+		for _, x := range a.TUI {
+			ok = ok && tuiArgRE.MatchString(x)
+		}
+		if ok {
+			out[a.Name] = a.TUI
+		}
+	}
+	return out, nil
 }
 
 func (e realEngine) ACPAgents(ctx context.Context) ([]string, error) {

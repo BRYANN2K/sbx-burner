@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -82,6 +83,7 @@ Run flags (other):
   --scope FILE  --agent NAME (burner agents)  --dry-run  --keep  --runs-dir DIR
   --prompt TEXT  --prompt-file FILE   notes for the agent (repeatable)
   --on-ask skip|fail|timeout=30m      when nobody answers the agent
+  --interactive  open the agent's own TUI in the sandbox with the task sent; the run goes on when you quit it
   --acp   drive the agent over ACP (live permissions, model choice, follow-up notes)
       --model ID  --permission auto|ask    auto = allow inside the sandbox, every decision logged
   --yes   never prompt; fail with exit 3 when something is missing; questions are skipped
@@ -298,6 +300,7 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	fs.BoolVar(&o.Keep, "keep", false, "")
 	fs.StringVar(&o.RunsDir, "runs-dir", "", "")
 	fs.BoolVar(&o.ACP, "acp", false, "")
+	fs.BoolVar(&o.Interactive, "interactive", false, "")
 	fs.StringVar(&o.Model, "model", "", "")
 	fs.StringVar(&o.Permission, "permission", "", "")
 	yes := fs.Bool("yes", false, "")
@@ -336,6 +339,9 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 		}
 		return code
 	}
+	if o.Interactive && !o.DryRun && (*yes || *asJSON || !isTerminal(os.Stdin) || !isTerminal(os.Stdout)) {
+		return fail(stderr, exitUsage, errors.New("--interactive opens the agent's own TUI: it needs a terminal, without --yes or --json"))
+	}
 	if *yes && o.OnAsk == "" {
 		o.OnAsk = "skip" // nobody is there to answer
 	}
@@ -347,7 +353,11 @@ func cmdRun(ctx context.Context, catalogFlag string, args []string, stderr io.Wr
 	if *asJSON {
 		out = os.Stdout
 	}
-	code, st, err := live.Run(ctx, root, o, live.Options{Out: out, JSON: *asJSON, Ask: asker})
+	var handoff func([]string) error
+	if o.Interactive {
+		handoff = runOnTerminal
+	}
+	code, st, err := live.Run(ctx, root, o, live.Options{Out: out, JSON: *asJSON, Ask: asker, Handoff: handoff})
 	if errors.Is(err, engine.ErrCleanupTimeout) {
 		fmt.Fprintln(stderr, leftoverHint(st))
 		return exitFailed
@@ -676,4 +686,12 @@ func leftoverHint(st *live.State) string {
 		return "burner: the run was stopped before its cleanup finished; a sandbox may remain: sbx ls, then sbx rm --force <name>"
 	}
 	return fmt.Sprintf("burner: the run was stopped before its cleanup finished; the sandbox may remain: sbx ls, then sbx rm --force %s", name)
+}
+
+// runOnTerminal runs a checked handoff command (sbx exec -it …) with the
+// user's terminal attached.
+func runOnTerminal(argv []string) error {
+	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
 }

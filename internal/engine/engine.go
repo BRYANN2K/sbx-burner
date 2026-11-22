@@ -41,6 +41,7 @@ type RunOptions struct {
 	Keep        bool
 	RunsDir     string
 	ACP         bool   // drive the agent over ACP (burner acp-bridge)
+	Interactive bool   // open the agent's own TUI on the terminal (handoff)
 	Model       string // ACP model id offered by the agent
 	Permission  string // ACP permissions: auto | ask
 }
@@ -75,6 +76,9 @@ func (o RunOptions) Args() []string {
 	}
 	add("--events", o.Events)
 	add("--on-ask", o.OnAsk)
+	if o.Interactive {
+		args = append(args, "--interactive")
+	}
 	if o.ACP {
 		args = append(args, "--acp")
 	}

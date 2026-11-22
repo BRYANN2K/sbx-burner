@@ -236,22 +236,27 @@ class AskBridge:
                 self._flag_forged(name, ask_id, tampered=True)
 
     def _expire(self) -> None:
-        if self.on_ask["mode"] != "timeout":
-            return
         now = time.monotonic()
         for ask_id, record in list(self.pending.items()):
             if record["state"] != "asked":
                 continue
             asked_at = record.setdefault("_asked_at", now)
-            deadline = float(self.on_ask["seconds"])
-            if record["timeout_s"] > 0:
-                deadline = min(deadline, float(record["timeout_s"]))
+            if record.get("exempt"):
+                if record["timeout_s"] <= 0:
+                    continue
+                deadline = float(record["timeout_s"])
+            elif self.on_ask["mode"] != "timeout":
+                continue
+            else:
+                deadline = float(self.on_ask["seconds"])
+                if record["timeout_s"] > 0:
+                    deadline = min(deadline, float(record["timeout_s"]))
             if now - asked_at >= deadline:
                 self._deliver(ask_id, None, "timeout")
 
     # -- answering ---------------------------------------------------------
 
-    def ask_host(self, ask_id: str, question: str, choices: list[str], allow_text: bool) -> Any:
+    def ask_host(self, ask_id: str, question: str, choices: list[str], allow_text: bool, *, exempt_timeout_s: int | None = None) -> Any:
         """Ask the operator on behalf of the host (ACP bridge), not the agent.
 
         Same channels, timeout and ``--on-ask`` policy as a lab-ask question,
@@ -267,10 +272,13 @@ class AskBridge:
             "question": sanitize.clean_text(question),
             "choices": sanitize.clean_choices(choices),
             "allow_text": allow_text,
-            "timeout_s": 0,
+            "timeout_s": exempt_timeout_s or 0,
             "state": "asked",
             "answers": [],
             "host": True,
+            # exempt: --on-ask does not apply; only its own timeout does
+            # (the agent's own TUI stays open as long as the run allows).
+            "exempt": exempt_timeout_s is not None,
             "_done": done,
         }
         with self._dlock:
@@ -278,7 +286,9 @@ class AskBridge:
             self.records.append(record)
         self.emit("ask", ask_id=ask_id, question=record["question"], choices=record["choices"], allow_text=allow_text, timeout_s=0)
         self._log({"ts": _now(), "event": "ask", "ask_id": ask_id, "from": "host"})
-        if self.on_ask["mode"] == "skip":
+        if record["exempt"]:
+            pass
+        elif self.on_ask["mode"] == "skip":
             self._deliver(ask_id, None, "skip")
         elif self.on_ask["mode"] == "fail":
             record["state"] = "unanswered"
