@@ -174,7 +174,7 @@ func execSetup(what string, argv []string) tea.Cmd {
 	if len(argv) == 0 {
 		return nil
 	}
-	return termCmd(what, argv, func(err error) tea.Msg { return setupExecDoneMsg{what, err} })
+	return termAutoCmd(what, argv, func(err error) tea.Msg { return setupExecDoneMsg{what, err} })
 }
 
 func (m model) setupApprovalRows() []doctor.Result {

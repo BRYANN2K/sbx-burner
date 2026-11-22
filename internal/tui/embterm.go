@@ -34,14 +34,16 @@ type embTerm struct {
 	exitErr error
 	watch   func() bool // closes the panel when it reports true (e.g. the sign-in is stored)
 	lastEsc time.Time
+	autoOK  bool // close by itself when the command succeeds
 }
 
 // openTermMsg asks the model to open an embedded terminal for argv.
 type openTermMsg struct {
-	title string
-	argv  []string
-	done  func(error) tea.Msg
-	watch func() bool
+	title  string
+	argv   []string
+	done   func(error) tea.Msg
+	watch  func() bool
+	autoOK bool
 }
 
 type termOutMsg struct{ t *embTerm }
@@ -56,6 +58,15 @@ func (t *embTerm) poll() tea.Cmd {
 		return nil
 	}
 	return tea.Tick(2*time.Second, func(time.Time) tea.Msg { return termWatchMsg{t, t.watch()} })
+}
+
+// termAutoCmd is termCmd for a command whose success needs no reading:
+// the panel closes by itself when it exits 0, and stays open on a failure.
+func termAutoCmd(title string, argv []string, done func(error) tea.Msg) tea.Cmd {
+	if len(argv) == 0 {
+		return nil
+	}
+	return func() tea.Msg { return openTermMsg{title: title, argv: argv, done: done, autoOK: true} }
 }
 
 // termWatchCmd is termCmd with a watcher: the panel closes by itself as soon
@@ -101,7 +112,7 @@ func startTerm(o openTermMsg, w, h int) (*embTerm, tea.Cmd, error) {
 	}
 	t := &embTerm{
 		title: o.title, cmd: c, ptmx: ptmx, vt: vt10x.New(vt10x.WithSize(cols, rows)),
-		cols: cols, rows: rows, done: o.done, watch: o.watch,
+		cols: cols, rows: rows, done: o.done, watch: o.watch, autoOK: o.autoOK,
 		update: make(chan struct{}, 1), exited: make(chan error, 1),
 	}
 	go t.pump()
@@ -239,9 +250,17 @@ func (m model) updateTerm(msg tea.Msg) (model, tea.Cmd, bool) {
 		if msg.t != t {
 			return m, nil, true
 		}
+		t.stop()
+		if msg.err == nil && t.autoOK {
+			m.term = nil
+			if t.done != nil {
+				d := t.done
+				return m, func() tea.Msg { return d(nil) }, true
+			}
+			return m, nil, true
+		}
 		// Keep the panel open so the command's last words stay readable.
 		t.ended, t.exitErr = true, msg.err
-		t.stop()
 		return m, nil, true
 	case termWatchMsg:
 		if msg.t != t || t.ended {

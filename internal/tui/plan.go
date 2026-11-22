@@ -53,7 +53,7 @@ func approveCmd(agent string) tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return approveDoneMsg{err: err} }
 	}
-	return termCmd("Approve the "+agent+" kit in sbx", []string{self, "approve", "--agent", agent}, func(err error) tea.Msg {
+	return termAutoCmd("Approve the "+agent+" kit in sbx", []string{self, "approve", "--agent", agent}, func(err error) tea.Msg {
 		return approveDoneMsg{err: err}
 	})
 }
