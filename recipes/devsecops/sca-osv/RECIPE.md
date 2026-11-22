@@ -4,6 +4,7 @@ category: devsecops
 summary: Scan a project's lockfiles and manifests for known dependency vulnerabilities with osv-scanner, then report one finding per advisory group.
 risk: low
 time: 10m
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned

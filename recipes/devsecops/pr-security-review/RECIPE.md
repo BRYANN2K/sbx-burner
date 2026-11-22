@@ -4,6 +4,7 @@ category: devsecops
 summary: Review a pull request diff for security issues; report only findings with the vulnerable line, an exploit scenario and the diff hunk.
 risk: low
 time: 20m
+tested_with: [codex]
 variants:
   linux: beta
   macos: planned
