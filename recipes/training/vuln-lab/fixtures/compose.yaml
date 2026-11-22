@@ -1,0 +1,52 @@
+# Lab targets for training/vuln-lab. Start with: bash fixtures/lab.sh up
+# Both applications are deliberately vulnerable. Ports are bound to loopback
+# inside the sandbox and must never be published elsewhere.
+name: vuln-lab
+
+services:
+  juice-shop:
+    # MIT. https://github.com/juice-shop/juice-shop
+    image: bkimminich/juice-shop:v20.4.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: "no"
+
+  dvwa:
+    # GPL-3.0, run only. https://github.com/digininja/DVWA
+    # The project publishes `latest` and commit tags only: pinned by the
+    # digest `latest` had on 2026-11-21 (Docker-Content-Digest of the
+    # manifest list on ghcr.io).
+    image: ghcr.io/digininja/dvwa@sha256:61167ec23fbf861f7d96a7beb4be3612d043d48dbc6b239d4f90d7e8cdff8115
+    environment:
+      DB_SERVER: dvwa-db
+      DB_DATABASE: dvwa
+      DB_USER: dvwa
+      DB_PASSWORD: "${DVWA_DB_PASSWORD:?start the lab with fixtures/lab.sh up}"
+      DEFAULT_SECURITY_LEVEL: low
+    depends_on:
+      dvwa-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8081:80"
+    restart: "no"
+
+  dvwa-db:
+    # GPL-2.0, run only.
+    image: mariadb:10.11@sha256:e5fe75b2b9de0eb9f6f9a4d9c97272fb3a7480e389ccd487a786bab2a12cc0d7
+    environment:
+      MARIADB_DATABASE: dvwa
+      MARIADB_USER: dvwa
+      MARIADB_PASSWORD: "${DVWA_DB_PASSWORD:?start the lab with fixtures/lab.sh up}"
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    healthcheck:
+      # Test names of the healthcheck.sh shipped in the mariadb image.
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+    volumes:
+      - dvwa-db:/var/lib/mysql
+    restart: "no"
+
+volumes:
+  dvwa-db:

