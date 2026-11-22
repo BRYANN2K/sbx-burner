@@ -717,6 +717,7 @@ func TestHeaderBoxGolden(t *testing.T) {
 
 func scopeDoc(auth map[string]any, host string) map[string]any {
 	return map[string]any{
+		"owner":         "Test Owner",
 		"authorization": auth,
 		"valid":         map[string]any{"not_before": "2026-11-22", "not_after": "2026-12-22"},
 		"targets":       []any{map[string]any{"name": "localhost", "hosts": []any{host}}},

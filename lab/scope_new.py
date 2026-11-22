@@ -44,6 +44,8 @@ def _url_host(url: str) -> str:
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise ScopeNewError(f"--target-url {url!r}: use an http(s) URL with a host")
+    if "*" in parts.hostname:
+        raise ScopeNewError(f"--target-url {url!r}: a URL names one host; list wildcards in the scope file yourself")
     port = parts.port or (443 if parts.scheme == "https" else 80)
     return f"{parts.hostname.lower()}:{port}"
 
@@ -261,6 +263,11 @@ def write(path: Path, text: str) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(text)
+
+
+def blocking(errors: list[str]) -> list[str]:
+    """Errors that editing TODO values will not fix."""
+    return [e for e in errors if f"still a {TODO} value" not in e]
 
 
 def check(data: dict[str, Any]) -> list[str]:

@@ -229,6 +229,9 @@ func previewLines(r ScopeResult, w int) []string {
 		auth += " · " + str(ref)
 	}
 	lines = append(lines, kv("authorization", auth)...)
+	if o := s["owner"]; o != nil {
+		lines = append(lines, kv("owner", str(o)+" · owner is not an authorization")...)
+	}
 	targets, _ := s["targets"].([]any)
 	for i, t := range targets {
 		label := ""

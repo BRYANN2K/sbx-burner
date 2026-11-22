@@ -10,6 +10,7 @@ pentest › web-recon                                                           
 │ Scope preview                                                                                                        │
 │                                                                                                                      │
 │ authorization own-lab                                                                                                │
+│ owner         Test Owner · owner is not an authorization                                                             │
 │ targets       localhost: localhost:8080                                                                              │
 │ valid         2026-11-22 to 2026-12-22                                                                               │
 │ network       strict · allow none · deny none                                                                        │
@@ -17,7 +18,6 @@ pentest › web-recon                                                           
 │ forbidden     dos                                                                                                    │
 │ file          ~/.burner/scopes/web-recon-localhost-8080.yaml                                                         │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
 
 
 
