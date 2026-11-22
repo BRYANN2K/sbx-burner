@@ -1,0 +1,50 @@
+# Licence policy for devsecops/license-compliance.
+# Copy it, edit the lists for your organisation, and keep it under review:
+# this file is an example, not legal advice.
+# Identifiers are SPDX licence ids (https://spdx.org/licenses/).
+schema_version: "1"
+
+# Which components the deny list applies to.
+#   shipped: code delivered to users (runtime dependencies)
+#   all:     also build and test dependencies
+applies_to: shipped
+
+# What to do with a component that declares no licence, or one that is not
+# in any list below: review | deny | allow.
+unknown: review
+
+allow:
+  - 0BSD
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - BlueOak-1.0.0
+  - CC0-1.0
+  - ISC
+  - MIT
+  - PSF-2.0
+  - Python-2.0
+  - Unlicense
+  - Zlib
+
+# Allowed after a human looks at how the component is used (linking,
+# modification, distribution).
+review:
+  - CDDL-1.0
+  - EPL-2.0
+  - LGPL-2.1-only
+  - LGPL-2.1-or-later
+  - LGPL-3.0-only
+  - LGPL-3.0-or-later
+  - MPL-2.0
+
+# Not allowed in shipped code.
+deny:
+  - AGPL-3.0-only
+  - AGPL-3.0-or-later
+  - BUSL-1.1
+  - GPL-2.0-only
+  - GPL-2.0-or-later
+  - GPL-3.0-only
+  - GPL-3.0-or-later
+  - SSPL-1.0

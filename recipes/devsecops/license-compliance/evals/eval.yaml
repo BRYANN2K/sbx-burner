@@ -1,0 +1,37 @@
+# python -m lab eval devsecops/license-compliance                  # golden fixture (CI)
+# python -m lab eval devsecops/license-compliance --run runs/<id>  # after a run on evals/make-target.sh
+# The golden SBOM is a real syft 1.57.2 run on the make-target.sh output,
+# with the CPE fields removed.
+description: >-
+  Against the planted project, the agent reports the GPL-3.0-only runtime
+  dependency as the only finding, does not flag the dual-licensed component
+  or the dev-only AGPL one, and lists the component with no licence as a lead.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: syft
+  - type: artifact_contains
+    path: artifacts/sbom.cdx.json
+    pattern: '"bomFormat": ?"CycloneDX"'
+  - type: artifact_contains
+    path: artifacts/licence-check.json
+    pattern: 7967b07e526f506bdfe2a7613535dfdf46084337d1891c96df3ea0d5317d7af5
+  - type: artifact_exists
+    path: artifacts/licence-check.json
+  - type: min_findings
+    count: 1
+    where: {rule: "GPL-3\\.0-only", location: "pkg:npm/lab-pdf-render@.*", severity: high}
+  - type: max_findings
+    count: 0
+    where: {location: ".*(lab-date-utils|lab-test-reporter|lab-http-kit).*"}
+  - type: max_findings
+    count: 1
+  - type: min_hypotheses
+    count: 1
+    where: {title: ".*lab-legacy-codec.*"}
+  - type: metric
+    name: denied
+    equals: 1
+  - type: summary_matches
+    pattern: "(?i)not legal advice"
+  - type: no_demotions

@@ -1,0 +1,93 @@
+{
+  "schema_version": "1",
+  "recipe": "devsecops/license-compliance",
+  "summary": "Built a CycloneDX SBOM of licence-demo with syft 1.57.2 (6 npm components from package-lock.json) and checked it against fixtures/license-policy.yaml. One shipped component is denied: lab-pdf-render 0.9.0 declares GPL-3.0-only. lab-legacy-codec declares no licence, lab-geo-tiles (MPL-2.0) needs review, and lab-date-utils is dual-licensed MIT OR GPL-3.0-only, taken as MIT. Not covered: syft leaves dev dependencies out of the SBOM, so lab-test-reporter (AGPL-3.0-only, dev) was read from the lockfile by hand; licences are as declared in the lockfile, no LICENSE file was available to compare. This is an engineering check, not legal advice.",
+  "tools_run": [
+    {
+      "name": "syft",
+      "version": "1.57.2",
+      "command": "syft scan dir:/home/agent/target -q -o cyclonedx-json=evidence/artifacts/sbom.cdx.json -o spdx-json=evidence/artifacts/sbom.spdx.json",
+      "exit_code": 0,
+      "output": "artifacts/sbom.cdx.json"
+    },
+    {
+      "name": "jq",
+      "command": "jq -r '.components[] | select(.type != \"file\") | [.name, .version, ([.licenses[]? | .expression // .license.id // .license.name] | join(\" ; \"))] | @tsv' evidence/artifacts/sbom.cdx.json | sort > evidence/artifacts/licences.tsv",
+      "exit_code": 0,
+      "output": "artifacts/licences.tsv"
+    },
+    {
+      "name": "license-check.py",
+      "command": "python3 fixtures/license-check.py --sbom evidence/artifacts/sbom.cdx.json --policy fixtures/license-policy.yaml --out evidence/artifacts/licence-check.json",
+      "exit_code": 1,
+      "output": "artifacts/licence-check.json"
+    }
+  ],
+  "findings": [
+    {
+      "id": "LIC-001",
+      "title": "Shipped dependency lab-pdf-render 0.9.0 is licensed GPL-3.0-only (denied by policy)",
+      "severity": "high",
+      "target": "licence-demo",
+      "location": "pkg:npm/lab-pdf-render@0.9.0",
+      "tool": "syft",
+      "rule": "GPL-3.0-only",
+      "description": "lab-pdf-render 0.9.0 is a direct runtime dependency (package.json dependencies, no dev flag in package-lock.json) and declares GPL-3.0-only, which is on the deny list for shipped code. The project itself is Apache-2.0.",
+      "proof": {
+        "poc": "jq '.results[] | select(.decision==\"deny\")' evidence/artifacts/licence-check.json && jq '.components[] | select(.name==\"lab-pdf-render\") | {name, version, licenses}' evidence/artifacts/sbom.cdx.json",
+        "artifacts": [
+          "artifacts/licence-check.json",
+          "artifacts/sbom.cdx.json"
+        ]
+      },
+      "remediation": "Replace lab-pdf-render with a component under an allowed licence, or get a written exception from the policy owner before the next release.",
+      "references": [
+        "https://spdx.org/licenses/GPL-3.0-only.html"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "U-001",
+      "title": "lab-legacy-codec 3.1.0 declares no licence",
+      "rationale": "The lockfile entry has no license field and the target contains no LICENSE file for this package. No declared licence means no grant of rights, but the package may carry a licence file in its tarball.",
+      "next_step": "Read the LICENSE file in the published package, or ask the maintainer. The policy sets unknown: review, so this is a review item."
+    },
+    {
+      "id": "R-001",
+      "title": "lab-geo-tiles 1.2.0 is licensed MPL-2.0 (review list)",
+      "rationale": "MPL-2.0 is file-level copyleft. It is acceptable when the component is used unmodified.",
+      "next_step": "Confirm that no file of lab-geo-tiles is modified or copied into the project source."
+    },
+    {
+      "id": "D-001",
+      "title": "Dev dependency lab-test-reporter 4.0.0 is licensed AGPL-3.0-only",
+      "rationale": "AGPL-3.0-only is on the deny list, but package-lock.json marks the package dev: true and the policy applies to shipped code. syft does not list it in the SBOM.",
+      "next_step": "Confirm the test reporter is not bundled into the release artefact or the production image."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/sbom.cdx.json",
+      "description": "CycloneDX SBOM from syft 1.57.2 (CPE fields trimmed)"
+    },
+    {
+      "path": "artifacts/sbom.spdx.json",
+      "description": "The same SBOM as SPDX JSON"
+    },
+    {
+      "path": "artifacts/licences.tsv",
+      "description": "Component, version and declared licence, one per line"
+    },
+    {
+      "path": "artifacts/licence-check.json",
+      "description": "Policy decision per component"
+    }
+  ],
+  "metrics": {
+    "components": 6,
+    "denied": 1,
+    "review": 2,
+    "unknown": 0
+  }
+}

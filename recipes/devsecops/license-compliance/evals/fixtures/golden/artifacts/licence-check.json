@@ -1,0 +1,67 @@
+{
+  "policy": "fixtures/license-policy.yaml",
+  "policy_sha256": "7967b07e526f506bdfe2a7613535dfdf46084337d1891c96df3ea0d5317d7af5",
+  "applies_to": "shipped",
+  "unknown_action": "review",
+  "components": 6,
+  "counts": {
+    "allow": 3,
+    "review": 2,
+    "unknown": 0,
+    "deny": 1
+  },
+  "results": [
+    {
+      "name": "lab-pdf-render",
+      "version": "0.9.0",
+      "purl": "pkg:npm/lab-pdf-render@0.9.0",
+      "licences": [
+        "GPL-3.0-only"
+      ],
+      "decision": "deny"
+    },
+    {
+      "name": "lab-geo-tiles",
+      "version": "1.2.0",
+      "purl": "pkg:npm/lab-geo-tiles@1.2.0",
+      "licences": [
+        "MPL-2.0"
+      ],
+      "decision": "review"
+    },
+    {
+      "name": "lab-legacy-codec",
+      "version": "3.1.0",
+      "purl": "pkg:npm/lab-legacy-codec@3.1.0",
+      "licences": [],
+      "decision": "review"
+    },
+    {
+      "name": "lab-date-utils",
+      "version": "1.0.4",
+      "purl": "pkg:npm/lab-date-utils@1.0.4",
+      "licences": [
+        "MIT OR GPL-3.0-only"
+      ],
+      "decision": "allow"
+    },
+    {
+      "name": "lab-http-kit",
+      "version": "2.3.1",
+      "purl": "pkg:npm/lab-http-kit@2.3.1",
+      "licences": [
+        "MIT"
+      ],
+      "decision": "allow"
+    },
+    {
+      "name": "licence-demo",
+      "version": "1.0.0",
+      "purl": "pkg:npm/licence-demo@1.0.0",
+      "licences": [
+        "Apache-2.0"
+      ],
+      "decision": "allow"
+    }
+  ]
+}
