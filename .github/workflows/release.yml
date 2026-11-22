@@ -1,0 +1,33 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the GitHub release
+      id-token: write   # keyless cosign signature (Sigstore OIDC)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # TODO(verify): cosign v3 keyless signing defaults to bundles; check that
+      # goreleaser's signs block still writes checksums.txt.sig and .pem,
+      # which `burner update` expects, on the first real release.
+      - uses: sigstore/cosign-installer@v3
+      - uses: anchore/sbom-action/download-syft@v0
+      - name: third-party notices
+        run: |
+          go run github.com/google/go-licenses@latest report ./cmd/burner > THIRD_PARTY_NOTICES.csv
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

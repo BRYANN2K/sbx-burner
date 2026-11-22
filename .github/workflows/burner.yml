@@ -1,0 +1,51 @@
+name: burner
+on:
+  pull_request:
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - ".goreleaser.yaml"
+      - ".github/workflows/burner.yml"
+      - "lab/**"
+      - "recipes/**"
+      - "scripts/**"
+      - "kits/**"
+      - "template/**"
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l cmd internal)"
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - name: build
+        run: go build -trimpath -o /tmp/burner ./cmd/burner && /tmp/burner version
+
+  parity:
+    # Every recipe, every declared target kind: the plan burner prints must
+    # equal the engine's, and both must succeed (exit 0).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: go build -trimpath -o /tmp/burner ./cmd/burner
+      - name: dry-run plans match the engine
+        run: python3 scripts/ci_burner_parity.py /tmp/burner
