@@ -71,6 +71,7 @@ const (
 	scrNew
 	scrLog
 	scrScopeForm
+	scrSandboxes
 )
 
 type model struct {
@@ -100,6 +101,7 @@ type model struct {
 	newr   *newModel
 	logv   *logModel
 	form   *scopeForm
+	sbx    *sandboxesModel
 
 	out Outcome
 }
@@ -209,6 +211,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLog(msg)
 	case scrScopeForm:
 		return m.updateScopeForm(msg)
+	case scrSandboxes:
+		return m.updateSandboxes(msg)
 	}
 	return m, nil
 }
@@ -237,6 +241,8 @@ func (m model) View() string {
 		v = m.viewLog()
 	case scrScopeForm:
 		v = m.viewScopeForm()
+	case scrSandboxes:
+		v = m.viewSandboxes()
 	}
 	return paintBG(fit(v, m.w, m.h), m.w)
 }

@@ -1,7 +1,7 @@
 devsecops/secrets-scan · /tmp/burner-tui-golden/repo · codex                       target › agent › mode › notes › plan
-
+  After the run   burn   keep
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ Plan  exactly what will run, nothing has started                                                                     │
+│ Plan                                                                                                                 │
 │                                                                                                                      │
 │ Plan for devsecops/secrets-scan (dry run: nothing is executed)                                                       │
 │   agent:     codex                                                                                                   │
@@ -37,4 +37,4 @@ devsecops/secrets-scan · /tmp/burner-tui-golden/repo · codex                  
 
             Run       Cancel
   same run without the menu: burner run devsecops/secrets-scan --agent=codex --target=/tmp/burner-tui-golden/repo '--…
-  enter confirm  │  ←→ run / cancel  │  ↑↓ pgup pgdn scroll  │  w wrap lines  │  esc back
+  enter confirm  │  ←→ run / cancel  │  k burn / keep  │  ↑↓ pgup pgdn scroll  │  w wrap lines  │  esc back

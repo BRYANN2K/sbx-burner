@@ -1,0 +1,40 @@
+secrets-scan
+  After the run   burn   keep
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Plan                                                                                                                 │
+│                                                                                                                      │
+│ Plan for devsecops/secrets-scan\n                                                                                    │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+            Run       Cancel
+  same run without the menu: burner run devsecops/secrets-scan --agent=codex --runs-dir=/runs --keep
+  enter confirm  │  ←→ run / cancel  │  k burn / keep  │  ↑↓ pgup pgdn scroll  │  w wrap lines  │  esc back

@@ -442,7 +442,7 @@ func (l *liveModel) runHints() string {
 	case l.confirm:
 		return hints("ctrl+c", "leave now", "esc", "keep waiting")
 	case l.finish && l.done != nil:
-		return hints("enter", "report", "l", "log", "h", "home", "q", "quit")
+		return hints("enter", "report", "l", "log", "h", "home", "s", "sandboxes", "q", "quit")
 	case l.finish:
 		k := []string{"h", "home", "q", "quit"}
 		if l.failed != "" {

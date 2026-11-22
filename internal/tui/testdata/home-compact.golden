@@ -20,5 +20,5 @@ burner  dev  /tmp/burner-tui-golden
 │                           │                                                  │
 │                           │                                                  │
 ╰───────────────────────────┴──────────────────────────────────────────────────╯
-  enter run  / search  d doctor  n new recipe  u update  ↑↓ ←→ move     q quit
+  enter run  / search  s sandboxes  d doctor  n new recipe  u update  … q quit
                                       sbx 0.54.0 │ docker 29.5.2 │ 14 GB free
