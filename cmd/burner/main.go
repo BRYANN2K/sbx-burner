@@ -106,6 +106,35 @@ Global:
   --catalog DIR   recipe catalog checkout (default: this repo, $BURNER_CATALOG, ~/.burner/catalog)
 `
 
+// needsCatalog lists the commands that read the recipe catalog.
+func needsCatalog(cmd string) bool {
+	switch cmd {
+	case "list", "show", "run", "new", "series", "setup", "approve", "mcp", "doctor", "lint", "eval", "scope", "agents":
+		return true
+	}
+	return false
+}
+
+// ensureCatalog clones the official catalog into ~/.burner/catalog on first
+// use, so a fresh install works without a separate `burner update`. It does
+// nothing when --catalog or $BURNER_CATALOG is set, or a catalog exists.
+func ensureCatalog(ctx context.Context, catalogFlag string, stderr io.Writer) {
+	if catalogFlag != "" || os.Getenv("BURNER_CATALOG") != "" {
+		return
+	}
+	if _, err := catalog.FindRoot(""); err == nil {
+		return
+	}
+	home := catalog.Home()
+	if home == "" {
+		return
+	}
+	fmt.Fprintln(stderr, "fetching the recipe catalog into "+filepath.Join(home, "catalog")+" …")
+	if _, err := update.EnsureOfficial(ctx, home); err != nil {
+		fmt.Fprintln(stderr, "burner: could not fetch the recipe catalog:", err)
+	}
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -114,6 +143,9 @@ func main() {
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	catalogFlag, args := extractFlag(args, "--catalog")
+	if len(args) == 0 || needsCatalog(args[0]) {
+		ensureCatalog(ctx, catalogFlag, stderr)
+	}
 	if len(args) == 0 {
 		if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
 			fmt.Fprint(stderr, usage)
