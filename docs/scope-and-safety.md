@@ -17,37 +17,58 @@ Security recipes work only on targets you are allowed to test. A scope file says
 
 ```yaml
 # scope.yaml
-engagement: vuln-lab-practice
-authorization: self-owned lab        # or a reference to written authorization
-dates:
-  start: 2026-11-21
-  end: 2026-11-28
+schema_version: "1"
+id: juice-shop-practice
+owner: Your Name
+authorization:
+  type: own-lab               # or "written", with a reference
+valid:
+  not_before: "2026-11-21"
+  not_after: "2026-11-28"
 targets:
   - name: juice-shop
-    hosts: [juice-shop.lab.internal]
-    ports: [3000]
-allowed_techniques:
-  - passive-recon
-  - web-app-testing
-forbidden_techniques:
-  - denial-of-service
-  - social-engineering
-  - data-destruction
-out_of_scope:
-  - hosts: ["*.example.com"]
+    hosts:
+      - localhost:3000
+network:
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  allowed: [recon, scan, content-discovery]
+  forbidden: [exploit, brute-force]
+notes: Practice run on my own lab.
 ```
 
-The field names above are the intended contract. The runner validates them. A recipe may add recipe-specific keys.
+For a third-party target, use written authorization:
+
+```yaml
+authorization:
+  type: written
+  reference: https://example.com/security   # contract, ticket or program policy
+```
+
+The runner validates the file against `lab/schema/scope.schema.json` and refuses any other key. Check a file with `python -m lab scope scope.yaml --host app.example.com`.
 
 | Field | Meaning |
 |---|---|
-| `engagement` | Short name. Used in the report. |
-| `authorization` | Who allowed this, or "self-owned lab". |
-| `dates` | The runner refuses to start outside the window. |
-| `targets` | Hosts and ports the agent may reach. |
-| `allowed_techniques` | Techniques the agent may use. |
-| `forbidden_techniques` | Always off. |
-| `out_of_scope` | Explicit exclusions. They win over `targets`. |
+| `schema_version` | Always `"1"`. |
+| `id` | Short name, lowercase letters, digits and dashes. Used in the report. |
+| `owner` | Who runs the test. |
+| `authorization` | `type` is `own-lab` or `written`. `written` needs a `reference`. `contact` is optional. |
+| `valid` | `not_before` and `not_after`, quoted `YYYY-MM-DD` dates. The runner refuses to start outside the window. The window is at most one year. |
+| `targets` | At least one. Each has a `name` and `hosts` (`host`, `host:port` or CIDR) or `paths`. |
+| `network` | `mode` is `strict` (default) or `additive`. `allow` adds hosts. `deny` hosts are never allowed and win over `allow` and `targets`. |
+| `techniques` | `allowed` (at least one) and `forbidden`. |
+| `notes` | Free text. |
+
+Rules the runner enforces:
+
+- `own-lab` covers only `localhost`, private IP ranges and the names `.localhost`, `.test`, `.internal`, `.lab`, `.local`, `.example` and `.home.arpa`. A public host needs `authorization.type: written` with a `reference`.
+- A CIDR is at most `/16` for IPv4 and `/48` for IPv6.
+- A bare `*` or `**` is refused.
+- A wildcard that covers a whole top-level domain is refused. `*.com` fails. `*.lab` is allowed.
+- A URL is not a host. Write `app.example.com`, not `https://app.example.com`.
+- Some techniques are never allowed, whatever the file says: `dos`, `ddos`, `social-engineering`, `phishing`, `physical`, `data-destruction` and `ransomware`.
 
 ## How scope is enforced
 
@@ -68,6 +89,33 @@ sbx policy deny network <host>
 <!-- TODO(verify): confirm the exact host and port syntax accepted by `sbx policy allow network`, and whether policy can be set per sandbox or only globally. The docs say the policy is global; the runner design must handle that. -->
 
 `sbx` policy is global to the installation. The runner reports the policy it set and warns when it changes an existing one. <!-- TODO(verify): confirm global vs per-sandbox policy scope in the sbx docs. -->
+
+## Target kinds and scope
+
+Recipes test your target. These rules keep each kind inside the scope. See [Choose your target](getting-started.md#5-choose-your-target).
+
+- `--target-url` needs `--scope`. Its host must already be in the scope file. The runner never adds it. A public host needs `authorization.type: written` with a `reference`.
+- `--target-port` adds only `localhost:HOST`. It is marked "added by runner" in `TASK.md` and in the report. The runner changes the in-memory scope only. It never rewrites your scope file.
+- Your container shares the sandbox egress policy. While it runs, it can reach whatever the allow-list holds, the agent API host included.
+- Package and registry hosts (`--target-app` installs, a sandbox image pull) are install-only. They are opened for the install window and closed before the agent starts. They are never in the allow-list.
+- Your credentials stay on the host. Repos are cloned and images are pulled with your own git and Docker logins. The sandbox gets the result only. Agent credentials go through `sbx secret`. A URL with credentials is refused.
+- Dependency lifecycle scripts (npm `postinstall` and similar) run inside the sandbox during the install window, never on your machine.
+
+## Security model
+
+The agent runs with every permission inside the sandbox. It has no approval prompts and the agent user has passwordless sudo. The boundary is the sandbox, not the agent's behaviour:
+
+- microVM isolation from your machine,
+- a network policy built from the scope, with install hosts closed before the agent starts,
+- credentials injected by the `sbx` proxy, never visible in the VM,
+- your target mounted read-only (`path`, `repo`) or copied (`app`).
+
+This model relies on two `sbx` properties that are not yet verified:
+
+- The network policy is enforced outside the guest, so root in the VM cannot lift it. <!-- TODO(verify): confirm in the sbx docs or by test. -->
+- The read-only target mount is enforced by the host, so root in the VM cannot remount it read-write. <!-- TODO(verify): confirm in the sbx docs or by test. -->
+
+`lab-ask` is a convenience, not a boundary. The agent could write an answer file itself, so the runner records every answer on the host and flags any it did not write. See [Live runs](live-runs.md).
 
 ## Offline recipes
 

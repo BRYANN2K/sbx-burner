@@ -78,7 +78,7 @@ Categories and build order are in the [roadmap](docs/roadmap.md).
 
 ## Safety
 
-- Every security recipe needs a [scope file](docs/scope-and-safety.md): targets, hosts, allowed techniques, dates.
+- Every security recipe needs a [scope file](docs/scope-and-safety.md): authorization, valid dates, targets, techniques.
 - The runner turns the scope into `sbx` network policy. Hosts outside the scope are blocked.
 - Targets are labs you start yourself, unless your scope file cites written authorization.
 - Findings need [proof](docs/evidence-and-reports.md). Unproven leads go in a separate hypotheses list.
