@@ -35,6 +35,7 @@ type embTerm struct {
 	watch   func() bool // closes the panel when it reports true (e.g. the sign-in is stored)
 	lastEsc time.Time
 	autoOK  bool // close by itself when the command succeeds
+	closing bool // the user asked to leave: close as soon as it exits
 }
 
 // openTermMsg asks the model to open an embedded terminal for argv.
@@ -208,7 +209,7 @@ func (t *embTerm) view(w, h int) string {
 		lines[y] = strings.TrimRight(sb.String(), " ")
 	}
 	t.vt.Unlock()
-	right := sDim.Render("esc esc close")
+	right := sDim.Render("ctrl+\\ or esc esc to leave")
 	if t.ended {
 		right = sSoft.Render("done") + sDim.Render(" · enter close")
 		if t.exitErr != nil {
@@ -251,7 +252,7 @@ func (m model) updateTerm(msg tea.Msg) (model, tea.Cmd, bool) {
 			return m, nil, true
 		}
 		t.stop()
-		if msg.err == nil && t.autoOK {
+		if t.closing || (msg.err == nil && t.autoOK) {
 			m.term = nil
 			if t.done != nil {
 				d := t.done
@@ -291,14 +292,19 @@ func (m model) updateTerm(msg tea.Msg) (model, tea.Cmd, bool) {
 			}
 			return m, nil, true
 		}
-		if msg.String() == "esc" {
+		k := msg.String()
+		// Leave keys. Terminals and agents eat some of them (Orca takes
+		// ctrl+q, Codex uses esc esc), so several work; a quick esc esc
+		// often arrives as alt+esc.
+		leave := k == "ctrl+\\" || k == "ctrl+q" || k == "ctrl+]" || k == "alt+esc" || k == "f10"
+		if k == "esc" {
 			if time.Since(t.lastEsc) < 600*time.Millisecond {
-				t.stop()
-				return m, nil, true
+				leave = true
 			}
 			t.lastEsc = time.Now()
 		}
-		if k := msg.String(); k == "ctrl+q" || k == "ctrl+]" {
+		if leave {
+			t.closing = true
 			t.stop()
 			return m, nil, true
 		}
