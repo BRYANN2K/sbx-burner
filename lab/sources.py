@@ -15,6 +15,7 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -47,6 +48,7 @@ ECOSYSTEM_HOSTS: dict[str, list[str]] = {
 }
 
 APP_COPY_MAX_FILES = 20000
+APP_COPY_MAX_BYTES = 2 << 30  # 2 GiB, skipped folders excluded
 # Caches and VCS data are not worth copying into the workspace.
 APP_COPY_SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "vendor", "target", "dist", "__pycache__"}
 
@@ -370,25 +372,59 @@ def _check_no_outside_link(app_dir: Path) -> None:
                 raise SourceError(f"symlink {p.relative_to(app_dir)} points outside the source tree ({target}); refusing to copy") from None
 
 
+RUNS_INSIDE_APP = "the app folder contains burner's runs folder; pick the project folder"
+
+
+def _contains(outer: Path, inner: Path) -> bool:
+    try:
+        inner.resolve().relative_to(outer.resolve())
+        return True
+    except ValueError:
+        return False
+
+
 def copy_app(src: Path, dst: Path) -> int:
-    """Copy the app without following symlinks; never touches ``src``."""
+    """Copy the app without following symlinks; never touches ``src``.
+
+    Refuses a source that contains the destination (the runs folder), skips
+    sockets, FIFOs and devices, and caps the file count and total size.
+    """
     if dst.exists():
         raise SourceError(f"app destination already exists: {dst}")
+    if _contains(src, dst):
+        raise SourceError(f"{src}: {RUNS_INSIDE_APP}")
     _check_no_outside_link(src)
-    count = 0
+    count, size = 0, 0
+    for root, dirs, files in os.walk(src):
+        dirs[:] = [d for d in dirs if d not in APP_COPY_SKIP_DIRS or (Path(root) / d).is_symlink()]
+        for name in files:
+            try:
+                st = os.lstat(Path(root) / name)
+            except OSError:
+                continue
+            if stat.S_ISREG(st.st_mode):
+                count += 1
+                size += st.st_size
+        if count > APP_COPY_MAX_FILES:
+            raise SourceError(f"{src}: more than {APP_COPY_MAX_FILES} files; pick the project folder or pass a smaller one")
+        if size > APP_COPY_MAX_BYTES:
+            raise SourceError(f"{src}: more than {APP_COPY_MAX_BYTES >> 20} MiB to copy; pick the project folder")
 
     def ignore(directory: str, names: list[str]) -> set[str]:
         skipped = set()
         for name in names:
             p = Path(directory) / name
-            if p.is_dir() and not p.is_symlink() and name in APP_COPY_SKIP_DIRS:
+            try:
+                st = os.lstat(p)
+            except OSError:
                 skipped.add(name)
+                continue
+            if stat.S_ISDIR(st.st_mode) and name in APP_COPY_SKIP_DIRS:
+                skipped.add(name)
+            elif not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode)):
+                skipped.add(name)  # sockets, FIFOs, devices
         return skipped
 
-    for _root, _dirs, files in os.walk(src):
-        count += len(files)
-    if count > APP_COPY_MAX_FILES:
-        raise SourceError(f"{src}: {count} files is above the {APP_COPY_MAX_FILES}-file app copy cap")
     shutil.copytree(src, dst, symlinks=True, ignore=ignore)
     return count
 

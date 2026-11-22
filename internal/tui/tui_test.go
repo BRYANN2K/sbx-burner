@@ -841,3 +841,87 @@ func TestScopeStepListsSavedScopes(t *testing.T) {
 		t.Fatalf("saved scopes: %v", saved)
 	}
 }
+
+func TestLastErrorPicksTheReason(t *testing.T) {
+	log := "$ python3 -I lab/sources.py prepare-app /private/tmp/msbx/real ws\n[exit 1]\n--- stdout ---\n\n--- stderr ---\nTraceback (most recent call last):\n  File \"shutil.py\", line 547, in _copytree\n    raise Error(errors)\nshutil.Error: [('/private/tmp/msbx/real/runs/x/control.sock', '...', '[Errno 102] Operation not supported on socket')]\n\n"
+	got := lastError(log)
+	if !strings.HasPrefix(got, "shutil.Error:") {
+		t.Fatalf("last error %q", got)
+	}
+	if lastError("$ true\n[exit 1]\n--- stdout ---\nonly line\n--- stderr ---\n") != "only line" {
+		t.Fatal("no fallback to the last line")
+	}
+}
+
+func TestFailedStepShowsItsErrorAndFullLog(t *testing.T) {
+	runs := t.TempDir()
+	runID := "20261122-033035-webapp-blackbox"
+	os.MkdirAll(filepath.Join(runs, runID, "logs"), 0o700)
+	os.WriteFile(filepath.Join(runs, runID, "logs", "target-app-prepare.log"),
+		[]byte("$ prepare-app\n[exit 1]\n--- stderr ---\nerror: the app folder contains burner's runs folder; pick the project folder\n"), 0o600)
+	eng := &fakeEngine{events: []events.Event{
+		{Type: "step", Name: "target-app-prepare", Status: "start", RunID: runID},
+		{Type: "step", Name: "target-app-prepare", Status: "fail", Detail: "exit 1", RunID: runID},
+	}}
+	m := testModel(t, eng)
+	m.plan = newPlan(engine.RunOptions{Recipe: "pentest/webapp-blackbox", Agent: "codex", RunsDir: runs})
+	m.plan.loading = false
+	m.scr = scrPlan
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = nm.(model)
+	for i := 0; i < 3 && cmd != nil; i++ {
+		nm, cmd = m.Update(cmd())
+		m = nm.(model)
+	}
+	v := m.View()
+	if !strings.Contains(v, "└ error: the app folder contains burner's runs folder") || !strings.Contains(v, "enter full log") {
+		t.Fatalf("no error line or log hint:\n%s", v)
+	}
+	m = press(t, m, "enter")
+	if m.scr != scrLog || !strings.Contains(m.View(), "pick the project folder") {
+		t.Fatal("enter did not open the full log")
+	}
+	m = press(t, m, "esc")
+	if m.scr != scrLive {
+		t.Fatal("esc did not go back to the run")
+	}
+}
+
+func TestProjectPickerSkipsABurnerFolder(t *testing.T) {
+	cwd := t.TempDir()
+	os.MkdirAll(filepath.Join(cwd, "runs"), 0o700)
+	os.MkdirAll(filepath.Join(cwd, "shop-app"), 0o755)
+	os.WriteFile(filepath.Join(cwd, "shop-app", "package.json"), []byte(`{"scripts":{"start":"node s.js"}}`), 0o644)
+	os.WriteFile(filepath.Join(cwd, "app.py"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(cwd, "requirements.txt"), []byte("flask"), 0o644)
+	f := newFlow(recipes()[2], cwd, checks(), nil, nil)
+	f.answers = []answer{{value: "app"}, {value: "local"}}
+	f.advance()
+	if f.q == nil || f.q.title != "Project folder" {
+		t.Fatalf("question %+v", f.q)
+	}
+	if f.q.options[0].label != "shop-app/" {
+		t.Fatalf("first option %q", f.q.options[0].label)
+	}
+	for _, o := range f.q.options {
+		if o.value == "here" {
+			t.Fatal("a folder holding runs/ is offered as the app")
+		}
+	}
+	// A plain project folder is offered first.
+	plain := t.TempDir()
+	os.WriteFile(filepath.Join(plain, "package.json"), []byte(`{}`), 0o644)
+	f = newFlow(recipes()[2], plain, checks(), nil, nil)
+	f.answers = []answer{{value: "app"}, {value: "local"}}
+	f.advance()
+	if f.q.options[0].value != "here" {
+		t.Fatalf("first option %+v", f.q.options[0])
+	}
+}
+
+func TestLastErrorPrefersTheSbxDaemonLine(t *testing.T) {
+	log := "$ sbx create --name lab-x\n[exit 1]\n--- stdout ---\n\n--- stderr ---\nerror: failed to run sandbox container\n\n--- sbx daemon ---\nsbx: create sandbox failed: write file /etc/hosts failed (exit 255)\ncontainer: sh: error while loading shared libraries: libc.so.6: Permission denied\n"
+	if got := lastError(log); got != "container: sh: error while loading shared libraries: libc.so.6: Permission denied" {
+		t.Fatalf("last error %q", got)
+	}
+}

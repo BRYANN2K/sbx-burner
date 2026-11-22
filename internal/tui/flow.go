@@ -340,7 +340,7 @@ func (f *flowModel) target(w *walker, kind string, o *engine.RunOptions) bool {
 		}
 		hint := ""
 		if where == "local" {
-			v, ok := f.path(w, "target", "Project folder", true, false, nil, "")
+			v, ok := f.projectPath(w)
 			if !ok {
 				return false
 			}
@@ -435,6 +435,76 @@ func (f *flowModel) path(w *walker, section, title string, dirs, files bool, typ
 		return "", false
 	}
 	return f.pathHow(w, section, title, how, dirs, files, types)
+}
+
+// projectMarkers are files that make a folder look like an app project.
+var projectMarkers = []string{"package.json", "pyproject.toml", "requirements.txt", "go.mod", "Cargo.toml", "Gemfile", "pom.xml", "build.gradle", "composer.json", "manage.py", "deno.json"}
+
+func looksLikeProject(dir string) bool {
+	for _, m := range projectMarkers {
+		if st, err := os.Stat(filepath.Join(dir, m)); err == nil && st.Mode().IsRegular() {
+			return true
+		}
+	}
+	return false
+}
+
+// burnerFolder: the cwd holds a burner catalog or a runs folder, so it is
+// not the app (copying it would copy the runs too).
+func burnerFolder(dir string) bool {
+	for _, m := range []string{"runs", "recipes"} {
+		if st, err := os.Stat(filepath.Join(dir, m)); err == nil && st.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// projectPath asks for the app folder: sub-folders that look like
+// projects first, "This folder" only when the cwd is a project and not a
+// burner folder.
+func (f *flowModel) projectPath(w *walker) (string, bool) {
+	var opts []option
+	here := option{label: "This folder (" + f.cwd + ")", value: "here"}
+	hereOK := !burnerFolder(f.cwd)
+	if hereOK && looksLikeProject(f.cwd) {
+		opts = append(opts, here)
+	}
+	if entries, err := os.ReadDir(f.cwd); err == nil {
+		for _, e := range entries {
+			name := e.Name()
+			if !e.IsDir() || strings.HasPrefix(name, ".") || name == "runs" || name == "node_modules" {
+				continue
+			}
+			dir := filepath.Join(f.cwd, name)
+			if !looksLikeProject(dir) {
+				continue
+			}
+			note := ""
+			if a, ok := appdetect.Detect(dir); ok {
+				note = a.Stack
+			}
+			opts = append(opts, option{label: name + "/", value: dir, note: note})
+			if len(opts) >= 12 {
+				break
+			}
+		}
+	}
+	opts = append(opts, option{label: "Browse…", value: "browse"}, option{label: "Type a path", value: "type"})
+	hint := ""
+	if !hereOK {
+		hint = "this folder holds burner's runs or catalog, so it is not offered"
+	} else if !looksLikeProject(f.cwd) {
+		opts = append(opts, here)
+	}
+	how, ok := w.ask(question{section: "target", title: "Project folder", hint: hint, kind: qSelect, options: opts})
+	if !ok {
+		return "", false
+	}
+	if filepath.IsAbs(how) {
+		return how, true
+	}
+	return f.pathHow(w, "target", "Project folder", how, true, false, nil)
 }
 
 // pathHow asks the path itself once "here", "browse" or "type" is chosen.
