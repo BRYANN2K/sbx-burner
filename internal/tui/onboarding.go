@@ -22,6 +22,14 @@ import (
 // approvals, preferences, first run, done. Every action runs only on the
 // user's key; burner never writes sbx's own files.
 
+// Setup panel layout: lines around the content area (border 2, padding
+// 2, blank lines 3, rules 2, keys 1), and the content area's height: the
+// tallest step fits in setupContent lines.
+const (
+	setupChrome  = 10
+	setupContent = 20
+)
+
 const (
 	setupWelcome = iota
 	setupMachine
@@ -58,6 +66,8 @@ type setupModel struct {
 	sample    string
 	awaitRun  bool
 	result    string
+	chip      int  // the chosen action of a machine line with choices
+	advance   bool // move to the next red machine line when the checks return
 }
 
 type setupExecDoneMsg struct {
@@ -90,7 +100,38 @@ func newSetup(p Prefs) *setupModel {
 	if p.RunsDir == "" {
 		p.RunsDir = "~/.burner/runs"
 	}
-	return &setupModel{step: setupMachine, prefs: p}
+	return &setupModel{step: setupMachine, cursor: -1, prefs: p, advance: true}
+}
+
+// machineCursor resolves the machine step's cursor: -1 means the first
+// line that needs action.
+func (s *setupModel) machineCursor(rows []doctor.Result) int {
+	if len(rows) == 0 {
+		return 0
+	}
+	if s.cursor < 0 || s.cursor >= len(rows) {
+		s.cursor = nextRed(rows, 0)
+	}
+	return s.cursor
+}
+
+// setupChecksDone moves the machine cursor to the next line that needs
+// action once the checks return after a fix.
+func (m model) setupChecksDone() {
+	s := m.setup
+	if s == nil || s.step != setupMachine || !s.advance {
+		return
+	}
+	rows := m.machineRows()
+	if len(rows) == 0 {
+		return
+	}
+	s.advance = false
+	from := s.cursor
+	if from < 0 || from >= len(rows) {
+		from = 0
+	}
+	s.cursor, s.chip = nextRed(rows, from), 0
 }
 
 func (m model) check(id string) (doctor.Result, bool) {
@@ -247,14 +288,33 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return next()
 		}
 	case setupMachine:
+		rows := m.machineRows()
+		cur := s.machineCursor(rows)
 		switch key {
-		case "enter":
-			if c, ok := m.check("policy"); ok && c.Level != doctor.OK && !s.busy {
-				s.busy = true
-				if c.Fix == doctor.SbxLoginCommand {
-					return m, execSetup("sbx login", strings.Fields(doctor.SbxLoginCommand))
+		case "up", "k":
+			if cur > 0 {
+				s.cursor, s.chip = cur-1, 0
+			}
+		case "down", "j":
+			if cur < len(rows)-1 {
+				s.cursor, s.chip = cur+1, 0
+			}
+		case "left", "right":
+			if cur < len(rows) && len(rows[cur].Actions) > 1 {
+				d := 1
+				if key == "left" {
+					d = -1
 				}
-				return m, execSetup("sbx policy init", strings.Fields(doctor.PolicyInitCommand))
+				n := len(rows[cur].Actions)
+				s.chip = (s.chip + d + n) % n
+			}
+		case "enter":
+			if cur >= len(rows) || s.busy {
+				return m, nil
+			}
+			if a, ok := pickAction(rows[cur], s.chip); ok && len(a.Argv) > 0 {
+				s.busy, s.advance = true, true
+				return m, execSetup(machineTitle(rows[cur].ID), a.Argv)
 			}
 		case "s", "n":
 			return next()
@@ -262,6 +322,10 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			s.step--
 		}
 	case setupAgents:
+		if key == "esc" {
+			s.step, s.cursor = setupMachine, -1
+			return m, nil
+		}
 		switch key {
 		case "up":
 			if s.cursor > 0 {
@@ -273,9 +337,6 @@ func (m model) keySetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			a := setupAgentsList[s.cursor]
-			if _, blocked := doctor.Blocked[a]; blocked {
-				return m, nil
-			}
 			if a != "opencode" && !s.busy {
 				_ = os.MkdirAll(sampleDir(), 0o755)
 				s.busy = true
@@ -488,14 +549,11 @@ func (m model) viewSetup() string {
 	var keys []string
 	switch s.step {
 	case setupMachine:
-		names := map[string]string{"sbx": "sbx", "runtime": "Container runtime", "buildx": "Docker buildx", "policy": "Global network policy", "disk": "Free disk", "git-login": "GitHub login"}
-		for _, id := range []string{"sbx", "runtime", "buildx", "policy", "disk", "git-login"} {
-			c, ok := m.check(id)
-			if !ok {
-				continue
-			}
-			v := c.Detail
-			if id == "sbx" && c.Level == doctor.OK {
+		rows := m.machineRows()
+		cur := s.machineCursor(rows)
+		for i, c := range rows {
+			v := truncate(c.Detail, w-31)
+			if c.ID == "sbx" && c.Level == doctor.OK {
 				if f := sbxVersionRE.FindString(v); f != "" {
 					v = f
 				}
@@ -504,19 +562,47 @@ func (m model) viewSetup() string {
 			if c.Level != doctor.OK {
 				vs = sSoft.Render(v)
 			}
-			L = append(L, row(id == "policy" && c.Level != doctor.OK, mark(c.Level), names[id], vs, ""))
+			L = append(L, row(i == cur, mark(c.Level), machineTitle(c.ID), vs, ""))
 		}
-		keys = []string{"n", "next"}
-		if c, ok := m.check("policy"); ok && c.Level != doctor.OK {
-			if c.Fix == doctor.SbxLoginCommand {
-				L = append(L, "", card(sBold.Render("Sign in to Docker Sandboxes"), sSoft.Render("$ "+doctor.SbxLoginCommand), "",
-					btn("enter", "sign in", true)+"  "+btn("s", "skip", false)))
-			} else {
-				L = append(L, "", card(sBold.Render("Global network policy"), sSoft.Render("$ "+doctor.PolicyInitCommand),
-					sAmber.Render("applies to every sbx sandbox on this Mac, not only burner's"), "",
-					btn("enter", "run", true)+"  "+btn("s", "skip", false)))
+		keys = []string{"↑↓", "move", "n", "next", "esc", "back"}
+		if cur < len(rows) {
+			if a, ok := pickAction(rows[cur], s.chip); ok {
+				c := rows[cur]
+				body := []string{sBold.Render(machineTitle(c.ID))}
+				if len(c.Actions) > 1 {
+					var chips []string
+					for i, o := range c.Actions {
+						if i == s.chip {
+							chips = append(chips, sSel.Render(" "+o.Label+" "))
+						} else {
+							chips = append(chips, sDim.Render(" "+o.Label+" "))
+						}
+					}
+					body = append(body, strings.Join(chips, " "))
+				}
+				wrap := lipgloss.NewStyle().Width(cardW - 4)
+				switch {
+				case len(a.Argv) > 0:
+					body = append(body, sSoft.Render(wrap.Render("$ "+actionLine(a))))
+				case a.URL != "":
+					body = append(body, sSoft.Render(wrap.Render(a.URL)))
+				}
+				if a.Note != "" {
+					note := sDim.Render(a.Note)
+					if c.ID == "policy" {
+						note = sAmber.Render(a.Note)
+					}
+					body = append(body, note)
+				}
+				if len(a.Argv) > 0 {
+					body = append(body, "", btn("enter", a.Label, true)+"  "+btn("n", "next", false))
+					keys = []string{"↑↓", "move", "enter", a.Label, "n", "next", "esc", "back"}
+				}
+				if len(c.Actions) > 1 {
+					keys = append([]string{"←→", "choose"}, keys...)
+				}
+				L = append(L, "", card(body...))
 			}
-			keys = []string{"enter", "run the command", "s", "skip", "n", "next"}
 		}
 	case setupAgents:
 		for i, a := range setupAgentsList {
@@ -529,11 +615,8 @@ func (m model) viewSetup() string {
 					v = doctor.AgentServices[a].Service
 				}
 			}
-			if why, blocked := doctor.Blocked[a]; blocked {
-				mk, v = sAmber.Render("!"), why
-			}
-			if a == "opencode" {
-				v, key = "providers set in OpenCode", "o"
+			if a == "opencode" && ok && c.Level == doctor.OK {
+				v = "providers set in OpenCode"
 			}
 			vs := sDim.Render(v)
 			if ok && c.Level != doctor.OK {
@@ -544,14 +627,13 @@ func (m model) viewSetup() string {
 		a := setupAgentsList[s.cursor]
 		c, ok := m.check("agent-" + a)
 		keys = []string{"↑↓", "move", "s", "skip", "n", "next", "esc", "back"}
-		switch _, blocked := doctor.Blocked[a]; {
+		switch {
 		case a == "opencode" && ok && c.Level == doctor.OK:
 			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
 		case a == "opencode":
 			L = append(L, "", card(sBold.Render("Configure OpenCode"), sSoft.Render("$ sbx run opencode "+tildify(sampleDir())), "",
 				btn("o", "open OpenCode", true)+"  "+btn("s", "skip", false)))
 			keys = []string{"↑↓", "move", "o", "open OpenCode", "s", "skip", "n", "next", "esc", "back"}
-		case blocked:
 		case !ok || c.Level != doctor.OK:
 			if argv := connectCommand(a); len(argv) > 0 {
 				L = append(L, "", card(sBold.Render("Connect "+setupAgentName[a]), sSoft.Render("$ "+tildify(strings.Join(argv, " "))), "",
@@ -722,7 +804,7 @@ func (m model) viewSetup() string {
 			first = "skipped"
 		}
 		machineMark := sDim.Render("✓")
-		for _, id := range []string{"sbx", "runtime", "buildx", "policy", "disk"} {
+		for _, id := range []string{"brew", "sbx", "runtime", "buildx", "git", "python", "sbx-login", "policy", "disk"} {
 			if c, ok := m.check(id); ok && c.Level != doctor.OK {
 				machineMark = sAmber.Render("!")
 			}
@@ -763,25 +845,61 @@ func (m model) viewSetup() string {
 	if m.checking || s.busy || s.loading {
 		title = append(title, sAmber.Render(m.spin())+" "+sDim.Render("working"))
 	}
-	logo := sAmber.Render(strings.Join(m.logoLines(), "\n"))
-	head := lipgloss.JoinHorizontal(lipgloss.Center, logo, "    ", strings.Join(title, "\n"))
 	rule := sFaint.Render(strings.Repeat("─", w))
-	// A fixed content height keeps the panel still when a card appears or
-	// the step changes.
-	const contentH = 20
-	for len(L) < contentH {
-		L = append(L, "")
+	// The panel always fits the terminal and keeps one height on every
+	// step. The logo header shows when the full content area fits under
+	// it; otherwise a one-line header, and the content area takes what is
+	// left.
+	contentH, logoH := setupContent, len(m.logoLines())
+	head := ""
+	if m.h-2-setupChrome-logoH >= setupContent {
+		logo := sAmber.Render(strings.Join(m.logoLines(), "\n"))
+		head = lipgloss.JoinHorizontal(lipgloss.Top, logo, "    ", lipgloss.NewStyle().Height(logoH).Render(strings.Join(title, "\n")))
+	} else {
+		if room := m.h - 2 - setupChrome - 1; room < contentH {
+			contentH = room
+		}
+		if contentH < 3 {
+			contentH = 3
+		}
+		line := sBold.Render("burner") + " " + sDim.Render(m.cfg.Version) + sDim.Render(" · ") + sSoft.Render("Setup") + sDim.Render(" · ")
+		if s.step == setupDone {
+			line += sAmber.Render("ready")
+		} else {
+			line += sText.Render(strings.ToUpper(stepName[:1])+stepName[1:]) + " " + sDim.Render(fmt.Sprintf("%d of %d", stepN, len(setupSteps))) + " " + bar
+		}
+		if m.checking || s.busy || s.loading {
+			line += "  " + sAmber.Render(m.spin())
+		}
+		head = line
 	}
-	inner := head + "\n\n" + rule + "\n\n" + strings.Join(L, "\n") + "\n\n" + rule + "\n" + strings.TrimLeft(hints(keys...), " ")
+	lines := strings.Split(strings.Join(L, "\n"), "\n")
+	for i, l := range lines {
+		if lipgloss.Width(l) > w {
+			lines[i] = truncateANSI(l, w) // a wrapped line would change the height
+		}
+	}
+	if len(lines) > contentH {
+		lines = lines[:contentH]
+	}
+	for len(lines) < contentH {
+		lines = append(lines, "")
+	}
+	inner := head + "\n\n" + rule + "\n\n" + strings.Join(lines, "\n") + "\n\n" + rule + "\n" + truncateANSI(strings.TrimLeft(hints(keys...), " "), w)
 	panel := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colLine).Padding(1, 2).Width(panelW - 2).Render(inner)
 	_ = right
-	// Anchor the panel's top at the same row on every step, so the menu
-	// never moves when a card appears; centre it for the tallest step.
-	top := (m.h - 46) / 2
+	// The height depends only on the terminal, so the top stays put when a
+	// card appears or the step changes.
+	top := (m.h - lipgloss.Height(panel)) / 2
 	if top < 0 {
 		top = 0
 	}
 	b.WriteString(strings.Repeat("\n", top) + lipgloss.PlaceHorizontal(m.w, lipgloss.Center, panel))
+	// Fill below the panel ourselves: fit() keeps a view's last line at
+	// the bottom, which would pull the bottom border away from the panel.
+	if rest := m.h - top - lipgloss.Height(panel); rest > 0 {
+		b.WriteString(strings.Repeat("\n", rest) + " ")
+	}
 	return b.String()
 }
 

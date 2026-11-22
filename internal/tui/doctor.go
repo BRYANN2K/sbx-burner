@@ -7,6 +7,7 @@ import (
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
@@ -18,6 +19,7 @@ type doctorModel struct {
 	checking bool
 	msg      string
 	policy   bool // confirming sbx policy init deny-all
+	chip     int  // the chosen action of a line with choices
 }
 
 // copyText is replaced in tests.
@@ -61,8 +63,13 @@ func (m model) updateDoctor(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if d.cursor < len(m.checks) {
 			c := m.checks[d.cursor]
 			switch {
-			case c.ID == "policy" && c.Level != doctor.OK:
+			case c.ID == "policy" && c.Level != doctor.OK && len(c.Actions) > 0:
 				d.policy = true
+				return m, nil
+			case len(c.Actions) > 0:
+				if a, ok := pickAction(c, d.chip); ok && len(a.Argv) > 0 {
+					return m, execSetup(machineTitle(c.ID), a.Argv)
+				}
 				return m, nil
 			case strings.HasPrefix(c.ID, "agent-") && c.Level != doctor.OK:
 				a := strings.TrimPrefix(c.ID, "agent-")
@@ -80,11 +87,21 @@ func (m model) updateDoctor(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case "up", "k":
 		if d.cursor > 0 {
-			d.cursor--
+			d.cursor, d.chip = d.cursor-1, 0
 		}
 	case "down", "j":
 		if d.cursor < len(m.checks)-1 {
-			d.cursor++
+			d.cursor, d.chip = d.cursor+1, 0
+		}
+	case "left", "right":
+		if d.cursor < len(m.checks) {
+			if n := len(m.checks[d.cursor].Actions); n > 1 {
+				if k.String() == "left" {
+					d.chip = (d.chip + n - 1) % n
+				} else {
+					d.chip = (d.chip + 1) % n
+				}
+			}
 		}
 	case "c":
 		if d.cursor < len(m.checks) && m.checks[d.cursor].Fix != "" {
@@ -125,6 +142,12 @@ func (m model) viewDoctor() string {
 		if c.Fix != "" {
 			fix = "  " + c.Fix
 		}
+		if a, ok := pickAction(c, chipFor(i, d)); ok && actionLine(a) != "" {
+			fix = "  " + actionLine(a)
+			if len(c.Actions) > 1 {
+				fix = "  " + a.Label + ": " + actionLine(a)
+			}
+		}
 		if i == d.cursor {
 			body = append(body, mark+"  "+sel(w-10, truncate(line+fix, w-10)))
 		} else {
@@ -132,6 +155,23 @@ func (m model) viewDoctor() string {
 		}
 	}
 	b.WriteString(box(w, strings.Join(body, "\n")) + "\n")
+	if d.cursor < len(m.checks) && !d.policy {
+		if a, ok := pickAction(m.checks[d.cursor], d.chip); ok {
+			line := actionLine(a)
+			if len(a.Argv) > 0 {
+				line = "$ " + line
+			}
+			if len(m.checks[d.cursor].Actions) > 1 {
+				line = a.Label + "  " + line
+			}
+			if line != "" {
+				b.WriteString(lipgloss.NewStyle().PaddingLeft(2).Render(sSoft.Render(lipgloss.NewStyle().Width(w-6).Render(line))) + "\n")
+			}
+			if a.Note != "" {
+				b.WriteString("  " + sDim.Render(a.Note) + "\n")
+			}
+		}
+	}
 	if d.msg != "" {
 		b.WriteString("  " + sAmber.Render(truncate(d.msg, w-4)) + "\n")
 	}
@@ -150,6 +190,13 @@ func (m model) viewDoctor() string {
 			keys = append([]string{"a", "set the policy"}, keys...)
 		case strings.HasPrefix(id, "agent-"):
 			keys = append([]string{"a", "connect"}, keys...)
+		default:
+			if a, ok := pickAction(m.checks[d.cursor], d.chip); ok && len(a.Argv) > 0 {
+				keys = append([]string{"a", a.Label}, keys...)
+			}
+			if len(m.checks[d.cursor].Actions) > 1 {
+				keys = append([]string{"←→", "choose"}, keys...)
+			}
 		}
 	}
 	if d.policy {
@@ -259,4 +306,13 @@ func (m model) viewNew() string {
 	b.WriteString(box(w, strings.Join(body, "\n")) + "\n")
 	b.WriteString(hints("↑↓", "move", "enter", "next", "esc", "back"))
 	return b.String()
+}
+
+// chipFor is the chosen action of line i: the cursor's choice, else the
+// default.
+func chipFor(i int, d doctorModel) int {
+	if i == d.cursor {
+		return d.chip
+	}
+	return 0
 }

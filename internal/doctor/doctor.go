@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"syscall"
@@ -36,6 +37,13 @@ type Result struct {
 	Level  Level  `json:"level"`
 	Detail string `json:"detail"`
 	Fix    string `json:"fix,omitempty"`
+	// Actions fix the line from burner (setup and Doctor); the first is the
+	// default, more than one are choices.
+	Actions []Action `json:"actions,omitempty"`
+}
+
+func res(id, title string, l Level, detail, fix string) Result {
+	return Result{ID: id, Title: title, Level: l, Detail: detail, Fix: fix}
 }
 
 // Agent credentials: sbx secret service per agent. Keep in sync with
@@ -64,11 +72,6 @@ func KnownAgents() []string {
 // SbxLoginCommand signs the user in to Docker Sandboxes.
 const SbxLoginCommand = "sbx login"
 
-// Blocked agents cannot run in sbx today, whatever their credential says.
-var Blocked = map[string]string{
-	"devin": "blocked by sbx (docker/sbx-releases#906)",
-}
-
 // Runner executes a command and returns combined output. Tests replace it.
 type Runner func(ctx context.Context, name string, args ...string) (string, error)
 
@@ -87,10 +90,19 @@ type Options struct {
 	DiskPath  string
 	MinDiskGB float64
 	Agents    []string
+	// GOOS picks the install commands ("" : this machine's).
+	GOOS string
+	// Exists reports whether a file exists (nil : os.Stat). Used for the
+	// Homebrew prefixes, Docker Desktop's app and /etc/os-release.
+	Exists func(string) bool
+	// ReadFile reads /etc/os-release (nil : os.ReadFile).
+	ReadFile func(string) ([]byte, error)
 }
 
 // Check runs every check. It never fails fast: the user gets the full list.
+// Machine lines come in install order, each with the actions that fix it.
 func Check(ctx context.Context, o Options) []Result {
+	real := o.LookPath == nil
 	if o.Run == nil {
 		o.Run = ExecRunner
 	}
@@ -103,110 +115,156 @@ func Check(ctx context.Context, o Options) []Result {
 	if len(o.Agents) == 0 {
 		o.Agents = []string{"claude", "codex", "devin"}
 	}
+	if o.GOOS == "" {
+		o.GOOS = runtime.GOOS
+	}
+	if o.Exists == nil {
+		o.Exists = func(p string) bool { _, err := os.Stat(p); return err == nil }
+	}
+	if o.ReadFile == nil {
+		o.ReadFile = os.ReadFile
+	}
+	if real {
+		addBrewPath(o.Exists)
+	}
+	env := detectEnv(o)
+	has := func(name string) bool { _, err := o.LookPath(name); return err == nil }
 	var out []Result
 
+	if o.GOOS == "darwin" {
+		if env.brew == "" {
+			out = append(out, with(res("brew", "Homebrew", Fail, "not installed", "see https://brew.sh"), env.brewInstall()))
+		} else {
+			out = append(out, res("brew", "Homebrew", OK, "installed", ""))
+		}
+	}
+
 	sbxOK := false
-	if _, err := o.LookPath("sbx"); err != nil {
-		out = append(out, Result{"sbx", "sbx installed", Fail, "sbx not found on PATH", "brew install docker/tap/sbx"})
+	if !has("sbx") {
+		out = append(out, with(res("sbx", "sbx installed", Fail, "sbx not found on PATH", "brew install docker/tap/sbx"), env.sbxInstall(false)))
 	} else {
 		v, err := o.Run(ctx, "sbx", "version")
 		if err != nil {
-			out = append(out, Result{"sbx", "sbx installed", Fail, firstLine(v, err), "reinstall sbx"})
+			out = append(out, with(res("sbx", "sbx installed", Fail, firstLine(v, err), "reinstall sbx"), env.sbxInstall(true)))
 		} else {
 			sbxOK = true
-			out = append(out, Result{"sbx", "sbx installed", OK, firstLine(v, nil), ""})
+			out = append(out, res("sbx", "sbx installed", OK, firstLine(v, nil), ""))
 		}
 	}
 
-	if sbxOK {
-		out = append(out, policyCheck(ctx, o.Run))
-	}
-
-	// Host container runtime: Docker (or colima), else Apple container.
-	// Needed only to save local images and pull private ones on the host.
+	// Host container runtime: Docker (Docker Desktop or colima), else Apple
+	// container. sbx builds the recipe kits through it.
 	dockerUp := false
-	if _, err := o.LookPath("docker"); err == nil {
+	if has("docker") {
 		if v, err := o.Run(ctx, "docker", "info", "--format", "{{.ServerVersion}}"); err == nil {
 			dockerUp = true
-			out = append(out, Result{"runtime", "Host container runtime", OK, "docker " + firstLine(v, nil), ""})
+			out = append(out, res("runtime", "Host container runtime", OK, "docker "+firstLine(v, nil), ""))
+		}
+	}
+	if !dockerUp && has("container") {
+		if _, err := o.Run(ctx, "container", "system", "status"); err == nil {
+			out = append(out, res("runtime", "Host container runtime", OK, "Apple container", ""))
+			dockerUp = true
 		}
 	}
 	if !dockerUp {
-		if _, err := o.LookPath("container"); err == nil {
-			if _, err := o.Run(ctx, "container", "system", "status"); err == nil {
-				out = append(out, Result{"runtime", "Host container runtime", OK, "Apple container", ""})
-				dockerUp = true
-			}
+		detail := "none running (needed to build recipe kits)"
+		var installed []string
+		if has("colima") {
+			installed = append(installed, "colima")
 		}
+		if o.Exists("/Applications/Docker.app") {
+			installed = append(installed, "docker-desktop")
+		}
+		if has("container") {
+			installed = append(installed, "container")
+		}
+		if len(installed) > 0 {
+			detail = "installed, not running"
+		}
+		out = append(out, with(res("runtime", "Host container runtime", Warn, detail, "colima start, or container system start"), env.runtimeActions(installed)...))
 	}
+
 	// sbx builds a recipe's local kits with docker buildx on the host.
-	if _, err := o.LookPath("docker"); err == nil {
+	switch {
+	case !has("docker"):
+		out = append(out, with(res("buildx", "Docker buildx (recipe kits)", Fail, "docker CLI not found; sbx needs docker buildx to build recipe kits", "brew install docker docker-buildx"), env.buildxInstall(true)))
+	default:
 		if _, err := o.Run(ctx, "docker", "buildx", "version"); err != nil {
-			out = append(out, Result{"buildx", "Docker buildx (recipe kits)", Fail, "docker buildx is not available; sbx cannot build the recipe kits",
-				"brew install docker-buildx && mkdir -p ~/.docker/cli-plugins && ln -sfn $(brew --prefix)/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx"})
+			out = append(out, with(res("buildx", "Docker buildx (recipe kits)", Fail, "docker buildx is not available; sbx cannot build the recipe kits",
+				"brew install docker-buildx && mkdir -p ~/.docker/cli-plugins && ln -sfn $(brew --prefix)/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx"), env.buildxInstall(false)))
 		} else {
-			out = append(out, Result{"buildx", "Docker buildx (recipe kits)", OK, "available", ""})
+			out = append(out, res("buildx", "Docker buildx (recipe kits)", OK, "available", ""))
 		}
-	} else {
-		out = append(out, Result{"buildx", "Docker buildx (recipe kits)", Fail, "docker CLI not found; sbx needs docker buildx to build recipe kits", "brew install docker docker-buildx"})
 	}
-	if !dockerUp {
-		out = append(out, Result{"runtime", "Host container runtime", Warn, "none running (needed only for local or private images)", "colima start, or container system start"})
+
+	if env.tool(o, "git") {
+		out = append(out, res("git", "git", OK, "installed", ""))
+	} else {
+		out = append(out, with(res("git", "git", Fail, "not installed", "brew install git"), env.pkgInstall("git", "git", "https://git-scm.com/downloads")))
+	}
+	out = append(out, pythonCheck(ctx, o, env))
+
+	if sbxOK {
+		login, policy := policyCheck(ctx, o.Run, env)
+		out = append(out, login, policy)
 	}
 
 	for _, agent := range o.Agents {
-		if why, blocked := Blocked[agent]; blocked {
-			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, why, ""})
-			continue
-		}
 		svc, ok := AgentServices[agent]
 		if !ok {
-			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, "not supported by burner yet", ""})
+			out = append(out, res("agent-"+agent, agentTitle(agent), Warn, "not supported by burner yet", ""))
 			continue
 		}
 		if !sbxOK {
-			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, "cannot check without sbx", svc.Fix})
+			out = append(out, res("agent-"+agent, agentTitle(agent), Warn, "cannot check without sbx", svc.Fix))
 			continue
 		}
 		// Names only: `sbx secret ls --service S --quiet` prints secret names.
 		v, err := o.Run(ctx, "sbx", "secret", "ls", "--service", svc.Service, "--quiet")
 		switch {
 		case err != nil:
-			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, "could not list secrets: " + firstLine(v, err), svc.Fix})
+			out = append(out, res("agent-"+agent, agentTitle(agent), Warn, "could not list secrets: "+firstLine(v, err), svc.Fix))
 		case strings.TrimSpace(v) == "":
-			out = append(out, Result{"agent-" + agent, agentTitle(agent), Warn, "no credential stored", svc.Fix})
+			out = append(out, res("agent-"+agent, agentTitle(agent), Warn, "no credential stored", svc.Fix))
 		default:
-			out = append(out, Result{"agent-" + agent, agentTitle(agent), OK, "credential stored (" + svc.Service + ")", ""})
+			out = append(out, res("agent-"+agent, agentTitle(agent), OK, "credential stored ("+svc.Service+")", ""))
 		}
 	}
 
-	if _, err := o.LookPath("gh"); err != nil {
-		out = append(out, Result{"git-login", "GitHub login", Warn, "gh not found (needed only for private repos)", "brew install gh && gh auth login"})
-	} else if v, err := o.Run(ctx, "gh", "auth", "status", "--active"); err != nil {
-		out = append(out, Result{"git-login", "GitHub login", Warn, "not signed in (needed only for private repos)", "gh auth login"})
+	if !has("gh") {
+		out = append(out, with(res("git-login", "GitHub login", Warn, "gh not found (needed only for private repos)", "brew install gh && gh auth login"), env.ghInstall()))
+	} else if _, err := o.Run(ctx, "gh", "auth", "status", "--active"); err != nil {
+		out = append(out, with(res("git-login", "GitHub login", Warn, "not signed in (needed only for private repos)", "gh auth login"),
+			Action{Label: "sign in", Argv: []string{"gh", "auth", "login"}}))
 	} else {
-		_ = v
-		out = append(out, Result{"git-login", "GitHub login", OK, "signed in", ""})
+		out = append(out, res("git-login", "GitHub login", OK, "signed in", ""))
 	}
 
 	if home, err := os.UserHomeDir(); err == nil {
 		if logins := RegistryLogins(home); len(logins) > 0 {
-			out = append(out, Result{"registry-login", "Registry logins", OK, strings.Join(logins, ", "), ""})
+			out = append(out, res("registry-login", "Registry logins", OK, strings.Join(logins, ", "), ""))
 		} else {
-			out = append(out, Result{"registry-login", "Registry logins", OK, "none (needed only for private images: docker login <registry>)", ""})
+			out = append(out, res("registry-login", "Registry logins", OK, "none (needed only for private images: docker login <registry>)", ""))
 		}
 	}
 
 	if o.DiskPath != "" {
 		if gb, err := freeGB(o.DiskPath); err == nil {
-			level, fix := OK, ""
+			r := res("disk", "Free disk", OK, fmt.Sprintf("%.0f GB free", gb), "")
 			if gb < o.MinDiskGB {
-				level, fix = Warn, "free disk space (images and kits need ~10 GB)"
+				r.Level, r.Fix = Warn, "free disk space (images and kits need ~10 GB)"
+				r.Actions = []Action{{Label: "free space", Note: fmt.Sprintf("burner needs about %.0f GB for sandbox images and recipe kits", o.MinDiskGB)}}
 			}
-			out = append(out, Result{"disk", "Free disk", level, fmt.Sprintf("%.0f GB free", gb), fix})
+			out = append(out, r)
 		}
 	}
 	return out
+}
+
+func with(r Result, a ...Action) Result {
+	r.Actions = a
+	return r
 }
 
 // Worst returns the most severe level in results.
@@ -313,16 +371,16 @@ func ApprovalResults(rows []engine.Approval) []Result {
 		title := "Approval: " + a.Agent + " kit"
 		switch {
 		case a.Error != "":
-			out = append(out, Result{"approval-" + a.Agent, title, Warn, "could not check: " + a.Error, "burner approve --agent " + a.Agent})
+			out = append(out, res("approval-"+a.Agent, title, Warn, "could not check: "+a.Error, "burner approve --agent "+a.Agent))
 		case a.Approved:
-			out = append(out, Result{"approval-" + a.Agent, title, OK, "approved", ""})
+			out = append(out, res("approval-"+a.Agent, title, OK, "approved", ""))
 		default:
 			var hosts []string
 			for _, ds := range a.Missing {
 				hosts = append(hosts, ds...)
 			}
 			sort.Strings(hosts)
-			out = append(out, Result{"approval-" + a.Agent, title, Warn, "needs approval: " + strings.Join(hosts, ", "), "burner approve --agent " + a.Agent})
+			out = append(out, res("approval-"+a.Agent, title, Warn, "needs approval: "+strings.Join(hosts, ", "), "burner approve --agent "+a.Agent))
 		}
 	}
 	return out
@@ -344,18 +402,23 @@ func ApprovalsNeeded(results []Result) []string {
 // when the user asks.
 const PolicyInitCommand = "sbx policy init deny-all"
 
-// policyCheck reads sbx's policy rules: a global network rule that denies
-// everything by default means the policy is initialized.
-func policyCheck(ctx context.Context, run Runner) Result {
+// policyCheck reads sbx's policy rules. It returns the sign-in line and
+// the policy line: a global network rule that denies everything by default
+// means the policy is initialized.
+func policyCheck(ctx context.Context, run Runner, env machineEnv) (Result, Result) {
+	login := res("sbx-login", "Docker Sandboxes sign-in", OK, "signed in", "")
 	r := Result{ID: "policy", Title: "Global network policy"}
+	initAction := Action{Label: "run", Argv: strings.Fields(PolicyInitCommand), Note: "applies to every sbx sandbox on this " + env.machine() + ", not only burner's"}
 	out, err := run(ctx, "sbx", "policy", "ls", "--json")
 	if err != nil {
 		if strings.Contains(out, "not signed in") || strings.Contains(out, "sbx login") {
+			login = with(res("sbx-login", "Docker Sandboxes sign-in", Warn, "not signed in", SbxLoginCommand),
+				Action{Label: "sign in", Argv: strings.Fields(SbxLoginCommand), Note: "shows a device code: open the link and enter it"})
 			r.Level, r.Detail, r.Fix = Warn, "sign in to Docker Sandboxes first", SbxLoginCommand
-			return r
+			return login, r
 		}
-		r.Level, r.Detail, r.Fix = Warn, "could not read: "+firstLine(out, err), PolicyInitCommand
-		return r
+		r.Level, r.Detail, r.Fix, r.Actions = Warn, "could not read: "+firstLine(out, err), PolicyInitCommand, []Action{initAction}
+		return login, r
 	}
 	var v struct {
 		Rules []struct {
@@ -368,19 +431,19 @@ func policyCheck(ctx context.Context, run Runner) Result {
 		} `json:"rules"`
 	}
 	if json.Unmarshal([]byte(out), &v) != nil {
-		r.Level, r.Detail, r.Fix = Warn, "could not read sbx policy ls --json", PolicyInitCommand
-		return r
+		r.Level, r.Detail, r.Fix, r.Actions = Warn, "could not read sbx policy ls --json", PolicyInitCommand, []Action{initAction}
+		return login, r
 	}
 	for _, rule := range v.Rules {
 		if rule.Scope == "global" && rule.AppliesTo == "all" && rule.ResourceType == "network" && rule.Decision == "deny" && rule.Status != "inactive" {
 			for _, res := range rule.Resources {
 				if res == "**" {
 					r.Level, r.Detail = OK, "deny-all"
-					return r
+					return login, r
 				}
 			}
 		}
 	}
-	r.Level, r.Detail, r.Fix = Warn, "not initialized", PolicyInitCommand
-	return r
+	r.Level, r.Detail, r.Fix, r.Actions = Warn, "not initialized", PolicyInitCommand, []Action{initAction}
+	return login, r
 }

@@ -8,11 +8,11 @@ Run your first recipe: install `sbx`, store a credential, do a dry run, then a r
 - macOS 14+ on Apple silicon, Linux with KVM, or Windows 11. These are the `sbx` platform limits.
 - Python 3.11+. No packages to install.
 - A Docker account for `sbx login`.
-- A coding agent. Supported agents: Claude Code, Codex, Cursor, Devin and OpenCode. `python -m lab agents` lists the agents the runner can launch. Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today). Devin is blocked by sbx for now (docker/sbx-releases#906).
+- A coding agent. Supported agents: Claude Code, Codex, Cursor, Devin and OpenCode. `python -m lab agents` lists the agents the runner can launch. Any agent the runner lists can run a recipe on the standard base; recipes with their own base image need an agent with a mixin kit (claude, codex today).
 
 ## burner setup
 
-`burner` opens setup on its first launch (and `burner setup` reopens it): it checks the machine, connects the agents, approves the Kali kits and saves your defaults to `~/.burner/config.yaml`. Its first run copies a sample repository with a planted secret to `~/burner-sample/leaky-repo`. The sample is built locally, by the official catalog's proving ground (`~/.burner/catalog`); with a catalog given through `--catalog` or `$BURNER_CATALOG`, setup skips it.
+`burner` opens setup on its first launch (and `burner setup` reopens it): it checks the machine, connects the agents, approves the Kali kits and saves your defaults to `~/.burner/config.yaml`. The machine step works from a machine with nothing installed. It lists, in install order, Homebrew (macOS), sbx, a container runtime (colima by default, or Docker Desktop or Apple container), Docker buildx, git, python3 3.11 or newer, the sbx sign-in, the global network policy, the GitHub login (optional) and free disk. Each red line has its install or fix command; enter runs it in burner's own terminal panel, and the checks run again after it. Where no official command is known for your system (most Linux lines), setup shows the official install page instead. `burner doctor` and the Doctor screen show the same lines and actions. Its first run copies a sample repository with a planted secret to `~/burner-sample/leaky-repo`. The sample is built locally, by the official catalog's proving ground (`~/.burner/catalog`); with a catalog given through `--catalog` or `$BURNER_CATALOG`, setup skips it.
 
 ## 1. Install sbx
 

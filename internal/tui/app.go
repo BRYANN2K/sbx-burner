@@ -265,6 +265,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case checksMsg:
 		m.checks, m.checking = msg, false
 		m.doc.checking = false
+		m.setupChecksDone()
 		return m, nil
 	case tea.KeyMsg:
 		// Ctrl+C everywhere but the live run quits; the live run stops and
