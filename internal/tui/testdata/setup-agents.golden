@@ -1,40 +1,40 @@
-Setup                                                            machine › agents › approvals › preferences › first run
-
-  !  Claude                   no credential stored
-  ✓  Codex                    openai
-  !  Cursor                   not checked
-  !  Devin                    blocked by sbx (docker/sbx-releases#906)
-  !  OpenCode                 providers set in OpenCode  o
-
-  ╭──────────────────────────────────────────────────────────────────────────────────╮
-  │ Connect Claude                                                                   │
-  │ $ sbx secret set anthropic                                                       │
-  │                                                                                  │
-  │  enter connect    s skip                                                         │
-  ╰──────────────────────────────────────────────────────────────────────────────────╯
 
 
 
 
+                    ╭──────────────────────────────────────────────────────────────────────────────╮
+                    │                                                                              │
+                    │  ⠀⠀⠀⠀⠀⠀⣀⣀⣀⡀⠀⠀⣀⠀⠸⠿                                                            │
+                    │  ⠀⠀⢀⣤⣶⣿⣿⡿⠿⠀⣤⡼⠿⠃⠀⠀                                                            │
+                    │  ⠀⣰⣿⡿⠛⠉⠀⢠⣤⡀⠛⠃⠀⠀⠸⠿    burner  dev                                             │
+                    │  ⣰⣿⡟⠀⠀⢀⣀⣨⣏⣀⠀⠀⠸⠿⠇⠀                                                            │
+                    │  ⠛⠋⢀⣀⣾⡿⠿⠿⠿⠿⣿⣆⡀⠀⣶⣿    Setup                                                   │
+                    │  ⣶⣦⢸⣿⡇⢤⣄⠀⢀⣠⠄⣿⡿⢀⣿⣿    Agents  2 of 5                                          │
+                    │  ⠸⣿⣦⠘⢧⣈⣉⣀⣈⣉⣠⠟⢀⣾⣿⠇    ▰▰▱▱▱                                                   │
+                    │  ⠀⠘⢿⣷⣤⣈⠉⠉⠉⠉⣀⣤⡀⠙⠃⠀                                                            │
+                    │  ⠀⠀⠀⠉⠻⠿⣿⣿⣿⣿⠿⠛⠉⠀⠀⠀                                                            │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │                                                                              │
+                    │  !  Claude                   no credential stored                            │
+                    │  ✓  Codex                    openai                                          │
+                    │  !  Cursor                   not checked                                     │
+                    │  !  Devin                    blocked by sbx (docker/sbx-releases#906)        │
+                    │  !  OpenCode                 providers set in OpenCode  o                    │
+                    │                                                                              │
+                    │  ╭────────────────────────────────────────────────────────────────────────╮  │
+                    │  │ Connect Claude                                                         │  │
+                    │  │ $ sbx secret set anthropic                                             │  │
+                    │  │                                                                        │  │
+                    │  │  enter connect    s skip                                               │  │
+                    │  ╰────────────────────────────────────────────────────────────────────────╯  │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │  ↑↓ move  │  enter connect  │  s skip  │  n next  │  esc back                │
+                    │                                                                              │
+                    ╰──────────────────────────────────────────────────────────────────────────────╯
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  ↑↓ move  │  enter connect  │  s skip  │  n next  │  esc back

@@ -432,7 +432,14 @@ func (m model) keySetupPrefs(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) viewSetup() string {
 	s := m.setup
-	w := m.w
+	panelW := m.w - 4
+	if panelW > 80 {
+		panelW = 80
+	}
+	if panelW < 40 {
+		panelW = 40
+	}
+	w := panelW - 6 // inside the border and the padding
 	var b strings.Builder
 	cur := ""
 	if s.step-1 < len(setupSteps) && s.step >= 1 {
@@ -445,7 +452,6 @@ func (m model) viewSetup() string {
 	if m.checking || s.busy || s.loading {
 		right = sAmber.Render(m.spin()) + " " + right
 	}
-	b.WriteString(header(w, sBold.Render("Setup"), right) + "\n\n")
 	mark := func(l doctor.Level) string {
 		switch l {
 		case doctor.OK:
@@ -462,14 +468,11 @@ func (m model) viewSetup() string {
 			line += "  " + sDim.Render(key)
 		}
 		if selected {
-			return sel(w-4, line)
+			return sel(w, line)
 		}
 		return line
 	}
-	cardW := w - 4
-	if cardW > 84 {
-		cardW = 84
-	}
+	cardW := w
 	card := func(lines ...string) string { return box(cardW, strings.Join(lines, "\n")) }
 	btn := func(k, v string, primary bool) string {
 		t := " " + k + " " + v + " "
@@ -551,6 +554,9 @@ func (m model) viewSetup() string {
 		for i, r := range rows {
 			agent := strings.TrimPrefix(r.ID, "approval-")
 			v := strings.ReplaceAll(strings.TrimPrefix(r.Detail, "needs approval: "), ", ", " · ")
+			if hosts := strings.Split(strings.TrimPrefix(r.Detail, "needs approval: "), ", "); r.Level != doctor.OK && len(hosts) > 2 {
+				v = strings.Join(hosts[:2], " · ") + fmt.Sprintf("  +%d", len(hosts)-2)
+			}
 			vs := sSoft.Render(v)
 			if r.Level == doctor.OK {
 				vs = sDim.Render(v)
@@ -564,8 +570,13 @@ func (m model) viewSetup() string {
 		if s.cursor < len(rows) && rows[s.cursor].Level != doctor.OK {
 			agent := strings.TrimPrefix(rows[s.cursor].ID, "approval-")
 			svc := map[string]string{"claude": "Anthropic", "codex": "OpenAI", "cursor": "Cursor", "devin": "Devin", "opencode": "provider"}[agent]
-			L = append(L, "", card(sBold.Render("Approve your "+svc+" login for burner's "+setupAgentName[agent]+" kit"), "",
-				btn("a", "approve in sbx", true)+"  "+btn("s", "skip", false)))
+			hosts := strings.Split(strings.TrimPrefix(rows[s.cursor].Detail, "needs approval: "), ", ")
+			body := []string{sBold.Render("Approve your " + svc + " login for burner's " + setupAgentName[agent] + " kit"), ""}
+			for _, h := range hosts {
+				body = append(body, "  "+sSoft.Render(h))
+			}
+			body = append(body, "", btn("a", "approve in sbx", true)+"  "+btn("s", "skip", false))
+			L = append(L, "", card(body...))
 			keys = []string{"↑↓", "move", "a", "approve", "s", "skip", "n", "next", "esc", "back"}
 		}
 	case setupPrefs:
@@ -718,14 +729,37 @@ func (m model) viewSetup() string {
 	if s.err != "" {
 		L = append(L, "", sAmber.Render(s.err))
 	}
-	body := strings.Join(L, "\n")
-	pad := lipgloss.NewStyle().Padding(0, 2).Render(body)
-	used := lipgloss.Height(pad) + 4
-	if m.h > used {
-		pad += strings.Repeat("\n", m.h-used)
+	// Header: the logo, then the title, the step and the progress bar.
+	stepN, stepName := 0, ""
+	for i, st := range setupSteps {
+		if st == cur {
+			stepN, stepName = i+1, st
+		}
 	}
-	b.WriteString(pad + "\n")
-	b.WriteString(hints(keys...))
+	bar := ""
+	for i := range setupSteps {
+		if i < stepN {
+			bar += sAmber.Render("▰")
+		} else {
+			bar += sFaint.Render("▱")
+		}
+	}
+	title := []string{sBold.Render("burner") + "  " + sDim.Render(m.cfg.Version), "", sSoft.Render("Setup")}
+	if s.step == setupDone {
+		title = append(title, sAmber.Render("ready"))
+	} else {
+		title = append(title, sText.Render(strings.ToUpper(stepName[:1])+stepName[1:])+"  "+sDim.Render(fmt.Sprintf("%d of %d", stepN, len(setupSteps))), bar)
+	}
+	if m.checking || s.busy || s.loading {
+		title = append(title, sAmber.Render(m.spin())+" "+sDim.Render("working"))
+	}
+	logo := sAmber.Render(strings.Join(m.logoLines(), "\n"))
+	head := lipgloss.JoinHorizontal(lipgloss.Center, logo, "    ", strings.Join(title, "\n"))
+	rule := sFaint.Render(strings.Repeat("─", w))
+	inner := head + "\n\n" + rule + "\n\n" + strings.Join(L, "\n") + "\n\n" + rule + "\n" + strings.TrimLeft(hints(keys...), " ")
+	panel := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colLine).Padding(1, 2).Width(panelW - 2).Render(inner)
+	_ = right
+	b.WriteString(lipgloss.Place(m.w, m.h, lipgloss.Center, lipgloss.Center, panel))
 	return b.String()
 }
 

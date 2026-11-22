@@ -1,40 +1,40 @@
-Setup                                                            machine › agents › approvals › preferences › first run
-
-  ✓  sbx                      v0.54.0
-  ✓  Container runtime        docker 29.5.2
-  ✓  Docker buildx            available
-  !  Global network policy    not initialized
-  ✓  Free disk                14 GB free
-  ✓  GitHub login             signed in
-
-  ╭──────────────────────────────────────────────────────────────────────────────────╮
-  │ Global network policy                                                            │
-  │ $ sbx policy init deny-all                                                       │
-  │ applies to every sbx sandbox on this Mac, not only burner's                      │
-  │                                                                                  │
-  │  enter run    s skip                                                             │
-  ╰──────────────────────────────────────────────────────────────────────────────────╯
 
 
 
+                    ╭──────────────────────────────────────────────────────────────────────────────╮
+                    │                                                                              │
+                    │  ⠀⠀⠀⠀⠀⠀⣀⣀⣀⡀⠀⠀⣀⠀⠸⠿                                                            │
+                    │  ⠀⠀⢀⣤⣶⣿⣿⡿⠿⠀⣤⡼⠿⠃⠀⠀                                                            │
+                    │  ⠀⣰⣿⡿⠛⠉⠀⢠⣤⡀⠛⠃⠀⠀⠸⠿    burner  dev                                             │
+                    │  ⣰⣿⡟⠀⠀⢀⣀⣨⣏⣀⠀⠀⠸⠿⠇⠀                                                            │
+                    │  ⠛⠋⢀⣀⣾⡿⠿⠿⠿⠿⣿⣆⡀⠀⣶⣿    Setup                                                   │
+                    │  ⣶⣦⢸⣿⡇⢤⣄⠀⢀⣠⠄⣿⡿⢀⣿⣿    Machine  1 of 5                                         │
+                    │  ⠸⣿⣦⠘⢧⣈⣉⣀⣈⣉⣠⠟⢀⣾⣿⠇    ▰▱▱▱▱                                                   │
+                    │  ⠀⠘⢿⣷⣤⣈⠉⠉⠉⠉⣀⣤⡀⠙⠃⠀                                                            │
+                    │  ⠀⠀⠀⠉⠻⠿⣿⣿⣿⣿⠿⠛⠉⠀⠀⠀                                                            │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │                                                                              │
+                    │  ✓  sbx                      v0.54.0                                         │
+                    │  ✓  Container runtime        docker 29.5.2                                   │
+                    │  ✓  Docker buildx            available                                       │
+                    │  !  Global network policy    not initialized                                 │
+                    │  ✓  Free disk                14 GB free                                      │
+                    │  ✓  GitHub login             signed in                                       │
+                    │                                                                              │
+                    │  ╭────────────────────────────────────────────────────────────────────────╮  │
+                    │  │ Global network policy                                                  │  │
+                    │  │ $ sbx policy init deny-all                                             │  │
+                    │  │ applies to every sbx sandbox on this Mac, not only burner's            │  │
+                    │  │                                                                        │  │
+                    │  │  enter run    s skip                                                   │  │
+                    │  ╰────────────────────────────────────────────────────────────────────────╯  │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │  enter run the command  │  s skip  │  n next                                 │
+                    │                                                                              │
+                    ╰──────────────────────────────────────────────────────────────────────────────╯
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  enter run the command  │  s skip  │  n next
