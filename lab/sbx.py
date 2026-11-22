@@ -96,8 +96,10 @@ AGENTS: dict[str, Agent] = {
         acp=("env", "CLAUDE_CODE_EXECUTABLE=/home/agent/.local/bin/claude", "/home/agent/.local/bin/claude-agent-acp"),
         acp_install=(
             "set -euo pipefail; "
-            "command -v node >/dev/null || { sudo apt-get update -qq && "
-            "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs npm >/dev/null; }; "
+            # A fresh sandbox may still hold the apt lock from its own start.
+            "command -v node >/dev/null || { for i in $(seq 40); do "
+            "sudo apt-get -o DPkg::Lock::Timeout=120 update -qq && break; sleep 3; done; "
+            "sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y -qq nodejs npm >/dev/null; }; "
             # --ignore-scripts: verified to work without install scripts.
             'npm install -g --ignore-scripts --prefix "$HOME/.local" --no-fund --no-audit '
             "@agentclientprotocol/claude-agent-acp@0.109.1; "
@@ -131,8 +133,10 @@ AGENTS: dict[str, Agent] = {
         acp=("env", "CODEX_PATH=/usr/local/bin/codex", "/home/agent/.local/bin/codex-acp"),
         acp_install=(
             "set -euo pipefail; "
-            "command -v node >/dev/null || { sudo apt-get update -qq && "
-            "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs npm >/dev/null; }; "
+            # A fresh sandbox may still hold the apt lock from its own start.
+            "command -v node >/dev/null || { for i in $(seq 40); do "
+            "sudo apt-get -o DPkg::Lock::Timeout=120 update -qq && break; sleep 3; done; "
+            "sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=120 install -y -qq nodejs npm >/dev/null; }; "
             # --ignore-scripts: verified to work without install scripts.
             'npm install -g --ignore-scripts --prefix "$HOME/.local" --no-fund --no-audit '
             "@agentclientprotocol/codex-acp@2.9.0; "
