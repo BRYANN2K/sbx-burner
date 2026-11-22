@@ -59,7 +59,10 @@ func (m model) updateDoctor(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.newer != "" {
 			return m.updateOutcome()
 		}
-	case "a":
+	case "a", "enter":
+		if k.String() == "enter" && (d.cursor >= len(m.checks) || m.checks[d.cursor].Level == doctor.OK) {
+			return m, nil
+		}
 		if d.cursor < len(m.checks) {
 			c := m.checks[d.cursor]
 			switch {
@@ -75,7 +78,7 @@ func (m model) updateDoctor(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a := strings.TrimPrefix(c.ID, "agent-")
 				if argv := connectCommand(a); len(argv) > 0 {
 					_ = os.MkdirAll(sampleDir(), 0o755)
-					return m, execSetup("connect "+a, argv)
+					return m, connectCmd(a)
 				}
 			}
 		}
@@ -118,7 +121,7 @@ func (m model) updateDoctor(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.checking, d.checking = true, true
 			return m, m.runChecks()
 		}
-	case "esc", "enter":
+	case "esc":
 		m.scr = scrHome
 	case "q":
 		return m, tea.Quit
@@ -185,14 +188,14 @@ func (m model) viewDoctor() string {
 	if d.cursor < len(m.checks) && m.checks[d.cursor].Level != doctor.OK {
 		switch id := m.checks[d.cursor].ID; {
 		case strings.HasPrefix(id, "approval-"):
-			keys = append([]string{"a", "approve in sbx"}, keys...)
+			keys = append([]string{"enter", "approve in sbx"}, keys...)
 		case id == "policy":
-			keys = append([]string{"a", "set the policy"}, keys...)
+			keys = append([]string{"enter", "fix"}, keys...)
 		case strings.HasPrefix(id, "agent-"):
-			keys = append([]string{"a", "connect"}, keys...)
+			keys = append([]string{"enter", "sign in with your plan"}, keys...)
 		default:
 			if a, ok := pickAction(m.checks[d.cursor], d.chip); ok && len(a.Argv) > 0 {
-				keys = append([]string{"a", a.Label}, keys...)
+				keys = append([]string{"enter", a.Label}, keys...)
 			}
 			if len(m.checks[d.cursor].Actions) > 1 {
 				keys = append([]string{"←→", "choose"}, keys...)
