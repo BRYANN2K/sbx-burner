@@ -56,7 +56,21 @@ type fakeEngine struct {
 	runs    []engine.RunOptions
 	events  []events.Event
 	block   chan struct{}
+
+	scopeCalls []string
+	scopeOut   func(o engine.RunOptions, ref string, dry bool) ScopeResult
+	checkOut   ScopeResult
 }
+
+func (f *fakeEngine) ScopeNew(_ context.Context, o engine.RunOptions, ref string, dry bool) (ScopeResult, error) {
+	f.scopeCalls = append(f.scopeCalls, fmt.Sprintf("dry=%v ref=%s port=%s url=%s", dry, ref, o.TargetPort, o.TargetURL))
+	if f.scopeOut == nil {
+		return ScopeResult{Error: "no scope"}, nil
+	}
+	return f.scopeOut(o, ref, dry), nil
+}
+
+func (f *fakeEngine) ScopeCheck(context.Context, string) (ScopeResult, error) { return f.checkOut, nil }
 
 func (f *fakeEngine) Caps() Caps                                  { return f.caps }
 func (f *fakeEngine) ACPAgents(context.Context) ([]string, error) { return f.acp, nil }
@@ -698,5 +712,131 @@ func TestHeaderBoxGolden(t *testing.T) {
 	m.checking = true
 	if v := m.View(); !strings.Contains(v, "checking credentials") || strings.Contains(v, "recipes ") {
 		t.Fatal("header: no spinner while checking, or a recipes line")
+	}
+}
+
+func scopeDoc(auth map[string]any, host string) map[string]any {
+	return map[string]any{
+		"authorization": auth,
+		"valid":         map[string]any{"not_before": "2026-11-22", "not_after": "2026-12-22"},
+		"targets":       []any{map[string]any{"name": "localhost", "hosts": []any{host}}},
+		"network":       map[string]any{"mode": "strict", "allow": []any{}, "deny": []any{}},
+		"techniques":    map[string]any{"allowed": []any{"recon", "scan"}, "forbidden": []any{"dos"}},
+	}
+}
+
+// drain runs commands until the flow stops loading.
+func drain(t *testing.T, m model, cmd tea.Cmd) model {
+	t.Helper()
+	for i := 0; i < 10 && cmd != nil; i++ {
+		msg := cmd()
+		if b, ok := msg.(tea.BatchMsg); ok {
+			for _, c := range b {
+				if c != nil {
+					if mm, ok := c().(scopeMsg); ok {
+						nm, next := m.Update(mm)
+						m, cmd = nm.(model), next
+						goto next
+					}
+				}
+			}
+			return m
+		}
+		if msg == nil {
+			return m
+		}
+		{
+			nm, next := m.Update(msg)
+			m, cmd = nm.(model), next
+		}
+	next:
+	}
+	return m
+}
+
+func TestScopeStepCreatesFromTheTarget(t *testing.T) {
+	t.Setenv("BURNER_HOME", t.TempDir())
+	eng := &fakeEngine{scopeOut: func(o engine.RunOptions, ref string, dry bool) ScopeResult {
+		return ScopeResult{Path: "/home/tester/.burner/scopes/web-recon-localhost-8080.yaml", Written: !dry, Valid: true,
+			Summary: ScopeSummary{Hosts: []string{"localhost:8080"}, Auth: "own-lab", Days: 30},
+			Scope:   scopeDoc(map[string]any{"type": "own-lab"}, "localhost:8080")}
+	}}
+	m := testModel(t, eng)
+	m = press(t, m, "down", "right", "enter") // pentest › web-recon
+	m = press(t, m, "down", "enter", "enter") // image › name
+	m = typeText(m, "ghcr.io/me/app:1.0")
+	m = press(t, m, "enter")
+	m = typeText(m, "8080")
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = drain(t, nm.(model), cmd)
+	if m.flow.q == nil || m.flow.q.title != "Scope file" || m.flow.q.options[0].value != "create" {
+		t.Fatalf("question %+v", m.flow.q)
+	}
+	golden(t, "scope-options", m)
+	nm, cmd = m.Update(keyMsg("enter")) // create
+	m = drain(t, nm.(model), cmd)
+	if m.flow.q == nil || m.flow.q.kind != qPreview {
+		t.Fatalf("no preview: %+v", m.flow.q)
+	}
+	golden(t, "scope-preview", m)
+	m = press(t, m, "enter") // use
+	if got := m.flow.answers[len(m.flow.answers)-1].value; got != "/home/tester/.burner/scopes/web-recon-localhost-8080.yaml" {
+		t.Fatalf("scope answer %q", got)
+	}
+	if strings.Join(eng.scopeCalls, " | ") != "dry=true ref= port=8080 url= | dry=false ref= port=8080 url=" {
+		t.Fatalf("engine calls: %v", eng.scopeCalls)
+	}
+}
+
+func TestScopeStepAsksTheWrittenReferenceAndBlocksTODO(t *testing.T) {
+	t.Setenv("BURNER_HOME", t.TempDir())
+	eng := &fakeEngine{scopeOut: func(o engine.RunOptions, ref string, dry bool) ScopeResult {
+		r := ScopeResult{Path: "/s.yaml", Summary: ScopeSummary{Hosts: []string{"staging.acme.dev:443"}, Auth: "written", Days: 30},
+			Scope: scopeDoc(map[string]any{"type": "written", "reference": ref}, "staging.acme.dev:443"), Valid: ref != "" && !dry}
+		if !r.Valid {
+			r.Errors = []string{"authorization.reference: still a TODO(burner) value; edit it before using this scope"}
+		}
+		return r
+	}, checkOut: ScopeResult{Path: "/s.yaml", Valid: true, Scope: scopeDoc(map[string]any{"type": "written", "reference": "x"}, "staging.acme.dev:443")}}
+	m := testModel(t, eng)
+	m = press(t, m, "down", "right", "enter") // pentest › web-recon
+	m = press(t, m, "down", "down", "enter")  // url
+	m = typeText(m, "https://staging.acme.dev")
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = drain(t, nm.(model), cmd)
+	m = press(t, m, "enter") // create
+	if m.flow.q.title != "Written authorization" {
+		t.Fatalf("question %q", m.flow.q.title)
+	}
+	m = typeText(m, "contract-42")
+	nm, cmd = m.Update(keyMsg("enter"))
+	m = drain(t, nm.(model), cmd)
+	if m.flow.q.kind != qPreview || !strings.Contains(eng.scopeCalls[len(eng.scopeCalls)-1], "ref=contract-42") {
+		t.Fatalf("preview or reference missing: %v", eng.scopeCalls)
+	}
+	// An invalid scope cannot be used; editing then re-checks it.
+	m.flow.scopeRes.Valid = false
+	m = press(t, m, "enter")
+	if m.flow.q.kind != qPreview || m.flow.err == "" {
+		t.Fatal("an invalid scope was accepted")
+	}
+	nm, cmd = m.Update(editedMsg{path: "/s.yaml"})
+	m = nm.(model)
+	nm, _ = m.Update(cmd())
+	m = nm.(model)
+	if !m.flow.scopeRes.Valid {
+		t.Fatal("the edited scope was not re-checked")
+	}
+}
+
+func TestScopeStepListsSavedScopes(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("BURNER_HOME", home)
+	os.MkdirAll(filepath.Join(home, "scopes"), 0o700)
+	os.WriteFile(filepath.Join(home, "scopes", "web-recon-localhost-3000.yaml"), []byte("x"), 0o600)
+	os.WriteFile(filepath.Join(home, "scopes", "api-greybox-localhost-3000.yaml"), []byte("x"), 0o600)
+	saved := savedScopes(recipes()[2])
+	if len(saved) != 1 || filepath.Base(saved[0]) != "web-recon-localhost-3000.yaml" {
+		t.Fatalf("saved scopes: %v", saved)
 	}
 }

@@ -56,7 +56,9 @@ Usage:
   burner lint [recipe...]     check recipes against the contract
   burner agents [--json]      the agents the runner can launch
   burner eval [recipe]        check a recipe produces its evidence
-  burner scope <file> [--host H]
+  burner scope <file> [--host H] [--json]
+  burner scope new <recipe> --target-... [--owner N] [--auth own-lab|written --reference REF] [--days 30] [--out PATH] [--dry-run] [--json]
+                              write a scope for that recipe from the target (~/.burner/scopes)
   burner doctor [--json]
   burner answer <run-dir> <ask-id> <answer>   answer the agent from another terminal
   burner update [--check] [--install]   update recipe catalogs; check (or install) a new burner
@@ -142,6 +144,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		root, err := catalog.FindRoot(catalogFlag)
 		if err != nil {
 			return fail(stderr, exitNotReady, err)
+		}
+		if cmd == "scope" && len(rest) > 1 && rest[0] == "new" {
+			rest = scopeNewArgs(root, rest)
 		}
 		code, err := engine.Exec(ctx, root, append([]string{cmd}, absPaths(cmd, rest)...))
 		if err != nil {
@@ -552,10 +557,38 @@ func displayID(r catalog.Recipe) string {
 }
 
 // absPaths turns path arguments absolute: the engine runs in the catalog root.
+// scopeNewArgs resolves the recipe of `scope new` like `run` does, so user
+// and team recipes work too.
+func scopeNewArgs(root string, rest []string) []string {
+	recipes, _ := catalog.Load(root)
+	out := append([]string{}, rest...)
+	for i := 1; i < len(out); i++ {
+		if strings.HasPrefix(out[i], "-") {
+			if !strings.Contains(out[i], "=") && out[i] != "--dry-run" && out[i] != "--json" {
+				i++ // skip the flag's value
+			}
+			continue
+		}
+		if r, err := catalog.Find(recipes, out[i]); err == nil {
+			out[i] = r.EngineRef()
+		}
+		break
+	}
+	return out
+}
+
 func absPaths(cmd string, args []string) []string {
 	out := make([]string, len(args))
 	for i, a := range args {
 		out[i] = a
+		if i > 0 && args[i-1] == "--out" {
+			// The engine runs in the catalog root: a new output path must
+			// still land where the user is.
+			if abs, err := filepath.Abs(a); err == nil {
+				out[i] = abs
+			}
+			continue
+		}
 		if strings.HasPrefix(a, "-") {
 			continue
 		}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -34,5 +35,12 @@ func TestRunArgsMatchEngineFlags(t *testing.T) {
 		if !strings.Contains(args, want) {
 			t.Fatalf("missing %q in %q", want, args)
 		}
+	}
+}
+
+func TestScopeNewOutIsAbsolute(t *testing.T) {
+	got := absPaths("scope", []string{"new", "pentest/api-greybox", "--target-port", "3000", "--out", "rel/s.yaml"})
+	if !filepath.IsAbs(got[5]) || !strings.HasSuffix(got[5], "rel/s.yaml") {
+		t.Fatalf("--out not made absolute: %v", got)
 	}
 }

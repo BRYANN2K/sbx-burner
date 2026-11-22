@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, evals, lint, runner, sbx
+from . import __version__, evals, lint, runner, sbx, scope_new
 from . import scope as scope_mod
 from .recipe import RecipeError, discover, find
 from .sbx import AGENTS
@@ -193,8 +193,20 @@ def _cmd_scope(args: argparse.Namespace) -> int:
     try:
         scope = scope_mod.load(args.file, check_dates=not args.ignore_dates)
     except scope_mod.ScopeError as exc:
-        print(f"refused: {exc}", file=sys.stderr)
+        if args.json:
+            raw: dict = {}
+            try:
+                raw = scope_mod.load_raw(args.file)
+            except scope_mod.ScopeError:
+                pass
+            errors = [ln.strip().removeprefix("- ") for ln in str(exc).splitlines()[1:] if ln.strip()] or [str(exc)]
+            print(json.dumps({"path": str(args.file), "valid": False, "errors": errors, "todo": scope_mod.todo_fields(raw), "scope": raw}))
+        else:
+            print(f"refused: {exc}", file=sys.stderr)
         return runner.EXIT_REFUSED
+    if args.json:
+        print(json.dumps({"path": str(args.file), "valid": True, "errors": [], "todo": [], "scope": scope.raw}))
+        return 0
     policy = scope_mod.network_policy(scope)
     print(f"scope {scope.id}: valid {scope.not_before} to {scope.not_after}, mode {scope.mode}")
     print(f"  allow: {', '.join(policy['allow']) or 'nothing'}")
@@ -237,11 +249,91 @@ def build_parser() -> argparse.ArgumentParser:
     p_scope.add_argument("file")
     p_scope.add_argument("--host", action="append", help="check whether a host is in scope (repeatable)")
     p_scope.add_argument("--ignore-dates", action="store_true")
+    p_scope.add_argument("--json", action="store_true", help="print {valid, errors, todo, scope} as JSON")
     p_scope.set_defaults(func=_cmd_scope)
     return parser
 
 
+def scope_new_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="lab scope new", description="Write a scope file for one recipe from the target, using the recipe's scope.example.yaml."
+    )
+    p.add_argument("recipe", help="category/name, or a unique name")
+    p.add_argument("--target-url", metavar="URL", help="remote app: its host:port becomes the target (authorization written)")
+    p.add_argument("--target-port", metavar="N|HOST:CONTAINER", help="local port of the target: localhost:N")
+    p.add_argument("--target-image", metavar="REF|TAR", help="accepted for parity with run; the host comes from --target-port")
+    p.add_argument("--target-app", metavar="PATH|SRC[@REF]", help="accepted for parity with run; the host comes from --app-port")
+    p.add_argument("--app-port", metavar="N", help="port the app listens on: localhost:N")
+    p.add_argument("--target", metavar="PATH", help="code target: the recipe's example hosts are kept")
+    p.add_argument("--target-repo", metavar="SRC[@REF]", help="code target: the recipe's example hosts are kept")
+    p.add_argument("--owner", metavar="NAME", help="default: git config user.name")
+    p.add_argument("--auth", choices=("own-lab", "written"), help="default: own-lab for lab hosts, written for anything else")
+    p.add_argument("--reference", metavar="REF", help="the written authorization (link or id); required for --auth written")
+    p.add_argument("--days", type=int, default=30, help="valid from today for N days (default 30)")
+    p.add_argument("--out", metavar="PATH", type=Path, help="default: ~/.burner/scopes/<recipe>-<host>.yaml")
+    p.add_argument("--dry-run", action="store_true", help="show the scope, write nothing")
+    p.add_argument("--json", action="store_true", help="print {path, valid, errors, todo, notes, summary, scope}")
+    return p
+
+
+def _cmd_scope_new(argv: list[str]) -> int:
+    args = scope_new_parser().parse_args(argv)
+    try:
+        recipe = find(args.recipe)
+        data, notes = scope_new.generate(
+            recipe,
+            target_url=args.target_url,
+            target_port=args.target_port,
+            app_port=args.app_port,
+            owner=args.owner,
+            auth=args.auth,
+            reference=args.reference,
+            days=args.days,
+        )
+    except (RecipeError, scope_new.ScopeNewError) as exc:
+        if args.json:
+            print(json.dumps({"error": str(exc)}))
+        else:
+            print(f"refused: {exc}", file=sys.stderr)
+        return runner.EXIT_REFUSED
+    errors = scope_new.check(data)
+    text = scope_new.render(recipe, data)
+    path = args.out or scope_new.default_path(recipe, data)
+    written = False
+    if not args.dry_run:
+        try:
+            scope_new.write(path, text)
+            written = True
+        except FileExistsError:
+            print(f"refused: {path} exists; pick another --out", file=sys.stderr)
+            return runner.EXIT_REFUSED
+    result = {
+        "path": str(path),
+        "written": written,
+        "valid": not errors,
+        "errors": errors,
+        "todo": scope_new.todos(data),
+        "notes": notes,
+        "summary": scope_new.summary(data),
+        "scope": data,
+    }
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False))
+    else:
+        print(text if args.dry_run else f"wrote {path}")
+        for note in notes:
+            print(f"  note: {note}")
+        for err in errors:
+            print(f"  to fix: {err}")
+        if not errors:
+            print(f"ready: run {recipe.id} with --scope {path}")
+    return 0 if not errors else runner.EXIT_PREFLIGHT
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:2] == ["scope", "new"]:
+        return _cmd_scope_new(argv[2:])
     args = build_parser().parse_args(argv)
     return int(args.func(args))
 

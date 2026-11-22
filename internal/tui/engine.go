@@ -49,6 +49,11 @@ type Engine interface {
 	Run(ctx context.Context, o engine.RunOptions, onEvent func(events.Event), stderr io.Writer) (int, error)
 	// Note sends an operator note to a running agent (MidRunNotes).
 	Note(runsDir, runID, text string) error
+	// ScopeNew writes (or with dryRun only shows) a scope for the recipe
+	// and target in o: `lab scope new --json`.
+	ScopeNew(ctx context.Context, o engine.RunOptions, reference string, dryRun bool) (ScopeResult, error)
+	// ScopeCheck validates a scope file: `lab scope FILE --json`.
+	ScopeCheck(ctx context.Context, path string) (ScopeResult, error)
 }
 
 // realEngine drives `python -m lab` in the catalog root, and burner itself

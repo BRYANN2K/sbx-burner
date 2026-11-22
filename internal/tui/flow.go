@@ -2,7 +2,9 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/BRYANN2K/sbx-burner/internal/catalog"
 	"github.com/BRYANN2K/sbx-burner/internal/doctor"
 	"github.com/BRYANN2K/sbx-burner/internal/engine"
+	"github.com/BRYANN2K/sbx-burner/internal/sanitize"
 )
 
 // The flow asks only what the chosen recipe needs: target, scope, agent,
@@ -30,6 +33,7 @@ const (
 	qInput
 	qBrowse
 	qNotes
+	qPreview
 )
 
 type option struct {
@@ -49,6 +53,10 @@ type question struct {
 	dirs, files bool
 	types       []string
 	loading     string // shown with a spinner instead of the question
+	loader      string // what startLoad runs: models | scope-dry | scope-create
+	loadKey     string
+	loadOpts    engine.RunOptions
+	loadRef     string
 }
 
 type answer struct {
@@ -71,6 +79,13 @@ type flowModel struct {
 	notes  textarea.Model
 	br     *browser
 	err    string
+
+	scopeDry    *ScopeResult // scope new --dry-run for scopeDryKey
+	scopeDryKey string
+	scopeRes    *ScopeResult // the created scope for scopeResKey
+	scopeResKey string
+	scopeBusy   bool // checking the scope after an edit
+	inflight    map[string]bool
 
 	models        ModelList
 	modelsFor     string
@@ -107,7 +122,7 @@ var kindLabel = map[string]string{
 }
 
 func newFlow(r catalog.Recipe, cwd string, checks []doctor.Result, agents, acp []string) *flowModel {
-	f := &flowModel{r: r, cwd: cwd, checks: checks, agents: agents, acp: acp}
+	f := &flowModel{r: r, cwd: cwd, checks: checks, agents: agents, acp: acp, inflight: map[string]bool{}}
 	f.advance()
 	return f
 }
@@ -160,8 +175,7 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 			use = v
 		}
 		if use == "yes" {
-			v, ok := f.path(w, "scope", "Scope file", false, true, []string{".yaml", ".yml"},
-				"No scope yet? Copy "+r.Dir+"/scope.example.yaml and edit it.")
+			v, ok := f.scopeStep(w, o)
 			if !ok {
 				return
 			}
@@ -221,7 +235,7 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 		if v == "acp" {
 			o.ACP = true
 			if f.modelsFor != o.Agent || f.modelsLoading {
-				w.ask(question{section: "agent", title: "Model", loading: "asking " + o.Agent + " for its models…"})
+				w.ask(question{section: "agent", title: "Model", loader: "models", loading: "asking " + o.Agent + " for its models…"})
 				return
 			}
 			ml := f.models
@@ -357,6 +371,58 @@ func (f *flowModel) target(w *walker, kind string, o *engine.RunOptions) bool {
 	return true
 }
 
+// scopeStep: create a scope from the target (preview, edit), reuse a saved
+// one, browse, or type a path.
+func (f *flowModel) scopeStep(w *walker, o engine.RunOptions) (string, bool) {
+	key := scopeKey(o)
+	if f.scopeDry == nil || f.scopeDryKey != key {
+		w.ask(question{section: "scope", title: "Scope", loader: "scope-dry", loadKey: "dry\x00" + key, loadOpts: o, loading: "preparing a scope from your target…"})
+		return "", false
+	}
+	var opts []option
+	hint := ""
+	if f.scopeDry.Error == "" {
+		opts = append(opts, option{label: "Create from my target", value: "create", note: summaryLine(f.scopeDry.Summary)})
+	} else {
+		hint = "cannot create one: " + sanitize.Line(f.scopeDry.Error, 200)
+	}
+	saved := savedScopes(f.r)
+	if len(saved) > 0 {
+		opts = append(opts, option{label: "Reuse a saved scope", value: "saved", note: fmt.Sprintf("%d in ~/.burner/scopes", len(saved))})
+	}
+	opts = append(opts, option{label: "Browse…", value: "browse"}, option{label: "Type a path", value: "type"})
+	how, ok := w.ask(question{section: "scope", title: "Scope file", hint: hint, kind: qSelect, options: opts})
+	if !ok {
+		return "", false
+	}
+	switch how {
+	case "create":
+		ref := ""
+		if f.scopeDry.Summary.Auth == "written" {
+			ref, ok = w.ask(question{section: "scope", title: "Written authorization", kind: qInput,
+				hint:        "Link or id of the written authorization for " + strings.Join(f.scopeDry.Summary.Hosts, ", ") + ".",
+				placeholder: "https://… or a contract id", validate: nonEmpty})
+			if !ok {
+				return "", false
+			}
+		}
+		ckey := key + "\x00" + ref
+		if f.scopeRes == nil || f.scopeResKey != ckey {
+			w.ask(question{section: "scope", title: "Scope", loader: "scope-create", loadKey: "create\x00" + ckey, loadOpts: o, loadRef: ref, loading: "writing the scope…"})
+			return "", false
+		}
+		return w.ask(question{section: "scope", title: "Scope preview", kind: qPreview})
+	case "saved":
+		var so []option
+		for _, p := range saved {
+			so = append(so, option{label: filepath.Base(p), value: p})
+		}
+		return w.ask(question{section: "scope", title: "Saved scopes", hint: "~/.burner/scopes", kind: qSelect, options: so})
+	default:
+		return f.pathHow(w, "scope", "Scope file", how, false, true, []string{".yaml", ".yml"})
+	}
+}
+
 // path asks: this folder, browse, or type a path.
 func (f *flowModel) path(w *walker, section, title string, dirs, files bool, types []string, hint string) (string, bool) {
 	var opts []option
@@ -368,6 +434,11 @@ func (f *flowModel) path(w *walker, section, title string, dirs, files bool, typ
 	if !ok {
 		return "", false
 	}
+	return f.pathHow(w, section, title, how, dirs, files, types)
+}
+
+// pathHow asks the path itself once "here", "browse" or "type" is chosen.
+func (f *flowModel) pathHow(w *walker, section, title, how string, dirs, files bool, types []string) (string, bool) {
 	switch how {
 	case "here":
 		return f.cwd, true
@@ -454,6 +525,35 @@ type modelsMsg struct {
 
 func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 	f := m.flow
+	switch mm := msg.(type) {
+	case scopeMsg:
+		delete(f.inflight, mm.key)
+		res := mm.res
+		if mm.err != nil && res.Error == "" && res.Path == "" {
+			res.Error = mm.err.Error()
+		}
+		switch mm.kind {
+		case "dry":
+			f.scopeDry, f.scopeDryKey = &res, strings.TrimPrefix(mm.key, "dry\x00")
+		case "create":
+			f.scopeRes, f.scopeResKey = &res, strings.TrimPrefix(mm.key, "create\x00")
+		case "check":
+			f.scopeBusy = false
+			if f.scopeRes != nil && f.scopeResKey == mm.key {
+				res.Notes = f.scopeRes.Notes
+				f.scopeRes = &res
+			}
+			return m, nil
+		}
+		f.advance()
+		return m, tea.Batch(f.focusCmd(), m.startLoad())
+	case editedMsg:
+		if f.scopeRes != nil && f.scopeRes.Path == mm.path {
+			f.scopeBusy = true
+			return m, m.checkScope(mm.path, f.scopeResKey)
+		}
+		return m, nil
+	}
 	if mm, ok := msg.(modelsMsg); ok {
 		if mm.agent == f.modelsFor {
 			f.models, f.modelsLoading = mm.models, false
@@ -469,7 +569,7 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if isKey && k.String() == "esc" {
 			f.back()
 		}
-		return m, m.loadModels()
+		return m, m.startLoad()
 	}
 	if !isKey {
 		var cmd tea.Cmd
@@ -517,12 +617,30 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			f.record(v, v)
-			return m, f.focusCmd()
+			break
 		}
 		var cmd tea.Cmd
 		f.input, cmd = f.input.Update(msg)
 		f.err = ""
 		return m, cmd
+	case qPreview:
+		switch k.String() {
+		case "enter":
+			if f.scopeBusy || f.scopeRes == nil {
+				return m, nil
+			}
+			if !f.scopeRes.Valid {
+				f.err = "fix what is listed first: e opens the file"
+				return m, nil
+			}
+			f.record(f.scopeRes.Path, f.scopeRes.Path)
+		case "e":
+			if f.scopeRes != nil && f.scopeRes.Path != "" && !f.scopeBusy {
+				return m, editScope(f.scopeRes.Path)
+			}
+		case "q":
+			return m, tea.Quit
+		}
 	case qBrowse:
 		var p string
 		var picked bool
@@ -571,7 +689,7 @@ func (m model) updateFlow(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.plan.start(m)
 	}
 	if f.q.loading != "" {
-		return m, m.loadModels()
+		return m, m.startLoad()
 	}
 	return m, f.focusCmd()
 }
@@ -662,6 +780,14 @@ func (m model) viewFlow() string {
 	case q.kind == qNotes:
 		f.notes.SetWidth(inner - 2)
 		body = append(body, f.notes.View())
+	case q.kind == qPreview && f.scopeRes != nil:
+		body = append(body, previewLines(*f.scopeRes, inner-2)...)
+		if f.scopeBusy {
+			body = append(body, "", sAmber.Render(m.spin())+" "+sDim.Render("checking the scope"))
+		}
+		if f.err != "" {
+			body = append(body, "", sAmber.Render(f.err))
+		}
 	}
 	b.WriteString(box(w, strings.Join(body, "\n")) + "\n")
 
@@ -676,6 +802,8 @@ func (m model) viewFlow() string {
 		b.WriteString(hints(append(keys, "esc", "back")...))
 	case q.kind == qNotes:
 		b.WriteString(hints("enter", "continue", "opt+enter", "newline", "esc", "back"))
+	case q.kind == qPreview:
+		b.WriteString(hints("enter", "use", "e", "edit in $EDITOR", "esc", "back"))
 	case q.kind == qInput:
 		b.WriteString(hints("enter", "continue", "esc", "back", "ctrl+c", "quit"))
 	default:
