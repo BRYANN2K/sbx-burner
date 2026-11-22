@@ -643,7 +643,7 @@ func (l *liveModel) render(m model, w int) []string {
 		e := &l.log[i]
 		dynamic := (e.kind == "step" && e.ev.Status == "start") || (e.kind == "action" && !actionDone(e.ev))
 		if !dynamic && e.cache != nil && e.cacheW == w {
-			if e.kind == "agent.message" && len(out) > 0 && out[len(out)-1] != "" {
+			if gapBefore(e.kind) && len(out) > 0 && out[len(out)-1] != "" {
 				out = append(out, "")
 			}
 			out = append(out, e.cache...)
@@ -653,8 +653,8 @@ func (l *liveModel) render(m model, w int) []string {
 		if !dynamic {
 			e.cache, e.cacheW = lines, w
 		}
-		// The agent's text stands apart from the actions above it.
-		if e.kind == "agent.message" && len(out) > 0 && out[len(out)-1] != "" {
+		// Items stand apart, as in the mock: a blank line before each.
+		if gapBefore(e.kind) && len(out) > 0 && out[len(out)-1] != "" {
 			out = append(out, "")
 		}
 		out = append(out, lines...)
@@ -696,8 +696,8 @@ func (l *liveModel) renderEntry(m model, e entry2, w int) []string {
 			}
 			bar := sBlue.Render("▎") + " "
 			out = append(out, bar+sDim.Render(who))
-			for _, t := range wrap(ev.Text, w-3) {
-				out = append(out, bar+sSoft.Render(t))
+			for _, t := range renderMarkdown(ev.Text, w-3, sSoft) {
+				out = append(out, bar+t)
 			}
 			out = append(out, "")
 		case "action":
@@ -959,4 +959,13 @@ func (l *liveModel) activity() (n, done, failed int) {
 		}
 	}
 	return
+}
+
+// gapBefore: conversation items that get a blank line above them.
+func gapBefore(kind string) bool {
+	switch kind {
+	case "agent.message", "action", "agent.tool", "finding", "you", "done":
+		return true
+	}
+	return false
 }

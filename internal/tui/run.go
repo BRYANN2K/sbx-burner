@@ -362,11 +362,6 @@ func (m model) viewLive() string {
 
 	// Bottom: chat input, notices, keys.
 	var bottom []string
-	if l.opts.ACP && !l.finish && l.approval == nil {
-		l.chat.Width = max(10, w-8)
-		in := l.chat.View()
-		bottom = append(bottom, sBox.Width(w-2).Render(in))
-	}
 	if l.confirm && !l.finish {
 		bottom = append(bottom, box(w, sAmber.Render("Leave without waiting?")+"  "+sSoft.Render("The runner is destroying the sandbox; if you leave now it may remain.")))
 	}
@@ -395,9 +390,25 @@ func (m model) viewLive() string {
 		}
 	}
 	chatW := w - stepsW - sideW
+	// The chat input sits at the bottom of the conversation column.
+	input := ""
+	if l.opts.ACP && !l.finish && l.approval == nil {
+		l.chat.Width = max(10, chatW-10)
+		input = sBox.Width(chatW - 6).Render(l.chat.View())
+	}
+	convH := bodyH - 2
+	if input != "" {
+		convH -= lipgloss.Height(input)
+	}
 	convo := l.render(m, chatW-4)
 	convo = append(convo, l.cards(m, chatW-4)...)
-	conv := l.sc.view(convo, chatW-4, bodyH-2)
+	conv := l.sc.view(convo, chatW-4, max(3, convH))
+	if input != "" {
+		for len(conv) < max(3, convH) {
+			conv = append(conv, "")
+		}
+		conv = append(conv, strings.Split(input, "\n")...)
+	}
 
 	var cols []string
 	if showSteps {
@@ -530,11 +541,17 @@ func (l *liveModel) sideColumn(w int) string {
 		}
 		shown[e.ev.ID] = true
 		n++
-		sev := sAmber
-		if e.ev.Severity == "critical" || e.ev.Severity == "high" {
+		severity := e.ev.Severity
+		for j := i; severity == "" && j >= 0; j-- { // a later status may drop it
+			if l.log[j].kind == "finding" && l.log[j].ev.ID == e.ev.ID {
+				severity = l.log[j].ev.Severity
+			}
+		}
+		sev := sSoft
+		if severity == "critical" {
 			sev = sRed
 		}
-		lines = append(lines, kv(sAmber.Render("◆ ")+e.ev.ID, e.ev.Severity, sev))
+		lines = append(lines, kv(sAmber.Render("◆ ")+e.ev.ID, severity, sev))
 	}
 	if n == 0 {
 		lines = append(lines, sFaint.Render("none yet"))
@@ -625,8 +642,8 @@ func (l *liveModel) cards(m model, w int) []string {
 			body = append(body, "", strings.Join(keys, "   "))
 			return card(body...)
 		case isTurnAsk(a):
-			return card(sBold.Render(l.opts.Agent+" ended its turn"), "",
-				sSoft.Render("enter")+" "+sDim.Render("message")+"   "+sSoft.Render("f")+" "+sDim.Render("finish"))
+			// The keys are in the key bar only.
+			return card(sBold.Render(l.opts.Agent + " ended its turn"))
 		default:
 			return strings.Split(l.askBox(w), "\n")
 		}
@@ -642,8 +659,7 @@ func (l *liveModel) cards(m model, w int) []string {
 		if n == 1 {
 			word = "finding"
 		}
-		return card(sBold.Render(fmt.Sprintf("%d %s · report written", n, word)), "",
-			sSoft.Render("enter")+" "+sDim.Render("report")+"   "+sSoft.Render("h")+" "+sDim.Render("home"))
+		return card(sBold.Render(fmt.Sprintf("%d %s · report written", n, word)))
 	}
 	return nil
 }
