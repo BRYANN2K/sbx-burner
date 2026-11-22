@@ -1,0 +1,11 @@
+recipe: training/ctf-solver
+summary: >-
+  Two-challenge CTF (crypto, forensics) built into .build/ with random flags
+  per build and a hash-based check.sh.
+build: build.sh
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/.build/training-ctf-solver/ctf"]
+scope: scope.yaml
+needs: [python3]
+cost: medium

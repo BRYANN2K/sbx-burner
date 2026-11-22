@@ -1,0 +1,20 @@
+schema_version: "1"
+id: pg-ctf-solver
+owner: proving-ground
+authorization:
+  type: own-lab
+valid:
+  not_before: "2026-11-01"
+  not_after: "2027-10-31"
+targets:
+  - name: ctf-files
+    paths:
+      - /home/agent/target
+    notes: Handouts and check.sh built by build.sh, mounted read-only.
+network:
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  allowed: [ctf]
+  forbidden: [dos, brute-force, social-engineering, data-destruction, attack-infrastructure]
