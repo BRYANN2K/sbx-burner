@@ -1,0 +1,25 @@
+diff --git a/app/export.py b/app/export.py
+new file mode 100644
+index 0000000..65375f7
+--- /dev/null
++++ b/app/export.py
+@@ -0,0 +1,19 @@
++import hashlib
++import os
++import subprocess
++
++EXPORT_DIR = "/srv/exports"
++
++
++def read_export(name):
++    path = os.path.join(EXPORT_DIR, name)
++    with open(path, "rb") as fh:
++        return fh.read()
++
++
++def cache_key(owner, term):
++    return hashlib.md5(f"{owner}:{term}".encode()).hexdigest()
++
++
++def build_revision():
++    return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()

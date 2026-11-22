@@ -1,0 +1,30 @@
+schema_version: "1"
+name: pr-security-review
+category: devsecops
+scope: none
+
+variants:
+  linux:
+    status: beta
+    kit: kits/lab-tools
+    image: debian:stable-slim
+    sbxenv: sbxenv.yaml
+  macos:
+    status: planned
+
+run:
+  timeout_minutes: 30
+  target: required
+  # path: a local git repository, mounted read-only at /home/agent/target
+  # with the branch to review checked out.
+  # repo: a repository cloned on the host with the user's own git login
+  # (.git/config scrubbed), then mounted like a path; with --pr N the runner
+  # checks out the pull request head and exports the base ref.
+  targets: [path, repo]
+  snapshot: false
+  tools: tools/install.sh
+  shared_skills: [evidence-hygiene]
+  network:
+    # Nothing beyond the agent API (added by the runner). The review is
+    # offline: git and the agent reading the diff.
+    allow: []
