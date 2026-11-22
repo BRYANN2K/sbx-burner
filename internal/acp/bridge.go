@@ -64,10 +64,13 @@ type BridgeOptions struct {
 	Cwd        string // workspace path inside the sandbox
 	Transcript string // host path of the raw transcript (R12), in the run dir
 	Unattended bool   // no operator: never ask (model default, no follow-up turns)
-	Argv       []string
-	In         io.Reader // runner → bridge: {"t":"answer","id":...,"value":...}
-	Out        io.Writer // bridge → runner: event | ask | log lines
-	MaxTurns   int
+	// Probe: initialize and session/new only, write the model list next to
+	// the transcript, and stop. No prompt is sent.
+	Probe    bool
+	Argv     []string
+	In       io.Reader // runner → bridge: {"t":"answer","id":...,"value":...}
+	Out      io.Writer // bridge → runner: event | ask | log lines
+	MaxTurns int
 }
 
 // ModelsFile is written next to the transcript after session/new.
@@ -80,6 +83,9 @@ type Models struct {
 	Current string        `json:"current"`
 	Values  []ConfigValue `json:"values"`
 	Seen    string        `json:"seen"`
+	// Version is the agent's own version (ACP agentInfo), when it sent one:
+	// the cache is per agent version.
+	Version string `json:"version,omitempty"`
 }
 
 type bridge struct {
@@ -175,6 +181,9 @@ func RunBridge(ctx context.Context, o BridgeOptions) int {
 		return b.fatal(err)
 	}
 	b.writeModels()
+	if o.Probe {
+		return 0
+	}
 
 	// Speed: never turn on a paid fast mode; set it off when offered.
 	for _, opt := range c.Options {
@@ -317,10 +326,14 @@ func (b *bridge) readAnswers() {
 
 func (b *bridge) writeModels() {
 	opt, ok := b.client.Models()
-	if !ok || b.o.Transcript == "" {
+	if (!ok && !b.o.Probe) || b.o.Transcript == "" {
 		return
 	}
-	m := Models{Agent: b.o.Agent, Option: opt.ID, Current: opt.Current, Values: opt.Values, Seen: time.Now().UTC().Format(time.RFC3339)}
+	// A probe always writes: an agent with no model option has an empty list.
+	if opt.Values == nil {
+		opt.Values = []ConfigValue{}
+	}
+	m := Models{Agent: b.o.Agent, Option: opt.ID, Current: opt.Current, Values: opt.Values, Seen: time.Now().UTC().Format(time.RFC3339), Version: b.client.AgentVersion}
 	raw, _ := json.MarshalIndent(m, "", "  ")
 	_ = os.WriteFile(filepath.Join(filepath.Dir(b.o.Transcript), ModelsFile), raw, 0o600)
 }
