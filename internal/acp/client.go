@@ -364,10 +364,10 @@ func (c *Client) onNotification(m message) {
 		u.Text = sanitize.Text(content.Text, sanitize.MaxField)
 	case "tool_call", "tool_call_update":
 		u.ToolID = sanitize.Line(str("toolCallId"), 128)
-		u.Title = sanitize.Line(str("title"), 500)
+		u.Title = sanitize.Line(joinShellLines(str("title")), 500)
 		u.Status = sanitize.Line(str("status"), 20)
 		u.ToolKind = sanitize.Line(str("kind"), 20)
-		u.Command = sanitize.Line(toolCommand(p.Update["rawInput"]), 2000)
+		u.Command = sanitize.Line(joinShellLines(toolCommand(p.Update["rawInput"])), 2000)
 		u.Content = sanitize.Text(toolText(p.Update["content"]), 16<<10)
 		u.Output = sanitize.Text(rawOutput(p.Update["rawOutput"]), 16<<10)
 		var meta struct {
@@ -710,4 +710,37 @@ func rawOutput(raw json.RawMessage) string {
 		}
 	}
 	return ""
+}
+
+// joinShellLines puts a multi-line command on one line that still reads
+// as the same shell: lines are joined with " ; ", except after a line
+// that already continues (; && || | \ and the openers of a block), and a
+// trailing backslash joins with a space.
+func joinShellLines(cmd string) string {
+	if !strings.Contains(cmd, "\n") {
+		return cmd
+	}
+	var b strings.Builder
+	sep := ""
+	for _, line := range strings.Split(cmd, "\n") {
+		t := strings.TrimSpace(line)
+		if t == "" {
+			continue
+		}
+		b.WriteString(sep)
+		if strings.HasSuffix(t, "\\") {
+			b.WriteString(strings.TrimSpace(strings.TrimSuffix(t, "\\")))
+			sep = " "
+			continue
+		}
+		b.WriteString(t)
+		sep = " ; "
+		for _, end := range []string{";", "&&", "||", "|", "&", "{", "(", " do", " then", " else", " in"} {
+			if strings.HasSuffix(t, end) || t == strings.TrimSpace(end) {
+				sep = " "
+				break
+			}
+		}
+	}
+	return b.String()
 }

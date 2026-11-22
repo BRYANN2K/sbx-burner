@@ -329,3 +329,18 @@ func TestSetOptionTimesOut(t *testing.T) {
 		t.Fatalf("err=%v after %s", err, time.Since(start))
 	}
 }
+
+func TestJoinShellLines(t *testing.T) {
+	for in, want := range map[string]string{
+		"cd /home/agent/target\necho hi":    "cd /home/agent/target ; echo hi",
+		"a &&\nb ||\nc |\nd;\ne":            "a && b || c | d; e",
+		"gitleaks git \\\n  --redact .":     "gitleaks git --redact .",
+		"for f in a b; do\n  echo $f\ndone": "for f in a b; do echo $f ; done",
+		"if true; then\n  x\nelse\n  y\nfi": "if true; then x ; else y ; fi",
+		"single line":                       "single line",
+	} {
+		if got := joinShellLines(in); got != want {
+			t.Errorf("%q -> %q, want %q", in, got, want)
+		}
+	}
+}
