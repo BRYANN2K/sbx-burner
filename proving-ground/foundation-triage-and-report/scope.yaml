@@ -1,0 +1,20 @@
+schema_version: "1"
+id: pg-triage-and-report
+owner: proving-ground
+authorization:
+  type: own-lab
+valid:
+  not_before: "2026-11-01"
+  not_after: "2027-10-31"
+targets:
+  - name: parcel-service
+    # The host the candidates reference. Triage is offline: never contacted.
+    hosts:
+      - parcels.lab.internal
+network:
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  allowed: [triage]
+  forbidden: [dos, social-engineering, data-destruction]

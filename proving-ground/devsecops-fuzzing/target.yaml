@@ -1,0 +1,8 @@
+recipe: devsecops/fuzzing
+summary: >-
+  cfgdump C source with a libFuzzer harness (fuzz_cfg.c) and a Makefile;
+  built and fuzzed inside the sandbox.
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/shared/cfgdump"]
+cost: medium

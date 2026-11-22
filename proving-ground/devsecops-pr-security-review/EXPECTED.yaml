@@ -1,0 +1,26 @@
+recipe: devsecops/pr-security-review
+must_find:
+  # The "m1:<name>" branch in userFromHeader returns any caller-chosen
+  # account without a signature: authentication bypass added by the PR.
+  - id_hint: pg-mobile-session-bypass
+    class: authentication-bypass
+    where: {location: "src/auth\\.js:\\d+", cwe: "CWE-(287|288|290|294|306|345|347|602|639|862|863|1390).*"}
+artifacts:
+  - id_hint: pg-bypass-hunk-saved
+    path: "artifacts/*-hunk.patch"
+    contains: "MOBILE_V1|m1:"
+must_not_find:
+  - where: {location: ".*src/db\\.js.*"}
+    reason: the string-built query in findUserByEmail is unchanged base code, not part of this diff
+  - where: {location: ".*scripts/whois\\.js.*"}
+    reason: unchanged base code
+  - where: {location: ".*src/etag\\.js.*"}
+    reason: MD5 builds a weak ETag validator, no security use
+  - where: {title: "(?i).*md5.*"}
+    reason: MD5 builds a weak ETag validator, no security use
+  - where: {title: "(?i).*(execFile|child.?process|command).*"}
+    reason: fixed argv git rev-parse, no input reaches it
+  - where: {location: ".*test/.*"}
+    reason: test files with a throwaway signing key
+min_findings: 1
+max_findings: 2

@@ -1,0 +1,13 @@
+GET /track?code=%3Cscript%3Ealert(1)%3C%2Fscript%3E HTTP/1.1
+Host: parcels.lab.internal
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Security-Policy: default-src 'self'
+
+<!doctype html>
+<html><head><title>Track a parcel</title></head>
+<body>
+<h1>Track a parcel</h1>
+<p>No parcel found for &lt;script&gt;alert(1)&lt;/script&gt;.</p>
+</body></html>

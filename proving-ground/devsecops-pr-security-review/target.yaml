@@ -1,0 +1,11 @@
+recipe: devsecops/pr-security-review
+summary: >-
+  Node timesheet API as a git repo built into .build/: base branch main and a
+  checked-out pull-request branch with two commits (session handling, ETag
+  and version endpoint).
+build: build.sh
+runs:
+  - kind: path
+    args: ["--target", "proving-ground/.build/devsecops-pr-security-review/repo"]
+needs: [git]
+cost: small
