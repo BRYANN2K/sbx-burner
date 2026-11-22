@@ -129,7 +129,7 @@
       "additionalProperties": false
     },
     "agent.tool": {
-      "description": "A tool call by the agent with a one-line summary (command head, file path). Never secret values: the runner redacts the summary.",
+      "description": "A tool call by the agent with a one-line summary (the agent's description, else the command head or file path). Never secret values: the runner redacts the summary and detail. ACP runs add id (updates with the same id describe the same call), detail (the command) and status; tool \"output\" carries the call's last output lines in summary.",
       "type": "object",
       "required": [
         "schema_version",
@@ -175,6 +175,24 @@
           "type": "string",
           "maxLength": 4096,
           "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]*$"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "failed"
+          ]
         }
       },
       "additionalProperties": false
