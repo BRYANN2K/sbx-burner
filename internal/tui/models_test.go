@@ -23,7 +23,7 @@ func TestModelStepProbesWhenTheCacheIsEmpty(t *testing.T) {
 	eng := &fakeEngine{acp: []string{"codex"}, probed: ModelList{Known: true, Current: "gpt-6.2-sol",
 		Values: []Model{{"gpt-6.2-sol", "6.2 Sol"}, {"gpt-6-luna", "6 Luna"}}}}
 	m, probe := toModelStep(t, eng)
-	if probe == nil || m.flow.q.title != "Model" || len(m.flow.q.options) != 1 || m.flow.q.options[0].value != "" {
+	if probe == nil || m.flow.q.title != "Model" || len(m.flow.q.options) != 2 || m.flow.q.options[0].value != "" || m.flow.q.options[1].value != otherModel {
 		t.Fatalf("expected default only while probing: %+v", m.flow.q)
 	}
 	if !strings.Contains(m.View(), "asking codex for its models… (first time ~1 min)") {
@@ -32,7 +32,7 @@ func TestModelStepProbesWhenTheCacheIsEmpty(t *testing.T) {
 	golden(t, "agent-models-probing", m)
 	nm, _ := m.Update(probe())
 	m = nm.(model)
-	if len(eng.probes) != 1 || eng.probes[0] != "codex" || len(m.flow.q.options) != 3 || strings.Contains(m.View(), "asking codex") {
+	if len(eng.probes) != 1 || eng.probes[0] != "codex" || len(m.flow.q.options) != 4 || strings.Contains(m.View(), "asking codex") {
 		t.Fatalf("probe result not shown: %v %+v", eng.probes, m.flow.q.options)
 	}
 }
@@ -54,7 +54,7 @@ func TestModelProbeFailureShowsTheSignInHint(t *testing.T) {
 	if again != nil && len(eng.probes) > 1 {
 		t.Fatal("probed twice")
 	}
-	if len(m.flow.q.options) != 1 || !strings.Contains(m.View(), "no openai credential stored for codex") {
+	if len(m.flow.q.options) != 2 || !strings.Contains(m.View(), "no openai credential stored for codex") {
 		t.Fatalf("no hint, or not default only: %+v", m.flow.q.options)
 	}
 	m = press(t, m, "enter")

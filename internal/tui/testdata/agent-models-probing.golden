@@ -8,11 +8,11 @@ devsecops/secrets-scan · /tmp/burner-tui-golden · codex      target › agent 
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ Model                                                                                                                │
 │                                                                                                                      │
-│ ❯ Agent default                 default                                                                              │
+│ ❯ default (recommended)                                                                                              │
+│   Other model…                  type a model id                                                                      │
 │                                                                                                                      │
 │ ⠋ asking codex for its models… (first time ~1 min)                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
 
 
 

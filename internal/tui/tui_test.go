@@ -445,7 +445,7 @@ func TestFlowACPShowsModeModelAndPermissions(t *testing.T) {
 	golden(t, "agent-models-loading", m)
 	nm, _ = m.Update(cmd())
 	m = nm.(model)
-	if m.flow.q.title != "Model" || len(m.flow.q.options) != 3 || m.flow.q.options[0].value != "" {
+	if m.flow.q.title != "Model" || len(m.flow.q.options) != 4 || m.flow.q.options[0].value != "" {
 		t.Fatalf("question %+v", m.flow.q)
 	}
 	golden(t, "agent-models", m)

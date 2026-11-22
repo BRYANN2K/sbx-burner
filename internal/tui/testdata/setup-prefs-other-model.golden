@@ -1,0 +1,40 @@
+
+
+
+
+                    ╭──────────────────────────────────────────────────────────────────────────────╮
+                    │                                                                              │
+                    │  burner dev · Setup · Preferences 4 of 5 ▰▰▰▰▱                               │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │                                                                              │
+                    │    Default agent    claude   codex   cursor   devin   opencode               │
+                    │                                                                              │
+                    │  ❯ Model            default   sonnet                                         │
+                    │                    ❯ claude-mythos-5-2                                       │
+                    │                                                                              │
+                    │    Mode             ACP   Interactive                                        │
+                    │                                                                              │
+                    │    Permissions      auto   ask me                                            │
+                    │                                                                              │
+                    │    After the run    burn   keep                                              │
+                    │                                                                              │
+                    │    Runs folder      ~/.burner/runs                                           │
+                    │                                                                              │
+                    │    saved to  ~/.burner/config.yaml                                           │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │                                                                              │
+                    │  ──────────────────────────────────────────────────────────────────────────  │
+                    │  enter use this model  │  esc cancel                                         │
+                    │                                                                              │
+                    ╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
