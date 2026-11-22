@@ -1,0 +1,4 @@
+# Hosts that must be blocked. One per line; blank lines and # comments are ignored.
+# Each one is contacted once over HTTPS. Add only hosts you accept to contact.
+example.com
+example.org

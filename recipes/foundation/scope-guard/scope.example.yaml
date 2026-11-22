@@ -1,0 +1,29 @@
+# Copy to scope.yaml, edit the dates, then:
+#   python -m lab run foundation/scope-guard --scope scope.yaml
+schema_version: "1"
+id: scope-guard-check
+owner: Your Name
+authorization:
+  # own-lab: targets you start yourself (localhost, private IPs, .test, .internal, .lab).
+  type: own-lab
+valid:
+  not_before: "2026-11-01"
+  not_after: "2026-12-31"
+targets:
+  - name: local-web
+    # The agent starts a static file server here inside the sandbox.
+    hosts:
+      - localhost:8080
+  - name: lab-network
+    # Wildcards are recorded but not probed: there is no name to resolve.
+    hosts:
+      - "*.lab.internal"
+network:
+  # strict: only the hosts in this file, the agent API and the recipe's tool
+  # hosts are reachable (needs the global sbx policy set to deny-all).
+  mode: strict
+  allow: []
+  deny: []
+techniques:
+  allowed: [recon]
+  forbidden: [scan, exploit, dos, social-engineering, data-destruction]
