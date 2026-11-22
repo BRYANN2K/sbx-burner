@@ -48,7 +48,8 @@ type liveModel struct {
 	ch      chan tea.Msg
 	stderr  *tail
 	sc      scroller
-	dropped int // log entries dropped by the cap
+	failed  string // last failed step, for its full log
+	dropped int    // log entries dropped by the cap
 	finds   map[string]string
 	blocked int
 	warn    string
@@ -60,6 +61,8 @@ type entry2 struct {
 	text string
 
 	closeTotal, closeDone, closeFail int // folded policy-close steps
+
+	errLine string // a failed step's last error line
 
 	cache  []string // rendered lines for cacheW
 	cacheW int
@@ -142,12 +145,20 @@ func (l *liveModel) add(e events.Event) {
 			l.log = append(l.log, entry2{kind: "step", ev: e})
 			return
 		}
+		errLine := ""
+		if e.Status == "fail" {
+			l.failed = e.Name
+			if text, err := readTail(stepLogPath(l.runDir(), e.Name)); err == nil {
+				errLine = lastError(text)
+			}
+		}
 		if i, ok := l.stepAt[e.Name]; ok && l.log[i].ev.Status == "start" {
 			l.log[i].ev = e
+			l.log[i].errLine = errLine
 			l.log[i].cache = nil
 			return
 		}
-		l.log = append(l.log, entry2{kind: "step", ev: e})
+		l.log = append(l.log, entry2{kind: "step", ev: e, errLine: errLine})
 	case "finding":
 		l.finds[e.ID] = e.Status
 		l.log = append(l.log, entry2{kind: e.Type, ev: e})
@@ -322,6 +333,14 @@ func (m model) updateLive(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if l.done != nil {
 					m.report = newReport(l.done.Report, l.runDir(), l.runsDir, l.exit, l.ended.Sub(l.started))
 					m.scr = scrReport
+				} else if l.failed != "" && k == "enter" {
+					m.logv = newLogView(l.failed, stepLogPath(l.runDir(), l.failed))
+					m.scr = scrLog
+				}
+			case "l":
+				if l.failed != "" {
+					m.logv = newLogView(l.failed, stepLogPath(l.runDir(), l.failed))
+					m.scr = scrLog
 				}
 			case "q", "esc":
 				return m, tea.Quit
@@ -468,8 +487,12 @@ func (m model) viewLive() string {
 	status := header(w-2, "  "+sDim.Render(truncate(l.runDir(), w/2)), sDim.Render(l.counts()))
 	bottom = append(bottom, status)
 	switch {
+	case l.finish && l.done != nil && l.failed != "":
+		bottom = append(bottom, hints("enter", "report", "l", "failed step log", "↑↓ pgup pgdn", "scroll", "q", "quit"))
 	case l.finish && l.done != nil:
 		bottom = append(bottom, hints("enter", "report", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "shift+drag", "select text", "q", "quit"))
+	case l.finish && l.failed != "":
+		bottom = append(bottom, hints("enter", "full log", "↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "q", "quit"))
 	case l.finish:
 		bottom = append(bottom, hints("↑↓ pgup pgdn", "scroll", "w", wrapLabel(l.sc.wrap), "q", "quit"))
 	case l.confirm:
@@ -585,6 +608,9 @@ func (l *liveModel) renderEntry(m model, e entry2, w int) []string {
 				line += " " + sDim.Render(ev.Detail)
 			}
 			out = append(out, line)
+			if e.errLine != "" {
+				out = append(out, "    "+sDim.Render("└ ")+sAmber.Render(e.errLine))
+			}
 		case "agent.message":
 			for _, t := range wrap(ev.Text, w-4) {
 				out = append(out, "  "+sSoft.Render(t))

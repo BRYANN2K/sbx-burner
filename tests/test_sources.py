@@ -417,3 +417,41 @@ def test_detect_stack_refuses_a_manifest_linking_outside(tmp_path):
     (app / "package.json").symlink_to(outside)
     with pytest.raises(sources.SourceError):
         sources.detect_stack(app)
+
+
+def test_copy_app_refuses_a_source_holding_the_destination(tmp_path):
+    (tmp_path / "package.json").write_text("{}")
+    with pytest.raises(sources.SourceError, match="contains burner's runs folder"):
+        sources.copy_app(tmp_path, tmp_path / "runs" / "r1" / "workspace" / "app")
+
+
+def test_copy_app_skips_sockets_and_fifos(tmp_path):
+    import socket
+
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.py").write_text("x")
+    os.mkfifo(src / "pipe")
+    sock = socket.socket(socket.AF_UNIX)
+    sock_path = src / "s.sock"
+    try:
+        sock.bind(str(sock_path))
+    except OSError:
+        sock = None  # path too long on some hosts; the FIFO still covers it
+    try:
+        count = sources.copy_app(src, tmp_path / "dst")
+    finally:
+        if sock:
+            sock.close()
+    assert count == 1
+    assert (tmp_path / "dst" / "app.py").is_file()
+    assert not (tmp_path / "dst" / "pipe").exists() and not (tmp_path / "dst" / "s.sock").exists()
+
+
+def test_copy_app_caps_total_size(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "big.bin").write_bytes(b"x" * 4096)
+    monkeypatch.setattr(sources, "APP_COPY_MAX_BYTES", 1024)
+    with pytest.raises(sources.SourceError, match="MiB to copy"):
+        sources.copy_app(src, tmp_path / "dst")

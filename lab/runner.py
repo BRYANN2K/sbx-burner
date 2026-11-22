@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import agent_stream, report, sanitize, sbx, sources
+from . import agent_stream, report, sanitize, sbx, sbx_diag, sources
 from . import ask as ask_mod
 from . import events as events_mod
 from . import evidence as evidence_mod
@@ -491,6 +491,8 @@ def build_plan(
     now = now or _dt.datetime.now()
     run_id = f"{_stamp(now)}-{recipe.name}"
     run_dir = (runs_dir or repo_root / "runs") / run_id
+    if kind == "app" and app_src_path is not None and sources._contains(app_src_path, run_dir):
+        raise Refused(f"--target-app {app_src_path}: {sources.RUNS_INSIDE_APP}")
     sandbox = f"lab-{recipe.name}"[:48].rstrip("-") + f"-{now.strftime('%H%M%S')}"
     # --target-port opens localhost:HOST inside the sandbox: the scope file
     # is never rewritten; the in-memory copy (mirrored to .lab/scope.json)
@@ -553,6 +555,8 @@ def build_plan(
         target_info["url"] = f"http://localhost:{app_port}"
         target_info["port"] = app_port
         target_info["cmd"] = app_cmd or "(detected by target-app-prepare)"
+        target_info["install"] = app_install or ""
+        target_info["health"] = app_health or "/"
         if detected.get("ecosystem"):
             target_info["stack"] = detected["ecosystem"]
         if app_src_path is not None:
@@ -1119,6 +1123,7 @@ def render_plan(plan: Plan) -> str:
         f"  run dir:   {plan.run_dir}",
         f"  scope:     {plan.scope.id if plan.scope else 'none'}",
         f"  target:    {_target_summary(plan)}",
+        *_app_lines(plan),
         f"  allow:     {', '.join(plan.policy['allow']) or 'nothing'}",
         f"  deny:      {', '.join(plan.policy['deny']) or 'nothing extra'}",
         "",
@@ -1134,6 +1139,18 @@ def render_plan(plan: Plan) -> str:
     if plan.notes:
         out += ["", "Notes:"] + [f"  - {n}" for n in plan.notes]
     return "\n".join(out)
+
+
+def _app_lines(plan: Plan) -> list[str]:
+    """How the app will be installed and started, so it is checked before Run."""
+    if plan.target_kind != "app":
+        return []
+    info = plan.target_info
+    parts = [info.get("stack") or "app"]
+    if info.get("install"):
+        parts.append(f"install: {info['install']}")
+    parts += [f"start: {info.get('cmd')}", f"port {info.get('port')}", f"health {info.get('health') or '/'}"]
+    return ["  app run:   " + " · ".join(str(p) for p in parts)]
 
 
 def _target_summary(plan: Plan) -> str:
@@ -1745,6 +1762,12 @@ def execute_plan(
         except subprocess.TimeoutExpired:
             rc, out, err = 124, "", f"timed out after {step.timeout}s"
         transcript.append({"step": step.name, "argv": step.argv, "exit_code": rc})
+        if rc != 0 and not step.expect_fail and step.argv and Path(step.argv[0]).name == "sbx":
+            # sbx often says only "failed to run sandbox container": add
+            # the daemon's own ERROR lines for this sandbox (best effort).
+            diag = sbx_diag.diagnose(plan.sandbox)
+            if diag:
+                err = (err or "") + "\n--- sbx daemon ---\n" + "\n".join(diag) + "\n"
         agent_text = step.name == "agent"
         safe_out, _ = evidence_mod.redact(out or "", plan.app_env_values, seeds, agent_text)
         safe_err, _ = evidence_mod.redact(err or "", plan.app_env_values, seeds, agent_text)

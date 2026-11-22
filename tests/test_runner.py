@@ -981,3 +981,21 @@ def test_devin_plan_uses_the_builtin_workload(make_recipe, repo, tmp_path):
     assert "devin" in create
     agent = _argv(plan, "agent")
     assert "--permission-mode" in agent and "dangerous" in agent and "-p" in agent
+
+
+def test_app_folder_holding_the_runs_dir_is_refused(make_recipe, repo, tmp_path):
+    # Bryan's run: started from the catalog folder, the app target was the
+    # cwd, which holds runs/ — the copy recursed into itself.
+    recipe = _image_recipe(make_recipe, "app")
+    (tmp_path / "app.py").write_text("print('x')\n")
+    (tmp_path / "requirements.txt").write_text("flask\n")
+    with pytest.raises(runner.Refused, match="contains burner's runs folder"):
+        runner.build_plan(recipe, runs_dir=tmp_path / "runs", now=NOW, repo_root=repo, target_app=str(tmp_path), app_port=8000)
+
+
+def test_plan_shows_how_the_app_starts(make_recipe, repo, tmp_path):
+    recipe = _image_recipe(make_recipe, "app")
+    plan = _plan(recipe, repo, tmp_path, target_app=str(_app_dir(tmp_path)))
+    line = next(ln for ln in runner.render_plan(plan).splitlines() if ln.startswith("  app run:"))
+    assert "start: npm start" in line or "start: " in line
+    assert f"port {plan.target_info['port']}" in line and "health /" in line

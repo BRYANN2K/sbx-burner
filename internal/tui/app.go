@@ -69,6 +69,7 @@ const (
 	scrReport
 	scrDoctor
 	scrNew
+	scrLog
 )
 
 type model struct {
@@ -95,6 +96,7 @@ type model struct {
 	report *reportModel
 	doc    doctorModel
 	newr   *newModel
+	logv   *logModel
 
 	out Outcome
 }
@@ -193,6 +195,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateDoctor(msg)
 	case scrNew:
 		return m.updateNew(msg)
+	case scrLog:
+		return m.updateLog(msg)
 	}
 	return m, nil
 }
@@ -217,6 +221,8 @@ func (m model) View() string {
 		v = m.viewDoctor()
 	case scrNew:
 		v = m.viewNew()
+	case scrLog:
+		v = m.viewLog()
 	}
 	return paintBG(fit(v, m.w, m.h), m.w)
 }
