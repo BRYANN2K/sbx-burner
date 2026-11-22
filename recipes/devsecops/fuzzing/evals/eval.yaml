@@ -1,0 +1,38 @@
+# Checks that a run of this recipe produced its evidence.
+#   python -m lab eval devsecops/fuzzing                 # golden fixture (CI)
+#   python -m lab eval devsecops/fuzzing --run runs/<id> # a real run
+description: >-
+  Golden from a --demo run against the bundled fixtures: the agent reports
+  one crash per track — the C off-by-one write and the Go index-out-of-range
+  panic — each with a minimised reproducer and a classifying stack.
+fixture: fixtures/golden
+checks:
+  - type: tool_ran
+    name: libFuzzer
+  - type: tool_ran
+    name: go
+  - type: min_findings
+    count: 1
+    where: {tool: "libFuzzer|afl\\+\\+", rule: stack-buffer-overflow}
+  - type: min_findings
+    count: 1
+    where: {tool: go-fuzz, rule: "panic:.*"}
+  - type: min_findings
+    count: 2
+  - type: artifact_exists
+    path: artifacts/crash-*
+  - type: artifact_exists
+    path: artifacts/*-stack.txt
+  - type: artifact_contains
+    path: artifacts/*-stack.txt
+    pattern: "record\\.c:28|field\\.go:24"
+  - type: artifact_contains
+    path: artifacts/c-fuzz-log.txt
+    pattern: "stat::number_of_executed_units|execs_done"
+  - type: metric
+    name: unique_crashes
+    min: 2
+  - type: metric
+    name: execs
+    min: 1
+  - type: no_demotions

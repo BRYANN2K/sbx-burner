@@ -1,0 +1,28 @@
+--- FAIL: FuzzParseField (0.00s)
+    --- FAIL: FuzzParseField/f350e10888894dcf (0.00s)
+panic: runtime error: index out of range [0] with length 0 [recovered]
+	panic: runtime error: index out of range [0] with length 0
+
+goroutine 19 [running]:
+testing.tRunner.func1.2({0x1e0800, 0x40000fa048})
+	/usr/lib/go-1.24/src/testing/testing.go:1734 +0x1ac
+testing.tRunner.func1()
+	/usr/lib/go-1.24/src/testing/testing.go:1737 +0x334
+panic({0x1e0800?, 0x40000fa048?})
+	/usr/lib/go-1.24/src/runtime/panic.go:792 +0x124
+example.test/labfuzz.ParseField({0x40000822f9, 0x2})
+	/work/fixtures/go-target/field.go:24 +0xf4
+example.test/labfuzz.FuzzParseField.func1(0x40000a6700, {0x40000822f9?, 0x0?})
+	/work/fixtures/go-target/field_test.go:22 +0x2c
+reflect.Value.call({0x1b7760?, 0x2041e8?, 0x4000089e38?}, {0x1f3441, 0x4}, {0x40000930e0, 0x2, 0x104f40?})
+	/usr/lib/go-1.24/src/reflect/value.go:584 +0x978
+reflect.Value.Call({0x1b7760?, 0x2041e8?, 0x0?}, {0x40000930e0?, 0x1f22e0?, 0x260d0f?})
+	/usr/lib/go-1.24/src/reflect/value.go:368 +0x94
+testing.(*F).Fuzz.func1.1(0x40000a6700?)
+	/usr/lib/go-1.24/src/testing/fuzz.go:340 +0x258
+testing.tRunner(0x40000a6700, 0x400009e090)
+	/usr/lib/go-1.24/src/testing/testing.go:1792 +0xe4
+created by testing.(*F).Fuzz.func1 in goroutine 18
+	/usr/lib/go-1.24/src/testing/fuzz.go:327 +0x4e4
+FAIL	example.test/labfuzz	0.010s
+FAIL
