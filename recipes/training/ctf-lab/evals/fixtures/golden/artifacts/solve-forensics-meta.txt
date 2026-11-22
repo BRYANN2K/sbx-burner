@@ -1,0 +1,4 @@
+$ exiftool -s3 -Comment photo.png | base64 -d
+photo.png: PNG image data, 16 x 16, 8-bit grayscale, non-interlaced
+flag{c02d****}
+OK forensics-meta

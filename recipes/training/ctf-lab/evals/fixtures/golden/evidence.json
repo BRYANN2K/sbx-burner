@@ -1,0 +1,74 @@
+{
+  "schema_version": "1",
+  "recipe": "training/ctf-lab",
+  "scope_id": "ctf-lab-local",
+  "summary": "Built the CTF (3 challenges, random flags) with fixtures/build.sh and started web-idor on localhost:8081. All three challenges were solved from their handouts the intended way and check.sh accepted each flag. check.sh rejected a wrong flag (exit 1) and an unknown challenge (exit 2). reset.sh removed the build directory and closed port 8081. No defect found. Not covered: flag uniqueness across two builds.",
+  "tools_run": [
+    {
+      "name": "build.sh",
+      "command": "bash fixtures/build.sh",
+      "exit_code": 0,
+      "output": "artifacts/build.log"
+    },
+    {
+      "name": "serve.sh",
+      "command": "bash fixtures/serve.sh start",
+      "exit_code": 0,
+      "output": "artifacts/build.log"
+    },
+    {
+      "name": "check.sh",
+      "command": "printf '%s\\n' \"$flag\" | bash fixtures/check.sh web-idor -",
+      "exit_code": 0,
+      "output": "artifacts/solve-web-idor.txt"
+    },
+    {
+      "name": "check.sh",
+      "command": "printf '%s\\n' \"$flag\" | bash fixtures/check.sh crypto-xor -",
+      "exit_code": 0,
+      "output": "artifacts/solve-crypto-xor.txt"
+    },
+    {
+      "name": "exiftool",
+      "version": "13.55",
+      "command": "exiftool -s3 -Comment ctf-build/handout/forensics-meta/photo.png",
+      "exit_code": 0,
+      "output": "artifacts/solve-forensics-meta.txt"
+    },
+    {
+      "name": "check.sh",
+      "command": "printf '%s\\n' \"$flag\" | bash fixtures/check.sh forensics-meta -",
+      "exit_code": 0,
+      "output": "artifacts/solve-forensics-meta.txt"
+    },
+    {
+      "name": "check.sh",
+      "command": "printf '%s\\n' 'flag{wrong}' | bash fixtures/check.sh web-idor -",
+      "exit_code": 1,
+      "output": "artifacts/checker-negative.txt"
+    },
+    {
+      "name": "reset.sh",
+      "command": "bash fixtures/reset.sh",
+      "exit_code": 0,
+      "output": "artifacts/reset.txt"
+    }
+  ],
+  "findings": [],
+  "hypotheses": [],
+  "artifacts": [
+    {"path": "artifacts/build.log", "description": "Build output, server start and the handout file list"},
+    {"path": "artifacts/solve-web-idor.txt", "description": "IDOR solve over HTTP and checker verdict, flag masked"},
+    {"path": "artifacts/solve-crypto-xor.txt", "description": "Known-plaintext XOR solve and checker verdict, flag masked"},
+    {"path": "artifacts/solve-forensics-meta.txt", "description": "PNG text chunk solve and checker verdict, flag masked"},
+    {"path": "artifacts/checker-negative.txt", "description": "Checker rejecting a wrong flag and an unknown challenge"},
+    {"path": "artifacts/solvable.jsonl", "description": "One JSON line per challenge with its checker verdict"},
+    {"path": "artifacts/reset.txt", "description": "Reset output: build directory absent, port closed"}
+  ],
+  "metrics": {
+    "challenges": 3,
+    "solvable": 3,
+    "checker_rejects_wrong_flag": 1,
+    "reset_clean": 1
+  }
+}
