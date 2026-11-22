@@ -1,2 +1,0 @@
-flag{7704****}
-OK web-idor

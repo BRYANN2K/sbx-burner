@@ -1,6 +1,0 @@
-$ printf %s <wrong flag> | check.sh web-idor -
-WRONG web-idor
-exit: 1
-$ check.sh no-such-challenge x
-UNKNOWN no-such-challenge
-exit: 2

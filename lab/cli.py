@@ -37,7 +37,6 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
         "--target-port", metavar="N|HOST:CONTAINER", help="run --target-image as an app on localhost (only with --target-image)"
     )
     parser.add_argument("--target-url", metavar="URL", help="remote app to test; must be http(s) and authorized by --scope")
-    parser.add_argument("--demo", action="store_true", help="start the recipe's bundled demo target (run.demo)")
     parser.add_argument("--acp", action="store_true", help="drive the agent over ACP through burner (burner run --acp)")
     parser.add_argument("--model", metavar="ID", help="model id offered by the agent over ACP (needs --acp)")
     parser.add_argument("--permission", choices=("auto", "ask"), default="auto", help="ACP permissions: auto-allow (logged) or ask")
@@ -80,7 +79,6 @@ def _run(recipe_ref: str, args: argparse.Namespace) -> int:
             target_image=args.target_image,
             target_port=args.target_port,
             target_url=args.target_url,
-            demo=args.demo,
             runs_dir=args.runs_dir,
             keep=args.keep,
             operator_notes=operator_notes,

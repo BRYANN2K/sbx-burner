@@ -18,13 +18,11 @@ RECIPES_DIR = REPO_ROOT / "recipes"
 INDEX_FILE = REPO_ROOT / "recipes.yaml"
 
 CATEGORIES = (
-    "foundation",
     "pentest",
     "malware",
     "detection",
     "hardening",
     "devsecops",
-    "training",
     "ir",
     "ai-security",
     "dev",
@@ -35,7 +33,7 @@ CATEGORIES = (
 )
 # Recipes in these categories touch targets or hostile material: they never
 # run without a scope file.
-SCOPE_REQUIRED_CATEGORIES = ("pentest", "malware", "detection", "hardening", "training", "ir", "ai-security")
+SCOPE_REQUIRED_CATEGORIES = ("pentest", "malware", "detection", "hardening", "ir", "ai-security")
 
 RISKS = ("low", "medium", "high")
 STATUSES = ("ready", "beta", "planned")
@@ -44,9 +42,9 @@ TARGET_MODES = ("required", "optional", "none")
 # Kinds a recipe may accept in run.targets: path (mounted dir), repo (cloned
 # on the host, then mounted like path), app (a project started inside the
 # sandbox), image (docker pull/load), port (the image run as an app on
-# localhost), url (a remote app, needs a scope) and demo (the bundled lab
-# target via run.demo).
-TARGET_KINDS = ("path", "repo", "app", "image", "port", "url", "demo")
+# localhost) and url (a remote app, needs a scope). Every kind is the user's
+# own target; there is no bundled demo target.
+TARGET_KINDS = ("path", "repo", "app", "image", "port", "url")
 FRONTMATTER_KEYS = ("name", "category", "summary", "risk", "time", "variants", "status", "licence", "sources")
 # Optional frontmatter: tested_with lists the agents proven by a real run.
 # It is information only; every agent the runner knows may run a recipe.
@@ -118,12 +116,6 @@ class Recipe:
         return list(declared)
 
     @property
-    def demo(self) -> str | None:
-        """Script that starts the bundled demo target, run only with --demo."""
-        value = self.run.get("demo")
-        return str(value) if value else None
-
-    @property
     def target_health(self) -> str:
         """HTTP path polled after --target-port starts the user's container."""
         return str(self.run.get("target_health") or "/")
@@ -170,6 +162,10 @@ def load(path: Path) -> Recipe:
                 errors.append("recipe.yaml: must be a mapping")
         except miniyaml.YAMLError as exc:
             errors.append(f"recipe.yaml: {exc}")
+    run = config.get("run") if isinstance(config.get("run"), dict) else {}
+    if "demo" in run or "demo" in (run.get("targets") or []):
+        # The bundled demo target is gone: a recipe tests the user's own target.
+        errors.append("recipe.yaml: the 'demo' target kind and run.demo are gone")
     return Recipe(path=path, meta=meta, config=config, body=body, errors=errors)
 
 

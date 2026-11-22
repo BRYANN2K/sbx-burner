@@ -1,12 +1,12 @@
 {
   "schema_version": "1",
   "recipe": "devsecops/fuzzing",
-  "summary": "Triaged the two bundled targets on the Debian stable toolchain (clang 19.1.7, go 1.24.4): a libFuzzer run on c-record hit the off-by-one stack-buffer-overflow in lab_parse_records (record.c:28) after 20334 execs, minimized to a 20-byte reproducer and replayed through the ASan+UBSan build; `go test -fuzz` caught the index-out-of-range panic in ParseField (field.go:24) and minimised the input to the corpus file \"0:\". Two unique crashes, one per track.",
+  "summary": "Triaged the two mounted targets on the Debian stable toolchain (clang 19.1.7, go 1.24.4): a libFuzzer run on c-record hit the off-by-one stack-buffer-overflow in lab_parse_records (record.c:28) after 20334 execs, minimized to a 20-byte reproducer and replayed through the ASan+UBSan build; `go test -fuzz` caught the index-out-of-range panic in ParseField (field.go:24) and minimised the input to the corpus file \"0:\". Two unique crashes, one per track.",
   "tools_run": [
     {
       "name": "clang",
       "version": "19.1.7",
-      "command": "clang -g -O1 -fsanitize=fuzzer,address,undefined fixtures/c-target/fuzz_record.c fixtures/c-target/record.c -o work/c/fuzz_record",
+      "command": "clang -g -O1 -fsanitize=fuzzer,address,undefined work/src/fuzz_record.c work/src/record.c -o work/c/fuzz_record",
       "exit_code": 0
     },
     {
@@ -19,21 +19,21 @@
     {
       "name": "clang",
       "version": "19.1.7",
-      "command": "./work/c/fuzz_record -minimize_crash=1 -runs=10000 evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e -exact_artifact_path=evidence/artifacts/crash-c-record.bin && clang -g -O1 -fsanitize=address,undefined fixtures/c-target/main.c fixtures/c-target/record.c -o work/c/record_asan && ./work/c/record_asan evidence/artifacts/crash-c-record.bin",
+      "command": "./work/c/fuzz_record -minimize_crash=1 -runs=10000 evidence/artifacts/crash-c9aebf86fcb25e2f9eb62760d637d58643f5950e -exact_artifact_path=evidence/artifacts/crash-c-record.bin && clang -g -O1 -fsanitize=address,undefined work/src/main.c work/src/record.c -o work/c/record_asan && ./work/c/record_asan evidence/artifacts/crash-c-record.bin",
       "exit_code": 1,
       "output": "artifacts/c-record-stack.txt"
     },
     {
       "name": "go",
       "version": "1.24.4",
-      "command": "cd fixtures/go-target && go test -fuzz=FuzzParseField -fuzztime=90s .",
+      "command": "cd work/src/go && go test -fuzz=FuzzParseField -fuzztime=90s .",
       "exit_code": 1,
       "output": "artifacts/go-fuzz-log.txt"
     },
     {
       "name": "go",
       "version": "1.24.4",
-      "command": "cd fixtures/go-target && go test -run=FuzzParseField/f350e10888894dcf .",
+      "command": "cd work/src/go && go test -run=FuzzParseField/f350e10888894dcf .",
       "exit_code": 1,
       "output": "artifacts/go-parsefield-stack.txt"
     }
@@ -45,7 +45,7 @@
       "severity": "medium",
       "cwe": "CWE-787",
       "target": "c-target",
-      "location": "fixtures/c-target/record.c:28",
+      "location": "work/src/record.c:28",
       "tool": "libFuzzer",
       "rule": "stack-buffer-overflow",
       "description": "The timed libFuzzer campaign reached a type-1 record with a 16-byte name: rlen > sizeof(name) is 16 > 16, false, memcpy fills name[0..15] and the terminator write name[16] lands one byte past the buffer. ASan reports WRITE of size 1 at record.c:28 overflowing 'name'; UBSan flags the same line first. Minimised reproducer is 20 bytes.",
@@ -65,12 +65,12 @@
       "severity": "medium",
       "cwe": "CWE-129",
       "target": "go-target",
-      "location": "fixtures/go-target/field.go:24",
+      "location": "work/src/go/field.go:24",
       "tool": "go-fuzz",
       "rule": "panic:index-out-of-range",
       "description": "ParseField(\"0:\") finds the ':' at index 1, leaves rest empty, then reads rest[0] and panics with index out of range. `go test -fuzz` found a 38-byte failing input and minimised it to the corpus entry \"0:\".",
       "proof": {
-        "poc": "cd fixtures/go-target && go test -run=FuzzParseField/f350e10888894dcf .",
+        "poc": "cd work/src/go && go test -run=FuzzParseField/f350e10888894dcf .",
         "artifacts": [
           "artifacts/crash-go-parsefield.txt",
           "artifacts/go-parsefield-stack.txt",

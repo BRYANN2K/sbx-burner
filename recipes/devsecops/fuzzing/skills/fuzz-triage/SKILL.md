@@ -10,12 +10,8 @@ classify. A crash counts only when it reproduces.
 
 ## 1. Pick the targets
 
-Read the env vars the runner sets (`LAB_TARGET_KIND`, `LAB_TARGET_PATH`,
-`LAB_DEMO`):
+Read the env vars the runner sets (`LAB_TARGET_KIND`, `LAB_TARGET_PATH`):
 
-- `--demo` (`LAB_DEMO=1`): the bundled `fixtures/c-target` (length-prefixed
-  record parser) and `fixtures/go-target` (a `FuzzParseField` test). These
-  are the demo target; never fuzz them outside demo mode.
 - `--target` (`LAB_TARGET_KIND=path`): the user's source at
   `$LAB_TARGET_PATH` (`/home/agent/target`, read-only). Look for harnesses
   (`fuzz_*.c`, `-fsanitize=fuzzer` builds, `Fuzz*` Go tests). Copy sources
@@ -23,7 +19,11 @@ Read the env vars the runner sets (`LAB_TARGET_KIND`, `LAB_TARGET_PATH`,
 - `--target-repo` (`LAB_TARGET_KIND=repo`): a repository cloned on the host
   and mounted at the same `$LAB_TARGET_PATH`; same steps as a path.
 - No harness for a C target: write one (`LLVMFuzzerTestOneInput` calling the
-  parser) or a file driver for AFL++ like `fixtures/c-target/main.c`.
+  parser) or a small file driver for AFL++ (`main.c` reading one file).
+
+The commands below use a copy of the target in `work/src/` (a C parser
+`record.c` with a harness `fuzz_record.c`, and a Go package with a
+`FuzzParseField` test); adapt the names to the user's code.
 
 ## 2. C track: libFuzzer + sanitizers
 
@@ -32,7 +32,7 @@ mkdir -p work/c evidence/artifacts work/corpus
 
 # Build the fuzzing binary with the sanitizer triplet.
 clang -g -O1 -fsanitize=fuzzer,address,undefined \
-  fixtures/c-target/fuzz_record.c fixtures/c-target/record.c -o work/c/fuzz_record
+  work/src/fuzz_record.c work/src/record.c -o work/c/fuzz_record
 
 # Seed corpus: at least one well-formed input so mutations reach deep states.
 printf 'LR\x01\x03abc\x02\x02zz' > work/corpus/seed
@@ -50,9 +50,9 @@ printf 'LR\x01\x03abc\x02\x02zz' > work/corpus/seed
 
 ```bash
 # Plain afl-cc build for speed; keep a separate ASan build for triage.
-afl-cc -g -O1 fixtures/c-target/main.c fixtures/c-target/record.c -o work/c/record_afl
+afl-cc -g -O1 work/src/main.c work/src/record.c -o work/c/record_afl
 clang -g -O1 -fsanitize=address,undefined \
-  fixtures/c-target/main.c fixtures/c-target/record.c -o work/c/record_asan
+  work/src/main.c work/src/record.c -o work/c/record_asan
 
 # afl-fuzz in a headless VM needs these env vars:
 #   AFL_SKIP_CPUFREQ     no cpufreq sysfs in a microVM
@@ -67,7 +67,7 @@ cp work/c/afl-out/default/fuzzer_stats evidence/artifacts/c-fuzzer-stats.txt
 ## 4. Go track
 
 ```bash
-cd fixtures/go-target   # or the target package
+cd work/src/go   # the Go package under test
 go test -fuzz=FuzzParseField -fuzztime=300s . 2>&1 \
   | tee "$OLDPWD/evidence/artifacts/go-fuzz-log.txt"
 # exit 1 with "Failing input written to testdata/fuzz/FuzzXxx/<hash>" = crash.

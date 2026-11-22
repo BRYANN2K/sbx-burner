@@ -25,12 +25,9 @@ run:
   # repo (cloned on the host, mounted like path), app (a project started in
   # the sandbox at localhost:PORT), image (host docker save/pull or a
   # tarball), port (the image run as an app on localhost), url (a remote app,
-  # needs a scope), demo (a bundled lab target via run.demo). port requires
-  # image; demo requires run.demo.
+  # needs a scope). port requires image. Every kind is the user's own
+  # target: there is no bundled demo target.
   targets: [path]
-  # demo: fixtures/demo.sh    # starts a bundled demo target inside the
-                             # sandbox; runs only with --demo. Its image pull
-                             # hosts go in network.install_allow below.
   # target_health: /          # HTTP path polled after --target-port starts
                              # the user's container (default "/").
   snapshot: false

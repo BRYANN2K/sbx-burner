@@ -1,7 +1,0 @@
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{"rows":[
-  {"id":1,"title":"quarterly report","owner":"alice"},
-  {"id":2,"title":"cloud backup","owner":"bob","aws_access_key":"AKIA************"}
-]}

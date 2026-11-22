@@ -17,9 +17,6 @@ The runner tells you which target this run tests (`LAB_TARGET_KIND`):
 - `--target-repo <src>` (`LAB_TARGET_KIND=repo`): the user's repository,
   cloned on the host and mounted read-only at the same place;
   `$LAB_TARGET_REPO` names it. Handle it exactly like a path.
-- `--demo` (`LAB_DEMO=1`): the bundled toy parsers under `fixtures/`
-  (`c-target` and `go-target`). Only in demo mode — never fuzz them
-  otherwise.
 
 Never fuzz the sandbox itself or anything outside the declared target.
 

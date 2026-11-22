@@ -39,7 +39,6 @@ KIND_NEEDLES = {
     "image": ("LAB_TARGET_IMAGE",),
     "port": ("LAB_TARGET_URL",),
     "url": ("LAB_TARGET_URL",),
-    "demo": ("LAB_DEMO",),
 }
 
 
@@ -161,23 +160,20 @@ def lint_recipe(recipe: Recipe, repo_root: Path = REPO_ROOT) -> list[str]:
         errors.append(f"recipe.yaml: run.target must be one of {', '.join(TARGET_MODES)}")
     declared = run.get("targets")
     if declared is not None:
+        if isinstance(declared, list) and "demo" in declared:
+            errors.append("recipe.yaml: run.targets 'demo' is gone: recipes test the user's own target only")
+            declared = [k for k in declared if k != "demo"]
         if not isinstance(declared, list) or any(k not in TARGET_KINDS for k in declared):
             errors.append(f"recipe.yaml: run.targets must be a list drawn from {', '.join(TARGET_KINDS)}")
             declared = None
-        else:
-            if "port" in declared and "image" not in declared:
-                errors.append("recipe.yaml: run.targets 'port' requires 'image'")
-            if "demo" in declared and not run.get("demo"):
-                errors.append("recipe.yaml: run.targets 'demo' requires run.demo")
+        elif "port" in declared and "image" not in declared:
+            errors.append("recipe.yaml: run.targets 'port' requires 'image'")
     if target_mode == "none" and declared:
         errors.append("recipe.yaml: run.target 'none' cannot declare run.targets")
-    if target_mode in ("required", "optional") and declared == [] and not run.get("demo"):
+    if target_mode in ("required", "optional") and declared == []:
         errors.append("recipe.yaml: a recipe that accepts no target kind cannot have run.target required/optional")
-    if run.get("demo"):
-        if not (path / str(run["demo"])).is_file():
-            errors.append(f"recipe.yaml: run.demo {run['demo']!r} not found in the recipe directory")
-        if "demo" not in recipe.targets:
-            errors.append("recipe.yaml: run.demo is set but 'demo' is not in run.targets")
+    if "demo" in run:
+        errors.append("recipe.yaml: run.demo is gone: recipes test the user's own target only")
     health = run.get("target_health")
     if health is not None and not str(health).startswith("/"):
         errors.append("recipe.yaml: run.target_health must start with '/'")

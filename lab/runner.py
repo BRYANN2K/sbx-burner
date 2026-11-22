@@ -91,7 +91,6 @@ _FLAG_HINT = {
     "image": "--target-image REF|TAR",
     "port": "--target-image REF|TAR --target-port N",
     "url": "--target-url URL",
-    "demo": "--demo",
 }
 
 
@@ -146,7 +145,7 @@ class Plan:
     scope: scope_mod.Scope | None
     target: Path | None
     policy: dict[str, list[str]]
-    # One of path | image | url | demo when a target was chosen this run;
+    # One of path | repo | app | image | url when a target was chosen this run;
     # target_info carries the resolved values (image ref, ports, url...).
     target_kind: str | None = None
     target_info: dict[str, Any] = field(default_factory=dict)
@@ -288,7 +287,6 @@ def build_plan(
     target_image: str | None = None,
     target_port: str | None = None,
     target_url: str | None = None,
-    demo: bool = False,
     runs_dir: Path | None = None,
     now: _dt.datetime | None = None,
     keep: bool = False,
@@ -338,7 +336,6 @@ def build_plan(
             ("app", target_app),
             ("image", target_image),
             ("url", target_url),
-            ("demo", demo),
         )
         if flag
     ]
@@ -350,7 +347,7 @@ def build_plan(
     if len(given) > 1 and not supporting_path:
         raise Refused(
             "the target flags are exclusive: pick one of --target-repo, --target-app, --target-image/--target-port, "
-            "--target-url or --demo (--target PATH may be added to an image, URL or app target when the recipe accepts both)"
+            "or --target-url (--target PATH may be added to an image, URL or app target when the recipe accepts both)"
         )
     if pr is not None and not target_repo:
         raise Refused("--pr only makes sense with --target-repo")
@@ -380,8 +377,6 @@ def build_plan(
         kind_check = kind or "path"
     if kind is not None and kind_check not in declared:
         raise Refused(f"{recipe.id} does not accept target kind {kind_check!r} (declared targets: {', '.join(declared) or 'none'})")
-    if kind == "demo" and (not recipe.demo or not (recipe.path / recipe.demo).is_file()):
-        raise Refused(f"{recipe.id} has no run.demo script: --demo is not accepted")
     if kind is None and recipe.target_mode == "required":
         hints = [_FLAG_HINT[k] for k in declared if k in _FLAG_HINT]
         raise Refused(f"{recipe.id} needs a target: pass " + " or ".join(hints or ["a target flag"]))
@@ -543,11 +538,6 @@ def build_plan(
         target_info["added_by_runner"] = runner_added
     if kind == "url":
         target_info["url"] = target_url
-    if kind == "demo":
-        target_info["demo"] = recipe.demo
-        demo_script = recipe.path / str(recipe.demo)
-        if demo_script.is_file():
-            target_info["identity"] = {"sha256": _sha256_file(demo_script), "files": 1}
     if kind == "repo":
         assert repo_url is not None
         target_info["repo"] = repo_url
@@ -974,17 +964,6 @@ def build_plan(
                 else ""
             )
         )
-    if kind == "demo":
-        assert recipe.demo is not None
-        plan.setup.append(
-            Step(
-                "demo",
-                sbx.exec_(sandbox, ["bash", f"{workspace}/.lab/demo/{Path(recipe.demo).name}"], workdir=workspace),
-                "start the recipe's bundled demo target inside the sandbox",
-                timeout=1800,
-            )
-        )
-        plan.notes.append("Demo mode: the bundled lab target from run.demo; its pull hosts sit in install_allow.")
 
     for host in install_only:
         # TODO(verify): `sbx policy rm network --resource` with a comma-separated list; one call per host is documented.
@@ -1027,8 +1006,6 @@ def build_plan(
     if kind == "url":
         assert target_url is not None
         agent_env["LAB_TARGET_URL"] = target_url
-    if kind == "demo":
-        agent_env["LAB_DEMO"] = "1"
     # PATH is left as the sandbox sets it (tools and agent CLIs live in several
     # directories); lab-ask is called by its absolute workspace path instead.
     agent_env["LAB_WORKSPACE"] = workspace
@@ -1176,9 +1153,7 @@ def _target_summary(plan: Plan) -> str:
         return f"repo {info.get('repo')}{ref} mounted at {TARGET_MOUNT}"
     if plan.target_kind == "app":
         return f"app {info.get('app')} on {info.get('url')}"
-    if plan.target_kind == "url":
-        return f"url {info.get('url')}"
-    return f"demo {info.get('demo')} (bundled lab target, not the user's system)"
+    return f"url {info.get('url')}"
 
 
 def workspace_manifest(plan: Plan) -> list[str]:
@@ -1199,8 +1174,6 @@ def workspace_manifest(plan: Plan) -> list[str]:
         files.append(".lab/tools/")
     if (recipe.path / "fixtures").is_dir():
         files.append("fixtures/")
-    if plan.target_kind == "demo" and recipe.demo:
-        files.append(f".lab/demo/{Path(recipe.demo).name}")
     files.append(".lab/bin/lab-ask")
     return files
 
@@ -1255,11 +1228,6 @@ def _target_section(plan: Plan) -> list[str]:
     elif kind == "url":
         lines.append(f"- Remote app `{info.get('url')}` (in scope).")
         env.append(f"LAB_TARGET_URL={info.get('url')}")
-    elif kind == "demo":
-        lines += [
-            f"- Demo mode: the bundled lab target from `run.demo` (`{info.get('demo')}`); this is not the user's system.",
-        ]
-        env.append("LAB_DEMO=1")
     if kind != "path" and plan.target:
         lines.append(f"- Supporting files from the user (for example a schema) are mounted read-only at `{TARGET_MOUNT}`.")
         env.append(f"LAB_TARGET_PATH={TARGET_MOUNT}")
@@ -1350,10 +1318,6 @@ def prepare_workspace(plan: Plan, repo_root: Path = REPO_ROOT) -> None:
     fixtures = recipe.path / "fixtures"
     if fixtures.is_dir():
         shutil.copytree(fixtures, ws / "fixtures", dirs_exist_ok=True)
-    if plan.target_kind == "demo" and recipe.demo:
-        demo_dir = ws / ".lab" / "demo"
-        demo_dir.mkdir(exist_ok=True)
-        shutil.copy2(recipe.path / recipe.demo, demo_dir / Path(recipe.demo).name)
     # lab-ask: the agent's channel to the operator (answered only by the host).
     ask_src = Path(__file__).parent / "kit" / "lab-ask"
     if ask_src.is_file():

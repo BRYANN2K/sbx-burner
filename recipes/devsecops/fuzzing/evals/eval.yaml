@@ -2,7 +2,8 @@
 #   python -m lab eval devsecops/fuzzing                 # golden fixture (CI)
 #   python -m lab eval devsecops/fuzzing --run runs/<id> # a real run
 description: >-
-  Golden from a --demo run against the bundled fixtures: the agent reports
+  Golden from a run against a small C record parser and a Go field splitter
+  (the user's harnesses, mounted as a path target): the agent reports
   one crash per track — the C off-by-one write and the Go index-out-of-range
   panic — each with a minimised reproducer and a classifying stack.
 fixture: fixtures/golden

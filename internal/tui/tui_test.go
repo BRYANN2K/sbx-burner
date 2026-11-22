@@ -93,7 +93,7 @@ func recipes() []catalog.Recipe {
 		{ID: "devsecops/sca-osv", Category: "devsecops", Name: "sca-osv", Source: catalog.Official, Status: "beta",
 			Summary: "Scan lockfiles for known vulnerabilities.", Risk: "low", Time: "10m", Scope: "none", TargetMode: "required", Targets: []string{"path", "repo"}},
 		{ID: "pentest/web-recon", Category: "pentest", Name: "web-recon", Source: catalog.Official, Status: "beta",
-			Summary: "Map the attack surface of in-scope web hosts.", Risk: "medium", Time: "20m", Scope: "required", TargetMode: "required", Targets: []string{"app", "image", "port", "url", "demo"}},
+			Summary: "Map the attack surface of in-scope web hosts.", Risk: "medium", Time: "20m", Scope: "required", TargetMode: "required", Targets: []string{"app", "image", "port", "url"}},
 		{ID: "apple/macho-triage", Category: "apple", Name: "macho-triage", Source: catalog.Official, Status: "planned",
 			Summary: "Static triage of a Mach-O sample.", Scope: "required"},
 	}

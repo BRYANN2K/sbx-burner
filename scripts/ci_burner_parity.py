@@ -83,7 +83,7 @@ def first_host(scope: Path) -> str | None:
 def variants(rec, scope: Path | None, supported: str, root: Path) -> list[tuple[str, list[str]]]:
     kinds = rec.targets
     out: list[tuple[str, list[str]]] = []
-    if rec.target_mode == "none" and not rec.demo:
+    if rec.target_mode == "none":
         return [("none", [])]
     if "path" in kinds:
         out.append(("path", ["--target", str(root)]))
@@ -96,8 +96,6 @@ def variants(rec, scope: Path | None, supported: str, root: Path) -> list[tuple[
         host = first_host(scope)
         if host:
             out.append(("url", ["--target-url", f"https://{host}"]))
-    if rec.demo:
-        out.append(("demo", ["--demo"]))
     for kind, flag, value in (("repo", "--target-repo", "BRYANN2K/sbx-burner"), ("app", "--target-app", str(root))):
         if kind in kinds and flag in supported:
             out.append((kind, [flag, value]))

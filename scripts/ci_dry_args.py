@@ -3,8 +3,8 @@
 
 Usage: ci_dry_args.py <recipe dir> [scope file]
 
-A recipe that needs a target gets, in this order: `--demo` when it has a
-`run.demo`, `--target .` when it accepts a path, a placeholder
+A recipe that needs a target gets, in this order: `--target .` when it
+accepts a path, a placeholder
 `--target-repo` when it accepts a repo, `--target-app .` when it accepts an
 app and the repository root has a detectable stack, `--target-url
 https://<host>` for the first explicit host of the scope when it accepts a
@@ -33,8 +33,6 @@ def dry_args(recipe_dir: Path, scope_file: Path | None) -> list[str]:
     if rec.target_mode != "required":
         return []
     kinds = rec.targets
-    if rec.demo and "demo" in kinds:
-        return ["--demo"]
     if "path" in kinds:
         return ["--target", "."]
     if "repo" in kinds:
@@ -48,7 +46,7 @@ def dry_args(recipe_dir: Path, scope_file: Path | None) -> list[str]:
                 return ["--target-url", f"https://{host}"]
     if "image" in kinds:
         return ["--target-image", PLACEHOLDER_IMAGE]
-    raise SystemExit(f"{rec.id}: no target the CI dry run can pass (declare demo, path, url with a scope host, or image)")
+    raise SystemExit(f"{rec.id}: no target the CI dry run can pass (declare path, repo, url with a scope host, or image)")
 
 
 def main(argv: list[str]) -> int:

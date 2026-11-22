@@ -1,8 +1,0 @@
-HTTP/1.1 401 Unauthorized
-Access-Control-Allow-Origin: *
-X-Content-Type-Options: nosniff
-X-Frame-Options: SAMEORIGIN
-Content-Type: text/html; charset=utf-8
-Content-Length: 26
-
-Invalid email or password.

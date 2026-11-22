@@ -104,7 +104,6 @@ var kindLabel = map[string]string{
 	"repo":  "GitHub or git repo",
 	"image": "Docker image (local or registry)",
 	"url":   "URL",
-	"demo":  "Demo target",
 }
 
 func newFlow(r catalog.Recipe, cwd string, checks []doctor.Result, agents, acp []string) *flowModel {
@@ -127,15 +126,12 @@ func (f *flowModel) script(w *walker) (o engine.RunOptions, done bool) {
 	o.Recipe = r.EngineRef()
 
 	// Target.
-	if !(r.TargetMode == "none" && !r.Accepts("demo")) {
+	if r.TargetMode != "none" {
 		var kinds []option
-		for _, k := range []string{"app", "path", "repo", "image", "url", "demo"} {
+		for _, k := range []string{"app", "path", "repo", "image", "url"} {
 			if r.Accepts(k) {
 				kinds = append(kinds, option{label: kindLabel[k], value: k})
 			}
-		}
-		if r.Demo != "" && !r.Accepts("demo") {
-			kinds = append(kinds, option{label: kindLabel["demo"], value: "demo"})
 		}
 		if len(kinds) > 0 {
 			kind := kinds[0].value
@@ -291,9 +287,6 @@ func (f *flowModel) target(w *walker, kind string, o *engine.RunOptions) bool {
 		v, ok := w.ask(question{section: "target", title: "URL", kind: qInput, placeholder: "https://staging.example.com", validate: nonEmpty})
 		o.TargetURL = v
 		return ok
-	case "demo":
-		o.Demo = true
-		return true
 	case "image":
 		how, ok := w.ask(question{section: "target", title: "Image", kind: qSelect, options: []option{
 			{label: "Image name (local or registry)", value: "ref"},

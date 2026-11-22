@@ -24,7 +24,7 @@ func catalogRoot(t *testing.T) string {
 		os.WriteFile(filepath.Join(dir, "RECIPE.md"), []byte("---\nname: "+name+"\nstatus: beta\n---\n"), 0o644)
 		os.WriteFile(filepath.Join(dir, "recipe.yaml"), []byte(yaml), 0o644)
 	}
-	add("pentest", "web-x", "scope: required\nrun:\n  target: required\n  targets: [image, port, url, demo]\n")
+	add("pentest", "web-x", "scope: required\nrun:\n  target: required\n  targets: [image, port, url]\n")
 	add("devsecops", "scan", "scope: none\nrun:\n  target: required\n  targets: [path]\n")
 	return root
 }
@@ -83,12 +83,12 @@ func errText(m map[string]any) string { s, _ := m["error"].(string); return s }
 func TestScopeIsPickedNeverPassed(t *testing.T) {
 	h := newHarness(t, Config{AllowImages: true})
 	for _, bad := range []string{"../etc/passwd", "/tmp/my-scope.yaml", "evil.yaml", ".hidden.yaml"} {
-		res, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": bad, "demo": true})
+		res, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": bad, "target_image": "nginx:1"})
 		if !isErr {
 			t.Fatalf("scope %q accepted: %v", bad, res)
 		}
 	}
-	if _, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "demo": true}); isErr {
+	if _, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "target_image": "nginx:1"}); isErr {
 		t.Fatal("listed scope refused")
 	}
 }
@@ -143,8 +143,8 @@ func TestImagesAndURLsOffByDefault(t *testing.T) {
 }
 
 func TestRunsAreOwnedByTheirClient(t *testing.T) {
-	h := newHarness(t, Config{})
-	res, isErr := h.call("run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "demo": true})
+	h := newHarness(t, Config{AllowImages: true})
+	res, isErr := h.call("run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "target_image": "nginx:1"})
 	if isErr {
 		t.Fatalf("run refused: %v", res)
 	}
@@ -225,11 +225,11 @@ func TestPrefixSiblingRootIsOutside(t *testing.T) {
 }
 
 func TestPromptIsCapped(t *testing.T) {
-	h := newHarness(t, Config{})
-	if res, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "demo": true, "prompt": strings.Repeat("x", MaxPrompt+1)}); !isErr {
+	h := newHarness(t, Config{AllowImages: true})
+	if res, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "target_image": "nginx:1", "prompt": strings.Repeat("x", MaxPrompt+1)}); !isErr {
 		t.Fatalf("oversized prompt accepted: %v", res)
 	}
-	if _, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "demo": true, "prompt": "focus on auth"}); isErr {
+	if _, isErr := h.call("plan_run", map[string]any{"recipe": "web-x", "scope": "lab.yaml", "target_image": "nginx:1", "prompt": "focus on auth"}); isErr {
 		t.Fatal("normal prompt refused")
 	}
 }

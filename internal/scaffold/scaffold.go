@@ -13,7 +13,7 @@ import (
 var nameRE = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 // Categories a user recipe may use (same list as the runner, without apple).
-var Categories = []string{"foundation", "devsecops", "training", "pentest", "malware", "detection", "hardening", "ir", "ai-security", "dev", "ci", "web", "cu"}
+var Categories = []string{"devsecops", "pentest", "malware", "detection", "hardening", "ir", "ai-security", "dev", "ci", "web", "cu"}
 
 // New copies templateDir to destRoot/<category>/<name>, replacing the
 // __NAME__ and __CATEGORY__ placeholders in file names and contents.
