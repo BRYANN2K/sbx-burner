@@ -38,6 +38,9 @@ def _add_run_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--target-url", metavar="URL", help="remote app to test; must be http(s) and authorized by --scope")
     parser.add_argument("--acp", action="store_true", help="drive the agent over ACP through burner (burner run --acp)")
+    parser.add_argument(
+        "--interactive", action="store_true", help="open the agent's own TUI in the sandbox, task already sent; then collect and report"
+    )
     parser.add_argument("--model", metavar="ID", help="model id offered by the agent over ACP (needs --acp)")
     parser.add_argument("--permission", choices=("auto", "ask"), default="auto", help="ACP permissions: auto-allow (logged) or ask")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and run nothing")
@@ -83,9 +86,12 @@ def _run(recipe_ref: str, args: argparse.Namespace) -> int:
             keep=args.keep,
             operator_notes=operator_notes,
             acp=args.acp,
+            interactive=args.interactive,
             model=args.model,
             permission=args.permission,
         )
+        if args.interactive and runner.parse_on_ask(args.on_ask, args.yes)["mode"] != "timeout":
+            raise runner.Refused("--interactive needs an operator: not with --yes or --on-ask skip|fail")
         if args.dry_run:
             runner.binding_preflight(plan)
             print(runner.render_plan(plan))
@@ -122,6 +128,7 @@ def agent_table() -> list[dict]:
                 "setup_commands": list(a.setup_commands),
                 "own_workload_ok": bool(a.mixin_kit),
                 "acp": getattr(a, "acp", None) or None,
+                "tui": list(a.tui_command),
                 "login_note": a.interactive_login_note,
             }
         )

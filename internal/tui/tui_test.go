@@ -74,6 +74,9 @@ func (f *fakeEngine) ScopeCheck(context.Context, string) (ScopeResult, error) { 
 
 func (f *fakeEngine) Caps() Caps                                  { return f.caps }
 func (f *fakeEngine) ACPAgents(context.Context) ([]string, error) { return f.acp, nil }
+func (f *fakeEngine) AgentTUIs(context.Context) (map[string][]string, error) {
+	return map[string][]string{"codex": {"codex", "--dangerously-bypass-approvals-and-sandbox"}}, nil
+}
 func (f *fakeEngine) Agents(context.Context) ([]string, error) {
 	return []string{"claude", "codex"}, nil
 }
@@ -227,6 +230,8 @@ func TestScreensGolden(t *testing.T) {
 	golden(t, "agent", m)
 
 	m = press(t, m, "enter") // Codex (default: the one with a credential)
+	golden(t, "mode", m)
+	m = press(t, m, "enter") // Headless (codex is not driven over ACP here)
 	m = typeText(m, "Focus on the git history.")
 	golden(t, "notes", m)
 
@@ -389,12 +394,15 @@ func TestFlowBackAndACPHidden(t *testing.T) {
 	if m.scr != scrHome {
 		t.Fatal("esc on the first question did not go home")
 	}
-	// Without ACP support there is no Mode or Model question.
+	// Without ACP support: Headless or Interactive, no Model question.
 	f := newFlow(recipes()[0], treeDir(t), checks(), []string{"claude", "codex"}, nil)
-	f.answers = []answer{{value: "path"}, {value: "here"}, {value: "codex"}}
+	f.answers = []answer{{value: "path"}, {value: "here"}, {value: "codex"}, {title: "Mode", value: "interactive"}}
 	f.advance()
 	if f.q == nil || f.q.kind != qNotes {
 		t.Fatalf("expected notes, got %+v", f.q)
+	}
+	if o, _ := f.script(&walker{ans: append(f.answers, answer{value: ""})}); !o.Interactive || o.ACP {
+		t.Fatalf("interactive not set: %+v", o)
 	}
 }
 
@@ -439,8 +447,13 @@ func TestFlowNoACPForOtherAgents(t *testing.T) {
 	f := newFlow(recipes()[0], treeDir(t), checks(), []string{"claude", "codex"}, []string{"codex"})
 	f.answers = []answer{{value: "path"}, {value: "here"}, {value: "claude"}}
 	f.advance()
+	if f.q == nil || f.q.title != "Mode" || f.q.options[0].value != "headless" || f.q.options[1].value != "interactive" {
+		t.Fatalf("claude is not driven over ACP; expected Headless/Interactive, got %+v", f.q)
+	}
+	f.answers = append(f.answers, answer{title: "Mode", value: "headless"})
+	f.advance()
 	if f.q == nil || f.q.kind != qNotes {
-		t.Fatalf("claude is not driven over ACP; expected notes, got %+v", f.q)
+		t.Fatalf("expected notes, got %+v", f.q)
 	}
 }
 
@@ -874,7 +887,7 @@ func TestFailedStepShowsItsErrorAndFullLog(t *testing.T) {
 		m = nm.(model)
 	}
 	v := m.View()
-	if !strings.Contains(v, "└ error: the app folder contains burner's runs folder") || !strings.Contains(v, "enter full log") {
+	if !strings.Contains(v, "error: the app folder") || !strings.Contains(v, "enter full log") {
 		t.Fatalf("no error line or log hint:\n%s", v)
 	}
 	m = press(t, m, "enter")
@@ -923,5 +936,148 @@ func TestLastErrorPrefersTheSbxDaemonLine(t *testing.T) {
 	log := "$ sbx create --name lab-x\n[exit 1]\n--- stdout ---\n\n--- stderr ---\nerror: failed to run sandbox container\n\n--- sbx daemon ---\nsbx: create sandbox failed: write file /etc/hosts failed (exit 255)\ncontainer stderr (from the guest, untrusted): sh: error while loading shared libraries: libc.so.6: Permission denied\n"
 	if got := lastError(log); got != "container stderr (from the guest, untrusted): sh: error while loading shared libraries: libc.so.6: Permission denied" {
 		t.Fatalf("last error %q", got)
+	}
+}
+
+func acpLive(t *testing.T, evs []events.Event) model {
+	t.Helper()
+	eng := &fakeEngine{events: evs, block: make(chan struct{})}
+	m := testModel(t, eng)
+	m.plan = newPlan(engine.RunOptions{Recipe: "pentest/webapp-blackbox", Agent: "codex", ACP: true, Model: "gpt-6-luna", Permission: "ask", RunsDir: "/runs", TargetURL: "http://localhost:3000"})
+	m.plan.loading = false
+	m.plan.text = "Plan for pentest/webapp-blackbox\n  sandbox:   lab-webapp-blackbox-012942\n  image:     kali\n  allow:     chatgpt.com:443, localhost:3000\n\nSteps:\n  1. create: x\n  2. tools: y\n  3. agent: z\n"
+	m.scr = scrPlan
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = nm.(model)
+	for i := 0; i < len(evs) && cmd != nil; i++ {
+		msg := cmd()
+		if b, ok := msg.(tea.BatchMsg); ok {
+			msg = b[0]()
+		}
+		nm, cmd = m.Update(msg)
+		m = nm.(model)
+	}
+	t.Cleanup(func() { close(eng.block) })
+	return m
+}
+
+func TestRunScreenPermissionCardAndCounts(t *testing.T) {
+	run := "20261122-012942-webapp-blackbox"
+	m := acpLive(t, []events.Event{
+		{Type: "step", Name: "create", Status: "start", RunID: run},
+		{Type: "step", Name: "create", Status: "ok", RunID: run},
+		{Type: "step", Name: "agent", Status: "start", RunID: run},
+		{Type: "agent.message", Agent: "codex", Text: "I'll map the app first.", RunID: run},
+		{Type: "agent.tool", Tool: "permission", Summary: "auto-allowed once (allow_once \"Allow\"): curl", RunID: run},
+		{Type: "agent.tool", Tool: "exec", Summary: "curl -s http://localhost:3000/openapi.yaml", RunID: run},
+		{Type: "finding", ID: "basket-idor", Severity: "high", Status: "candidate", Title: "GET /api/baskets/:id", RunID: run},
+		{Type: "ask", AskID: "acp-perm-1", Question: "The agent asks permission: curl -s 'http://localhost:3000/api/search?q=x'", Choices: []string{"Allow (allow_once)", "Always (allow_always)", "Reject (reject_once)"}, RunID: run},
+	})
+	l := m.live
+	if l.autoAllow != 1 || l.asked != 1 {
+		t.Fatalf("permissions: auto %d asked %d", l.autoAllow, l.asked)
+	}
+	golden(t, "run-permission", m)
+	if v, ok := pickLabel(l.asks[0], "allow_once"); !ok || v != "Allow (allow_once)" {
+		t.Fatalf("allow label %q", v)
+	}
+	nm, cmd, handled := m.keyRun(keyMsg("a"))
+	if !handled || cmd == nil {
+		t.Fatal("a did not answer the permission")
+	}
+	m = nm
+	// m: reject and open the chat input for a message.
+	nm, _, _ = m.keyRun(keyMsg("m"))
+	if !nm.live.chatOn {
+		t.Fatal("m did not focus the chat")
+	}
+}
+
+func TestChatQueuesUntilTheTurnBoundary(t *testing.T) {
+	run := "20261122-012942-webapp-blackbox"
+	m := acpLive(t, []events.Event{{Type: "step", Name: "agent", Status: "start", RunID: run}})
+	m = press(t, m, "enter") // focus the chat
+	m = typeText(m, "also check /admin")
+	nm, cmd := m.Update(keyMsg("enter"))
+	m = nm.(model)
+	l := m.live
+	if cmd != nil || len(l.queue) != 1 || !l.log[l.queue[0]].queued {
+		t.Fatal("a mid-turn message must be queued, not sent")
+	}
+	if l.chatOn {
+		t.Fatal("the input keeps the keyboard after sending")
+	}
+	if !strings.Contains(m.View(), "queued") {
+		t.Fatal("the queued message is not shown as queued")
+	}
+	turn := events.Event{Type: "ask", AskID: "acp-turn-1", Choices: []string{"Finish"}, AllowText: true, RunID: run}
+	l.add(turn)
+	if cmd := m.onAsk(turn); cmd == nil || len(l.queue) != 0 {
+		t.Fatal("the queue was not sent at the turn boundary")
+	}
+	for _, e := range l.log {
+		if e.kind == "you" && e.queued {
+			t.Fatal("a sent message still shows queued")
+		}
+	}
+}
+
+func TestInteractiveHandoffRunsTheAgentTUI(t *testing.T) {
+	run := "20261122-012942-secrets-scan"
+	m := acpLive(t, nil)
+	m.live.opts.ACP, m.live.opts.Interactive = false, true
+	l := m.live
+	l.add(events.Event{Type: "step", Name: "create", Status: "start", RunID: run})
+	l.add(events.Event{Type: "handoff", Name: "agent", RunID: run, Argv: []string{"sbx", "exec", "-it", "lab-secrets-scan-012942", "--", "codex", "Read AGENTS.md"}})
+	if l.handoff == nil {
+		t.Fatalf("handoff refused: %s", l.warn)
+	}
+	ask := events.Event{Type: "ask", AskID: events.InteractiveAsk, Choices: []string{"done"}, RunID: run}
+	l.add(ask)
+	if m.onAsk(ask) == nil {
+		t.Fatal("no agent TUI was started")
+	}
+	nm, cmd := m.Update(handoffDoneMsg{ask: ask})
+	m = nm.(model)
+	if cmd == nil || m.live.handoff != nil {
+		t.Fatal("the runner was not told the session ended")
+	}
+	// The run id stays pinned by the first event: a later event cannot move it.
+	l.add(events.Event{Type: "step", Name: "x", Status: "start", RunID: "20261122-999999-evil"})
+	if l.runID != run {
+		t.Fatalf("run id moved to %s", l.runID)
+	}
+	l.add(events.Event{Type: "handoff", Name: "agent", RunID: "20261122-999999-evil", Argv: []string{"sbx", "exec", "-it", "lab-evil-999999", "--", "sh"}})
+	if l.handoff != nil {
+		t.Fatal("a handoff with another run id was accepted")
+	}
+	// A handoff for another sandbox is refused.
+	l.add(events.Event{Type: "handoff", Name: "agent", RunID: run, Argv: []string{"sbx", "exec", "-it", "lab-other-1", "--", "sh"}})
+	if l.handoff != nil || !strings.Contains(l.warn, "refused handoff") {
+		t.Fatal("a foreign handoff was accepted")
+	}
+}
+
+func TestApprovalCardStartsTheRunOnceApproved(t *testing.T) {
+	refused := "refused: the codex mixin needs an approved credential binding\nMissing approvals:\nbindings:\n  openai:\n    oauth:\n      domains:\n        - auth.openai.com\n        - chatgpt.com\nrun: burner approve --agent codex\n"
+	eng := &fakeEngine{plan: refused, planErr: 3, block: make(chan struct{})}
+	defer close(eng.block)
+	m := testModel(t, eng)
+	m.plan = newPlan(engine.RunOptions{Recipe: "pentest/webapp-blackbox", Agent: "codex", ACP: true, RunsDir: "/runs"})
+	m.scr = scrPlan
+	nm, _ := m.Update(planMsg{text: refused, code: 3})
+	m = nm.(model)
+	m = press(t, m, "enter")
+	if m.scr != scrLive || m.live.approval == nil || strings.Join(m.live.approval.hosts, ",") != "auth.openai.com,chatgpt.com" {
+		t.Fatalf("no approval card: scr=%v %+v", m.scr, m.live)
+	}
+	golden(t, "run-approval", m)
+	eng.plan, eng.planErr = "Plan for pentest/webapp-blackbox\n", 0
+	nm, cmd := m.Update(approveDoneMsg{})
+	m = nm.(model)
+	nm, cmd = m.Update(cmd())
+	m = nm.(model)
+	if m.live.approval != nil || cmd == nil {
+		t.Fatal("the run did not start after the approval")
 	}
 }

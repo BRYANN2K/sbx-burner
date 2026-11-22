@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -24,9 +25,12 @@ type Asker func(e events.Event) (string, bool)
 
 // Options for Run.
 type Options struct {
-	Out     io.Writer // human view
-	JSON    bool      // pass events through as NDJSON instead of the view
-	Ask     Asker     // nil: never answer here (unattended)
+	Out  io.Writer // human view
+	JSON bool      // pass events through as NDJSON instead of the view
+	Ask  Asker     // nil: never answer here (unattended)
+	// Handoff runs the agent's own TUI on the terminal (--interactive);
+	// nil: the run cannot be interactive here.
+	Handoff func(argv []string) error
 	RunsDir string
 }
 
@@ -34,6 +38,7 @@ type Options struct {
 type State struct {
 	mu       sync.Mutex
 	pending  map[string]events.Event
+	handoff  []string        // argv of the pending agent handoff
 	answered map[string]bool // answers burner itself sent
 	Forged   []string
 	Findings map[string]events.Event
@@ -101,10 +106,40 @@ func handle(e events.Event, runsDir string, st *State, opts Options) {
 		if e.By == "forged" && !opts.JSON {
 			fmt.Fprintf(opts.Out, "  ! WARNING: the agent wrote its own answer to %s. Only answers given here count.\n", e.AskID)
 		}
+	case "handoff":
+		st.mu.Lock()
+		run := st.RunID
+		st.mu.Unlock()
+		argv, err := events.HandoffArgv(e, run, events.SandboxForRun(run), filepath.Join(runsDir, run, "workspace"))
+		if err != nil {
+			fmt.Fprintf(opts.Out, "  ! refused handoff: %v\n", err)
+			return
+		}
+		st.mu.Lock()
+		st.handoff = argv
+		st.mu.Unlock()
 	case "ask":
 		st.mu.Lock()
 		st.pending[e.AskID] = e
+		argv := st.handoff
 		st.mu.Unlock()
+		if e.AskID == events.InteractiveAsk {
+			// The runner waits on this ask while the operator uses the
+			// agent's TUI; answer "done" when it exits.
+			if argv == nil || opts.Handoff == nil {
+				return
+			}
+			if !opts.JSON {
+				fmt.Fprintf(opts.Out, "  › opening the agent's own TUI (quit it to continue the run)\n")
+			}
+			if err := opts.Handoff(argv); err != nil && !opts.JSON {
+				fmt.Fprintf(opts.Out, "  ! agent TUI: %v\n", err)
+			}
+			if err := events.Answer(events.SocketPath(runsDir, e.RunID), e.AskID, "done"); err != nil {
+				fmt.Fprintf(opts.Out, "  ! could not tell the runner: %v\n", err)
+			}
+			return
+		}
 		if opts.Ask == nil {
 			return
 		}

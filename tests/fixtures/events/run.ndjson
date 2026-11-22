@@ -7,7 +7,8 @@
 {"schema_version": "1", "type": "answer", "seq": 6, "ts": "2026-11-21T10:30:06Z", "run_id": "20261121-103000-demo", "ask_id": "a1", "by": "user", "value": "no"}
 {"schema_version": "1", "type": "ask", "seq": 7, "ts": "2026-11-21T10:30:07Z", "run_id": "20261121-103000-demo", "ask_id": "a2", "question": "Retry the slow scan?", "choices": [], "allow_text": true, "timeout_s": 30}
 {"schema_version": "1", "type": "answer", "seq": 8, "ts": "2026-11-21T10:30:08Z", "run_id": "20261121-103000-demo", "ask_id": "a2", "by": "timeout", "value": null}
-{"schema_version": "1", "type": "finding", "seq": 9, "ts": "2026-11-21T10:30:09Z", "run_id": "20261121-103000-demo", "id": "F-1", "title": "Known vulnerability in requests", "status": "candidate", "severity": "high"}
-{"schema_version": "1", "type": "finding", "seq": 10, "ts": "2026-11-21T10:30:10Z", "run_id": "20261121-103000-demo", "id": "F-1", "title": "Known vulnerability in requests", "status": "proven", "severity": "high", "cvss": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}
-{"schema_version": "1", "type": "step", "seq": 11, "ts": "2026-11-21T10:30:11Z", "run_id": "20261121-103000-demo", "name": "agent", "status": "ok"}
-{"schema_version": "1", "type": "done", "seq": 12, "ts": "2026-11-21T10:30:12Z", "run_id": "20261121-103000-demo", "exit_code": 0, "status": "completed", "report": "runs/20261121-103000-demo/report.md"}
+{"schema_version": "1", "type": "handoff", "seq": 9, "ts": "2026-11-21T10:30:08Z", "run_id": "20261121-103000-demo", "name": "agent", "argv": ["sbx", "exec", "-it", "lab-demo-103000", "--", "claude", "Read AGENTS.md and TASK.md"]}
+{"schema_version": "1", "type": "finding", "seq": 10, "ts": "2026-11-21T10:30:09Z", "run_id": "20261121-103000-demo", "id": "F-1", "title": "Known vulnerability in requests", "status": "candidate", "severity": "high"}
+{"schema_version": "1", "type": "finding", "seq": 11, "ts": "2026-11-21T10:30:10Z", "run_id": "20261121-103000-demo", "id": "F-1", "title": "Known vulnerability in requests", "status": "proven", "severity": "high", "cvss": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"}
+{"schema_version": "1", "type": "step", "seq": 12, "ts": "2026-11-21T10:30:11Z", "run_id": "20261121-103000-demo", "name": "agent", "status": "ok"}
+{"schema_version": "1", "type": "done", "seq": 13, "ts": "2026-11-21T10:30:12Z", "run_id": "20261121-103000-demo", "exit_code": 0, "status": "completed", "report": "runs/20261121-103000-demo/report.md"}

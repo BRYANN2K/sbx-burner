@@ -87,6 +87,7 @@ type model struct {
 
 	agents    []string // every agent the runner can launch
 	acpAgents []string
+	tuis      map[string][]string
 	last      *lastRun
 
 	home   homeModel
@@ -104,6 +105,7 @@ type model struct {
 type tickMsg struct{}
 type checksMsg []doctor.Result
 type acpAgentsMsg []string
+type tuisMsg map[string][]string
 type agentsMsg []string
 
 func tick() tea.Cmd {
@@ -149,6 +151,9 @@ func (m model) Init() tea.Cmd {
 	}, func() tea.Msg {
 		a, _ := eng.Agents(ctx)
 		return agentsMsg(a)
+	}, func() tea.Msg {
+		t, _ := eng.AgentTUIs(ctx)
+		return tuisMsg(t)
 	}, func() tea.Msg { return lastRunMsg(findLastRun(runs)) })
 }
 
@@ -162,6 +167,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tick()
 	case lastRunMsg:
 		m.last = msg
+		return m, nil
+	case tuisMsg:
+		m.tuis = msg
 		return m, nil
 	case acpAgentsMsg:
 		m.acpAgents = msg

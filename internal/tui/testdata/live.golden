@@ -1,40 +1,40 @@
-secrets-scan · codex                                                                                    ⠋ running 00:00
-
-✓ create
-✓ policy-close           2 / 2 closed
-⠋ agent
-  I'm applying the secrets-triage skill as required by the repository instructions.
-  › exec gitleaks git --redact --report-format json
-  ◆ aws-credential-a5c1cc1  candidate  critical  AWS access key pair committed in .env
-  ⊘ blocked ab.chatgpt.com:443  (not in scope)
-  ? q1: Treat the key in tests/test_exporter.py as a finding or a hypothesis?
-  ? q2: Second question
-  ! the agent wrote its own answer to q2; only answers given here count
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ? The agent asks  q1                                                                                                 │
-│   Treat the key in tests/test_exporter.py as a finding or a hypothesis?                                              │
-│                                                                                                                      │
-│   hypothesis                                                                                                         │
-│   finding                                                                                                            │
-│   Type an answer…                                                                                                    │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-  /runs/20261122-012942-secrets-scan                                                 findings 1 candidate │ blocked 1
-  ↑↓ choose  │  enter answer  │  pgup/pgdn scroll  │  ctrl+c stop + destroy
+secrets-scan · codex · headless                                                                         waiting for you
+╭─────────────────────────────┬───────────────────────────────────────────────────────┬────────────────────────────────╮
+│ STEPS                       │ codex                                                 │ FINDINGS                       │
+│ ✓ create                    │ I'm applying the secrets-triage skill as required     │ ◆ aws-credential-a5c… critical │
+│ ✓ policy-close              │ by the repository instructions.                       │                                │
+│ ⠋ agent                     │                                                       │ NETWORK                        │
+│                             │ › exec gitleaks git --redact --report-format json     │ ⊘ ab.chatgpt.com:443   blocked │
+│                             │ ◆ aws-credential-a5c1cc1  critical  AWS access key …  │                                │
+│                             │   ? q1: Treat the key in tests/test_exporter.py as …  │                                │
+│                             │   ? q2: Second question                               │                                │
+│                             │   ! the agent wrote its own answer to q2; only answ…  │                                │
+│                             │ ╭──────────────────────────────────────────────────╮  │                                │
+│                             │ │ ? The agent asks  q1                             │  │                                │
+│                             │ │   Treat the key in tests/test_exporter.py as a   │  │                                │
+│                             │ │   finding or a hypothesis?                       │  │                                │
+│                             │ │                                                  │  │                                │
+│                             │ │   hypothesis                                     │  │                                │
+│                             │ │   finding                                        │  │                                │
+│                             │ │   Type an answer…                                │  │                                │
+│                             │ ╰──────────────────────────────────────────────────╯  │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│                             │                                                       │                                │
+│ SANDBOX                     │                                                       │                                │
+│ lab-secrets-scan-012942     │                                                       │                                │
+│ no scope                    │                                                       │                                │
+╰─────────────────────────────┴───────────────────────────────────────────────────────┴────────────────────────────────╯
+  ↑↓ choose  │  enter answer

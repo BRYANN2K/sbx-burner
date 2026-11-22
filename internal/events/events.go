@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"syscall"
 	"time"
 
@@ -55,6 +56,8 @@ type Event struct {
 	By        string   `json:"by,omitempty"`    // answer: user|timeout|skip|forged
 	Value     *string  `json:"value,omitempty"` // answer
 
+	Argv []string `json:"argv,omitempty"` // handoff: the command burner runs on the terminal
+
 	ExitCode int    `json:"exit_code,omitempty"` // done
 	Report   string `json:"report,omitempty"`
 
@@ -77,7 +80,7 @@ func (e Event) MarshalJSON() ([]byte, error) {
 var agentFields = map[string]int{"text": 4096, "summary": 4096, "tool": 256, "question": 4096, "detail": 4096, "title": 4096, "value": 4096, "host": 300}
 
 // Known event types; readers skip the others (forward compatible).
-var Known = map[string]bool{"step": true, "agent.message": true, "agent.tool": true, "finding": true, "blocked": true, "ask": true, "answer": true, "done": true}
+var Known = map[string]bool{"step": true, "agent.message": true, "agent.tool": true, "finding": true, "blocked": true, "ask": true, "answer": true, "handoff": true, "done": true}
 
 var askIDRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
@@ -240,4 +243,71 @@ func ownedByMe(st os.FileInfo) error {
 		return errors.New("control socket is owned by another user")
 	}
 	return nil
+}
+
+// InteractiveAsk is the host ask the runner holds while the operator uses
+// the agent's own TUI (lab/runner.py INTERACTIVE_ASK).
+const InteractiveAsk = "agent-tui"
+
+var envArgRE = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*=`)
+
+// HandoffArgv checks a handoff event before burner runs it on the user's
+// terminal. Only the runner's exact shape passes:
+//
+//	sbx exec -it [--workdir <workspace>] [--env KEY=VALUE]... <sandbox> -- CMD...
+//
+// for this run (runID, pinned by the caller from the first event), its
+// sandbox and its workspace; every other token before "--" is refused.
+func HandoffArgv(e Event, runID, sandbox, workspace string) ([]string, error) {
+	a := e.Argv
+	if e.Type != "handoff" || e.Name != "agent" || len(a) < 6 || len(a) > 64 {
+		return nil, errors.New("not an agent handoff")
+	}
+	if runID == "" || e.RunID != runID {
+		return nil, fmt.Errorf("handoff for another run (%s)", e.RunID)
+	}
+	for _, x := range a {
+		if len(x) > 64<<10 || strings.ContainsRune(x, 0) {
+			return nil, errors.New("handoff argument too long or not text")
+		}
+	}
+	if a[0] != "sbx" || a[1] != "exec" || a[2] != "-it" {
+		return nil, errors.New("handoff is not `sbx exec -it`")
+	}
+	i := 3
+	workdir := false
+	for i < len(a) && strings.HasPrefix(a[i], "-") {
+		switch a[i] {
+		case "--workdir":
+			if workdir || i+1 >= len(a) || a[i+1] != workspace {
+				return nil, errors.New("handoff --workdir is not this run's workspace")
+			}
+			workdir = true
+			i += 2
+		case "--env":
+			if i+1 >= len(a) || !envArgRE.MatchString(a[i+1]) {
+				return nil, errors.New("handoff --env is not KEY=VALUE")
+			}
+			i += 2
+		default:
+			return nil, fmt.Errorf("handoff flag %q is not allowed", a[i])
+		}
+	}
+	if i+2 >= len(a) || a[i] != sandbox || a[i+1] != "--" {
+		return nil, fmt.Errorf("handoff must target sandbox %s then --", sandbox)
+	}
+	return append([]string{}, a...), nil
+}
+
+// SandboxForRun is the runner's sandbox name for a run id
+// ("YYYYMMDD-HHMMSS-<recipe>" → "lab-<recipe>"[:48] + "-HHMMSS").
+func SandboxForRun(runID string) string {
+	if len(runID) < 17 || runID[8] != '-' || runID[15] != '-' {
+		return ""
+	}
+	base := "lab-" + runID[16:]
+	if len(base) > 48 {
+		base = base[:48]
+	}
+	return strings.TrimRight(base, "-") + "-" + runID[9:15]
 }

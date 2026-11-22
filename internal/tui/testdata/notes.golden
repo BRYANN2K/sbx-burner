@@ -1,17 +1,17 @@
-devsecops › secrets-scan                                                                              step ▰▰▰▱▱  agent
+devsecops/secrets-scan · /tmp/burner-tui-golden/repo · codex                       target › agent › mode › notes › plan
 
   Where is your target?  Local folder or files
   Folder or files to test  /tmp/burner-tui-golden/repo
   Agent  Codex
+  Mode  Headless
 
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ Notes for the agent (optional)                                                                                       │
+│ Notes for the agent                                                                                                  │
 │                                                                                                                      │
 │ ❯ Focus on the git history.                                                                                          │
 │                                                                                                                      │
 │                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-
 
 
 

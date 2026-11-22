@@ -64,6 +64,8 @@ TARGET_IMAGE_REF_FILE = "target-image-ref"
 INSTALL_HELPER = "kits/lab-tools/lab-install.sh"
 # ACP transcript (R12): the bridge writes raw lines host-side, the runner
 # redacts them into ACP_TRANSCRIPT and removes the raw file.
+# Host ask that holds the run while the operator uses the agent's own TUI.
+INTERACTIVE_ASK = "agent-tui"
 ACP_TRANSCRIPT_RAW = "acp-transcript.raw.jsonl"
 ACP_TRANSCRIPT = "acp-transcript.jsonl"
 ACP_MAX_OPEN_ASKS = 8
@@ -164,6 +166,8 @@ class Plan:
     operator_notes: list[dict[str, str]] = field(default_factory=list)
     # --acp: the agent step is burner's ACP bridge (docs/security/acp.md).
     acp: bool = False
+    interactive: bool = False
+    interactive_timeout: int = 0  # seconds the agent's own TUI may stay open
 
     @property
     def workspace(self) -> Path:
@@ -293,6 +297,7 @@ def build_plan(
     repo_root: Path = REPO_ROOT,
     operator_notes: list[dict[str, str]] | None = None,
     acp: bool = False,
+    interactive: bool = False,
     model: str | None = None,
     permission: str = "auto",
 ) -> Plan:
@@ -311,8 +316,12 @@ def build_plan(
         raise Refused("--permission must be auto or ask")
     if model is not None and not ACP_MODEL_RE.match(model):
         raise Refused(f"invalid --model {model!r}")
-    if model is not None and not acp:
-        raise Refused("--model needs --acp (the model list comes from the agent over ACP)")
+    if acp and interactive:
+        raise Refused("--acp and --interactive are two ways to drive the agent; pick one")
+    if model is not None and not (acp or interactive):
+        raise Refused("--model needs --acp or --interactive")
+    if model is not None and interactive and not agent.tui_model_flag:
+        raise Refused(f"{agent_name}'s own TUI takes no --model from burner")
 
     scope: scope_mod.Scope | None = None
     if scope_path:
@@ -1015,7 +1024,17 @@ def build_plan(
     agent_env["LAB_WORKSPACE"] = workspace
     skill_names = [skill.name for skill in recipe.skills()] + [str(n) for n in recipe.run.get("shared_skills") or []]
     prompt = agent_prompt(scope is not None, agent.skills_dir, skill_names)
-    if acp:
+    if interactive:
+        plan.interactive = True
+        plan.interactive_timeout = int(recipe.run.get("timeout_minutes", 30)) * 60
+        tui = [*agent.tui_command, *([agent.tui_model_flag, model] if model else []), prompt]
+        plan.agent_step = Step(
+            "agent",
+            sbx.exec_(sandbox, tui, workdir=workspace, env=agent_env, tty=True),
+            f"open {agent.name}'s own TUI on your terminal with the task as its first prompt; the run goes on when you quit it",
+            timeout=None,
+        )
+    elif acp:
         plan.acp = True
         bridge = [
             os.environ.get("BURNER_ACP_BRIDGE") or "burner",
@@ -1764,6 +1783,8 @@ def execute_plan(
     host, ask/answer and the final done go to the NDJSON event writer; human
     output stays on the ``log`` channel (stderr when ``--events -``).
     """
+    if plan.interactive and parse_on_ask(on_ask, yes)["mode"] != "timeout":
+        raise Refused("--interactive needs an operator: not with --yes or --on-ask skip|fail")
     if log is None:
         log = (lambda s: print(s, file=sys.stderr)) if events == "-" else print
     if plan.acp:
@@ -1894,7 +1915,26 @@ def execute_plan(
 
                 return _streamer(argv, timeout, on_line, lambda: ask_bridge.abort)
 
-            if plan.acp:
+            if plan.interactive:
+
+                def _agent_exec(  # noqa: F811 - the operator drives the agent's own TUI
+                    argv: list[str], timeout: int | None
+                ) -> subprocess.CompletedProcess[str]:
+                    # burner (or the flag CLI) runs argv on the operator's
+                    # terminal, then answers "done"; the runner waits here.
+                    emit("handoff", name="agent", argv=list(argv))
+                    answer = ask_bridge.ask_host(
+                        INTERACTIVE_ASK,
+                        "the agent's own TUI is open on your terminal",
+                        ["done"],
+                        False,
+                        exempt_timeout_s=plan.interactive_timeout,
+                    )
+                    if answer == "done":
+                        return subprocess.CompletedProcess(argv, 0, "interactive session ended\n", "")
+                    return subprocess.CompletedProcess(argv, 1, "", "no operator closed the interactive session\n")
+
+            elif plan.acp:
                 acp_runner = acp_exec or _default_acp_exec
                 handler = _acp_line_handler(plan.agent.name, emit, ask_bridge, log, skipped, seeds)
                 unattended = ask_bridge.on_ask["mode"] != "timeout"

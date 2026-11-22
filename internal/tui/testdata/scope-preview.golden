@@ -1,4 +1,4 @@
-pentest › web-recon                                                                                  step ▰▰▰▱▱▱  scope
+pentest/web-recon · ghcr.io/me/app:1.0 :8080                               target › scope › agent › mode › notes › plan
 
   Where is your target?  Docker image (local or registry)
   Image  Image name (local or registry)
